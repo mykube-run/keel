@@ -1,0 +1,131 @@
+package scheduler
+
+import (
+	"context"
+	"database/sql"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/mykube-run/keel/pkg/entity"
+	"github.com/mykube-run/keel/pkg/enum"
+	"github.com/mykube-run/keel/pkg/pb"
+	"github.com/mykube-run/keel/pkg/types"
+	"github.com/rs/zerolog/log"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"net"
+	"net/http"
+	"time"
+)
+
+type server struct {
+	pb.UnimplementedScheduleServiceServer
+	db    types.DB
+	sched *Scheduler
+}
+
+func NewServer(db types.DB, sched *Scheduler) *server {
+	return &server{db: db, sched: sched}
+}
+
+func (s *server) NewTenant(ctx context.Context, req *pb.NewTenantRequest) (*pb.Response, error) {
+	now := time.Now()
+	t := entity.Tenant{
+		Uid:        req.Uid,
+		Zone:       req.Zone,
+		Priority:   req.Priority,
+		Partition:  s.sched.SchedulerId(),
+		Name:       req.Name,
+		Status:     enum.TenantStatusActive,
+		CreatedAt:  now,
+		UpdatedAt:  now,
+		LastActive: now,
+		ResourceQuota: entity.ResourceQuota{
+			Concurrency: sql.NullInt64{
+				Int64: 1,
+				Valid: true,
+			},
+		},
+	}
+	if err := s.db.CreateTenant(ctx, t); err != nil {
+		return nil, err
+	}
+	resp := &pb.Response{
+		Code: pb.Code_Ok,
+	}
+	return resp, nil
+}
+
+func (s *server) NewTask(ctx context.Context, req *pb.NewTaskRequest) (*pb.Response, error) {
+	now := time.Now()
+	t := entity.UserTask{
+		TenantId:         req.TenantId,
+		Uid:              req.Uid,
+		Handler:          req.Handler,
+		Config:           req.Config,
+		ScheduleStrategy: req.ScheduleStrategy,
+		Priority:         req.Priority,
+		Progress:         0,
+		CreatedAt:        now,
+		UpdatedAt:        now,
+		Status:           enum.TaskStatusPending,
+	}
+	if err := s.db.CreateNewTask(ctx, t); err != nil {
+		return nil, err
+	}
+	resp := &pb.Response{
+		Code: pb.Code_Ok,
+	}
+	return resp, nil
+}
+
+func (s *server) PauseTask(ctx context.Context, req *pb.PauseTaskRequest) (*pb.Response, error) {
+	panic("implement me")
+}
+
+func (s *server) RestartTask(ctx context.Context, req *pb.RestartTaskRequest) (*pb.Response, error) {
+	panic("implement me")
+}
+
+func (s *server) Start() {
+	// Create a listener on TCP port
+	lis, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		log.Fatal().Msgf("failed to listen: %v", err)
+	}
+
+	// Create a gRPC server object
+	srv := grpc.NewServer()
+	// Attach the Greeter service to the server
+	pb.RegisterScheduleServiceServer(srv, s)
+	// Serve gRPC server
+	log.Info().Msg("serving gRPC on 0.0.0.0:8080")
+	go func() {
+		log.Fatal().Err(srv.Serve(lis)).Send()
+	}()
+
+	// Create a client connection to the gRPC server we just started
+	// This is where the gRPC-Gateway proxies the requests
+	conn, err := grpc.DialContext(
+		context.Background(),
+		"0.0.0.0:8080",
+		grpc.WithBlock(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		log.Fatal().Msgf("failed to dial gRPC server: %v", err)
+	}
+
+	gwmux := runtime.NewServeMux()
+	// Register Greeter
+	err = pb.RegisterScheduleServiceHandler(context.Background(), gwmux, conn)
+	if err != nil {
+		log.Fatal().Msgf("failed to register gateway: %v", err)
+	}
+
+	gwServer := &http.Server{
+		Addr:    ":8090",
+		Handler: gwmux,
+	}
+
+	log.Info().Msg("serving gRPC-Gateway on http://0.0.0.0:8090")
+	log.Fatal().Err(gwServer.ListenAndServe()).Send()
+}

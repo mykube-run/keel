@@ -1,0 +1,18 @@
+syntax = "proto3";
+package pb;
+option go_package = "github.com/mykube-run/keel/pkg/pb";
+
+enum Code {
+  Ok = 0;
+  PermissionDenied = 1;
+  InvalidRequestParameters = 2;
+  ResourceAlreadyExists = 3;
+  TenantNotExist = 4;
+  TaskNotExist = 5;
+  TenantQuotaExceeded = 6;
+}
+
+message Response {
+  Code code = 1;
+  string message = 2;
+}

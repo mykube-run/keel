@@ -1,0 +1,35 @@
+log:
+  level: debug
+database:
+  type: 'mysql'
+  dsn: ''
+metadataStore:
+  type: 'etcd'
+  prefix: '/cluster-manager'
+  leaderTTL: 10
+  refreshDuration: 2
+  etcd:
+    endpoints:
+      - 'localhost:2379'
+    username: ''
+    password: ''
+    dialTimeout: 2
+    dialKeepAliveTime: 2
+    dialKeepAliveTimeout: 1
+clusterManager:
+  id: '1'
+  port: 8080
+  address: 'localhost:8080'
+  advertisedAddress: 'localhost:8080'
+  authorization:
+    type: 'simple-token'
+    token: 'test'
+scheduler:
+  clusterManagerAddresses:
+    - 'localhost:8080'
+  id: '1'
+  port: 8081
+  address: 'localhost:8081'
+  advertisedAddress: 'localhost:8081'
+  priority: 1
+  token: 'test'

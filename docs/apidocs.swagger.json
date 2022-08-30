@@ -1,0 +1,396 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Keel scheduler API",
+    "version": "1.0",
+    "contact": {
+      "name": "Keel project",
+      "url": "https://github.com/mykube-run/keel"
+    }
+  },
+  "tags": [
+    {
+      "name": "ScheduleService"
+    }
+  ],
+  "schemes": [
+    "http"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/tasks": {
+      "post": {
+        "summary": "Create a new task",
+        "description": "Create new task",
+        "operationId": "ScheduleService_NewTask",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/pb.Response"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/google.rpc.Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pb.NewTaskRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Task API"
+        ]
+      }
+    },
+    "/v1/tasks/pause": {
+      "post": {
+        "summary": "Pause the specified task",
+        "description": "Pause task",
+        "operationId": "ScheduleService_PauseTask",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/pb.Response"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/google.rpc.Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pb.PauseTaskRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Task API"
+        ]
+      }
+    },
+    "/v1/tasks/restart": {
+      "post": {
+        "summary": "Restart the specified task",
+        "description": "Restart task",
+        "operationId": "ScheduleService_RestartTask",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/pb.Response"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/google.rpc.Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pb.RestartTaskRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Task API"
+        ]
+      }
+    },
+    "/v1/tenants": {
+      "post": {
+        "summary": "Create a new tenant",
+        "description": "Create new tenant",
+        "operationId": "ScheduleService_NewTenant",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/pb.Response"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/google.rpc.Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pb.NewTenantRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Tenant API"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "google.protobuf.Any": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "google.rpc.Status": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/google.protobuf.Any"
+          }
+        }
+      }
+    },
+    "pb.Code": {
+      "type": "integer",
+      "format": "int32",
+      "enum": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+      ],
+      "default": "0"
+    },
+    "pb.NewTaskRequest": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Task type, available options are: CronTask, DelayTask, UserTask",
+          "required": [
+            "type"
+          ]
+        },
+        "TenantId": {
+          "type": "string",
+          "description": "Tenant id that this task belongs to",
+          "maxLength": 255,
+          "minLength": 1,
+          "required": [
+            "Tenant_id"
+          ]
+        },
+        "uid": {
+          "type": "string",
+          "description": "Task id, must be unique",
+          "maxLength": 255,
+          "minLength": 1,
+          "required": [
+            "uid"
+          ]
+        },
+        "handler": {
+          "type": "string",
+          "description": "Task handler name, user defined",
+          "maxLength": 100,
+          "minLength": 1,
+          "required": [
+            "handler"
+          ]
+        },
+        "config": {
+          "type": "string",
+          "format": "byte",
+          "default": "\"{}\"",
+          "description": "Task configuration in JSON",
+          "required": [
+            "config"
+          ]
+        },
+        "scheduleStrategy": {
+          "type": "string",
+          "description": "Task schedule strategy, TODO",
+          "maxLength": 10,
+          "minLength": 1
+        },
+        "priority": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Task priority"
+        }
+      },
+      "required": [
+        "type",
+        "TenantId",
+        "uid",
+        "handler",
+        "config"
+      ]
+    },
+    "pb.NewTenantRequest": {
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Tenant id, must be unique",
+          "maxLength": 255,
+          "minLength": 1,
+          "required": [
+            "uid"
+          ]
+        },
+        "zone": {
+          "type": "string",
+          "description": "The zone that the tenant should be scheduled in",
+          "maxLength": 20,
+          "minLength": 1,
+          "required": [
+            "zone"
+          ]
+        },
+        "priority": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Tenant priority",
+          "required": [
+            "priority"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "description": "Tenant name, does not need to be unique",
+          "maxLength": 100,
+          "minLength": 1,
+          "required": [
+            "name"
+          ]
+        },
+        "quota": {
+          "$ref": "#/definitions/pb.ResourceQuota",
+          "description": "Tenant quota options"
+        }
+      },
+      "required": [
+        "uid",
+        "zone",
+        "priority",
+        "name"
+      ]
+    },
+    "pb.PauseTaskRequest": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Task type, available options are: CronTask, DelayTask, UserTask",
+          "required": [
+            "type"
+          ]
+        },
+        "uid": {
+          "type": "string",
+          "description": "Task id, must be unique",
+          "maxLength": 255,
+          "minLength": 1,
+          "required": [
+            "uid"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "uid"
+      ]
+    },
+    "pb.ResourceQuota": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "value": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "pb.Response": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "#/definitions/pb.Code"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "pb.RestartTaskRequest": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Task type, available options are: CronTask, DelayTask, UserTask",
+          "required": [
+            "type"
+          ]
+        },
+        "uid": {
+          "type": "string",
+          "description": "Task id, must be unique",
+          "maxLength": 255,
+          "minLength": 1,
+          "required": [
+            "uid"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "uid"
+      ]
+    }
+  }
+}

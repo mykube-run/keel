@@ -1,0 +1,154 @@
+syntax = "proto3";
+package pb;
+option go_package = "github.com/mykube-run/keel/pkg/pb";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+import "common.proto";
+
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "Keel scheduler API";
+    version: "1.0";
+    contact: {
+      name: "Keel project";
+      url: "https://github.com/mykube-run/keel";
+    };
+  };
+  schemes: HTTP;
+  consumes: "application/json";
+  produces: "application/json";
+};
+
+service ScheduleService {
+  rpc NewTenant (NewTenantRequest) returns (Response) {
+    option (google.api.http) = {
+      post: "/v1/tenants",
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      description: "Create new tenant";
+      summary: "Create a new tenant";
+      tags: "Tenant API";
+    };
+  };
+  rpc NewTask (NewTaskRequest) returns (Response) {
+    option (google.api.http) = {
+      post: "/v1/tasks",
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      description: "Create new task";
+      summary: "Create a new task";
+      tags: "Task API";
+    };
+  };
+  rpc PauseTask (PauseTaskRequest) returns (Response) {
+    option (google.api.http) = {
+      post: "/v1/tasks/pause",
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      description: "Pause task";
+      summary: "Pause the specified task";
+      tags: "Task API";
+    };
+  };
+  rpc RestartTask (RestartTaskRequest) returns (Response) {
+    option (google.api.http) = {
+      post: "/v1/tasks/restart",
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      description: "Restart task";
+      summary: "Restart the specified task";
+      tags: "Task API";
+    };
+  };
+}
+
+message NewTenantRequest {
+  string uid = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Tenant id, must be unique",
+    max_length: 255,
+    min_length: 1
+  }];
+  string zone = 2 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The zone that the tenant should be scheduled in",
+    max_length: 20,
+    min_length: 1
+  }];
+  int32 priority = 3 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Tenant priority"
+  }];
+  string name = 4 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Tenant name, does not need to be unique",
+    max_length: 100,
+    min_length: 1
+  }];
+  ResourceQuota quota = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Tenant quota options"
+  }];
+}
+
+message ResourceQuota {
+  int32 type = 1;
+  int64 value = 2;
+}
+
+message NewTaskRequest {
+  string type = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Task type, available options are: CronTask, DelayTask, UserTask"
+  }];
+  string Tenant_id = 2 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Tenant id that this task belongs to",
+    max_length: 255,
+    min_length: 1
+  }];
+  string uid = 3 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Task id, must be unique",
+    max_length: 255,
+    min_length: 1
+  }];
+  string handler = 4 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Task handler name, user defined",
+    max_length: 100,
+    min_length: 1
+  }];
+  bytes config = 5 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Task configuration in JSON",
+    default: "\"{}\""
+  }];
+  string schedule_strategy = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Task schedule strategy, TODO",
+    max_length: 10,
+    min_length: 1
+  }];
+  int32 priority = 7 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Task priority"
+  }];
+}
+
+message PauseTaskRequest {
+  string type = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Task type, available options are: CronTask, DelayTask, UserTask"
+  }];
+  string uid = 2 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Task id, must be unique",
+    max_length: 255,
+    min_length: 1
+  }];
+}
+
+message RestartTaskRequest {
+  string type = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Task type, available options are: CronTask, DelayTask, UserTask"
+  }];
+  string uid = 2 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Task id, must be unique",
+    max_length: 255,
+    min_length: 1
+  }];
+}
