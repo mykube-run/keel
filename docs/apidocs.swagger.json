@@ -202,12 +202,27 @@
       ],
       "default": "0"
     },
+    "pb.CreateTaskOptions": {
+      "type": "object",
+      "properties": {
+        "checkResourceQuota": {
+          "type": "boolean",
+          "description": "Whether to check resource quota while creating a new task"
+        }
+      }
+    },
     "pb.NewTaskRequest": {
       "type": "object",
       "properties": {
+        "options": {
+          "$ref": "#/definitions/pb.CreateTaskOptions",
+          "description": "Create task options, optional",
+          "title": "Create task options"
+        },
         "type": {
           "type": "string",
           "description": "Task type, available options are: CronTask, DelayTask, UserTask",
+          "title": "Task type",
           "required": [
             "type"
           ]
@@ -215,6 +230,7 @@
         "TenantId": {
           "type": "string",
           "description": "Tenant id that this task belongs to",
+          "title": "Tenant id",
           "maxLength": 255,
           "minLength": 1,
           "required": [
@@ -224,6 +240,7 @@
         "uid": {
           "type": "string",
           "description": "Task id, must be unique",
+          "title": "Task uid",
           "maxLength": 255,
           "minLength": 1,
           "required": [
@@ -233,6 +250,7 @@
         "handler": {
           "type": "string",
           "description": "Task handler name, user defined",
+          "title": "Task handler",
           "maxLength": 100,
           "minLength": 1,
           "required": [
@@ -244,6 +262,7 @@
           "format": "byte",
           "default": "\"{}\"",
           "description": "Task configuration in JSON",
+          "title": "Task config",
           "required": [
             "config"
           ]
@@ -251,13 +270,15 @@
         "scheduleStrategy": {
           "type": "string",
           "description": "Task schedule strategy, TODO",
+          "title": "Task schedule strategy",
           "maxLength": 10,
           "minLength": 1
         },
         "priority": {
           "type": "integer",
           "format": "int32",
-          "description": "Task priority"
+          "description": "Task priority",
+          "title": "Task priority"
         }
       },
       "required": [
@@ -274,6 +295,7 @@
         "uid": {
           "type": "string",
           "description": "Tenant id, must be unique",
+          "title": "Tenant uid, must be unique across different zones",
           "maxLength": 255,
           "minLength": 1,
           "required": [
@@ -283,6 +305,7 @@
         "zone": {
           "type": "string",
           "description": "The zone that the tenant should be scheduled in",
+          "title": "Tenant zone",
           "maxLength": 20,
           "minLength": 1,
           "required": [
@@ -293,6 +316,7 @@
           "type": "integer",
           "format": "int32",
           "description": "Tenant priority",
+          "title": "Tenant priority",
           "required": [
             "priority"
           ]
@@ -300,6 +324,7 @@
         "name": {
           "type": "string",
           "description": "Tenant name, does not need to be unique",
+          "title": "Tenant name",
           "maxLength": 100,
           "minLength": 1,
           "required": [
@@ -308,7 +333,8 @@
         },
         "quota": {
           "$ref": "#/definitions/pb.ResourceQuota",
-          "description": "Tenant quota options"
+          "description": "Tenant quota options",
+          "title": "Tenant resource quota"
         }
       },
       "required": [
@@ -324,6 +350,7 @@
         "type": {
           "type": "string",
           "description": "Task type, available options are: CronTask, DelayTask, UserTask",
+          "title": "Task type",
           "required": [
             "type"
           ]
@@ -331,6 +358,7 @@
         "uid": {
           "type": "string",
           "description": "Task id, must be unique",
+          "title": "Task uid",
           "maxLength": 255,
           "minLength": 1,
           "required": [
@@ -373,6 +401,7 @@
         "type": {
           "type": "string",
           "description": "Task type, available options are: CronTask, DelayTask, UserTask",
+          "title": "Task type",
           "required": [
             "type"
           ]
@@ -380,6 +409,7 @@
         "uid": {
           "type": "string",
           "description": "Task id, must be unique",
+          "title": "Task uid",
           "maxLength": 255,
           "minLength": 1,
           "required": [
