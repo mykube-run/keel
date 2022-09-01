@@ -9,7 +9,7 @@ type Tenants []*Tenant
 
 // Tenant defines the tenant
 type Tenant struct {
-	Id         int64
+	Id         string
 	Uid        string
 	Zone       string
 	Partition  string

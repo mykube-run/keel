@@ -8,7 +8,7 @@ import (
 type TaskRuns []*TaskRun
 
 type TaskRun struct {
-	Id           int64
+	Id           string
 	TenantId     string
 	TaskId       string
 	TaskType     string

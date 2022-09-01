@@ -19,7 +19,7 @@ func (ut UserTasks) TaskIds() []string {
 
 // UserTask defines the user task
 type UserTask struct {
-	Id               int64
+	Id               string
 	TenantId         string
 	Uid              string
 	Handler          string

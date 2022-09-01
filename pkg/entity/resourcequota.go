@@ -3,7 +3,7 @@ package entity
 import "database/sql"
 
 type ResourceQuota struct {
-	Id          int64
+	Id          string
 	TenantId    string
 	Type        int
 	CPU         sql.NullInt64

@@ -222,50 +222,35 @@
         "type": {
           "type": "string",
           "description": "Task type, available options are: CronTask, DelayTask, UserTask",
-          "title": "Task type",
-          "required": [
-            "type"
-          ]
+          "title": "Task type"
         },
         "TenantId": {
           "type": "string",
           "description": "Tenant id that this task belongs to",
           "title": "Tenant id",
           "maxLength": 255,
-          "minLength": 1,
-          "required": [
-            "Tenant_id"
-          ]
+          "minLength": 1
         },
         "uid": {
           "type": "string",
           "description": "Task id, must be unique",
           "title": "Task uid",
           "maxLength": 255,
-          "minLength": 1,
-          "required": [
-            "uid"
-          ]
+          "minLength": 1
         },
         "handler": {
           "type": "string",
           "description": "Task handler name, user defined",
           "title": "Task handler",
           "maxLength": 100,
-          "minLength": 1,
-          "required": [
-            "handler"
-          ]
+          "minLength": 1
         },
         "config": {
           "type": "string",
           "format": "byte",
           "default": "\"{}\"",
           "description": "Task configuration in JSON",
-          "title": "Task config",
-          "required": [
-            "config"
-          ]
+          "title": "Task config"
         },
         "scheduleStrategy": {
           "type": "string",
@@ -297,39 +282,27 @@
           "description": "Tenant id, must be unique",
           "title": "Tenant uid, must be unique across different zones",
           "maxLength": 255,
-          "minLength": 1,
-          "required": [
-            "uid"
-          ]
+          "minLength": 1
         },
         "zone": {
           "type": "string",
           "description": "The zone that the tenant should be scheduled in",
           "title": "Tenant zone",
           "maxLength": 20,
-          "minLength": 1,
-          "required": [
-            "zone"
-          ]
+          "minLength": 1
         },
         "priority": {
           "type": "integer",
           "format": "int32",
           "description": "Tenant priority",
-          "title": "Tenant priority",
-          "required": [
-            "priority"
-          ]
+          "title": "Tenant priority"
         },
         "name": {
           "type": "string",
           "description": "Tenant name, does not need to be unique",
           "title": "Tenant name",
           "maxLength": 100,
-          "minLength": 1,
-          "required": [
-            "name"
-          ]
+          "minLength": 1
         },
         "quota": {
           "$ref": "#/definitions/pb.ResourceQuota",
@@ -350,20 +323,14 @@
         "type": {
           "type": "string",
           "description": "Task type, available options are: CronTask, DelayTask, UserTask",
-          "title": "Task type",
-          "required": [
-            "type"
-          ]
+          "title": "Task type"
         },
         "uid": {
           "type": "string",
           "description": "Task id, must be unique",
           "title": "Task uid",
           "maxLength": 255,
-          "minLength": 1,
-          "required": [
-            "uid"
-          ]
+          "minLength": 1
         }
       },
       "required": [
@@ -401,20 +368,14 @@
         "type": {
           "type": "string",
           "description": "Task type, available options are: CronTask, DelayTask, UserTask",
-          "title": "Task type",
-          "required": [
-            "type"
-          ]
+          "title": "Task type"
         },
         "uid": {
           "type": "string",
           "description": "Task id, must be unique",
           "title": "Task uid",
           "maxLength": 255,
-          "minLength": 1,
-          "required": [
-            "uid"
-          ]
+          "minLength": 1
         }
       },
       "required": [

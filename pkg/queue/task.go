@@ -23,7 +23,7 @@ type TaskQueue struct {
 
 	// User task id is incremental, hence maxUserTaskId is used to
 	// avoid populating tasks that already exist in queue
-	maxUserTaskId int64
+	maxUserTaskId string
 
 	db types.DB
 	mu sync.RWMutex

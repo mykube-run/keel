@@ -30,7 +30,7 @@ func (t *testdb) CreateNewTask(ctx context.Context, v entity.UserTask) error {
 
 func (t *testdb) FindActiveTenants(ctx context.Context, opt types.FindActiveTenantsOption) (entity.Tenants, error) {
 	tenant := &entity.Tenant{
-		Id:         1,
+		Id:         "1",
 		Uid:        "tenant-1",
 		Zone:       "CN",
 		Priority:   0,
@@ -40,7 +40,7 @@ func (t *testdb) FindActiveTenants(ctx context.Context, opt types.FindActiveTena
 		UpdatedAt:  time.Now(),
 		LastActive: time.Now(),
 		ResourceQuota: entity.ResourceQuota{
-			Id:       1,
+			Id:       "1",
 			TenantId: "1",
 			Type:     0,
 			CPU:      sql.NullInt64{},
@@ -64,7 +64,7 @@ func (t *testdb) FindRecentTasks(ctx context.Context, opt types.FindRecentTasksO
 
 func (t *testdb) GetTask(ctx context.Context, opt types.GetTaskOption) (entity.Tasks, error) {
 	task := &entity.UserTask{
-		Id:               t.id,
+		Id:               "1",
 		TenantId:         "tenant-1",
 		Uid:              fmt.Sprintf("task-%v", t.id),
 		Handler:          "test",

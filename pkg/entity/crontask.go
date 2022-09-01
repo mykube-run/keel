@@ -10,7 +10,7 @@ type CronTasks []*CronTask
 
 // CronTask defines the cron task
 type CronTask struct {
-	Id               int64
+	Id               string
 	TenantId         string
 	Handler          string
 	Name             string
