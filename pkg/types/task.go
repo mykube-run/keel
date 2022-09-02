@@ -96,10 +96,10 @@ type TaskRun struct {
 
 // TaskStatus is reported everytime HeartBeat method is called.
 type TaskStatus struct {
-	State         int       `json:"state"`
-	Progress      int       `json:"progress"`
-	Error         error     `json:"error"`
-	Timestamp     time.Time `json:"timestamp"`
+	State         enum.TaskStatus `json:"state"`
+	Progress      int             `json:"progress"`
+	Error         error           `json:"error"`
+	Timestamp     time.Time       `json:"timestamp"`
 	ResourceUsage struct {
 		CPU         int `json:"cpu"`
 		Memory      int `json:"memory"`

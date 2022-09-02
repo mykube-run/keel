@@ -34,7 +34,7 @@ func (s *TestTaskHandler) Stop() error {
 
 func (s *TestTaskHandler) HeartBeat() (*types.TaskContext, *types.TaskStatus, error) {
 	status := &types.TaskStatus{
-		State:     0,
+		State:     enum.TaskStatusRunning,
 		Progress:  0,
 		Error:     nil,
 		Timestamp: time.Now(),
@@ -44,7 +44,7 @@ func (s *TestTaskHandler) HeartBeat() (*types.TaskContext, *types.TaskStatus, er
 
 func (s *TestTaskHandler) TransitionStart() (*types.TaskContext, *types.TaskStatus, error) {
 	status := &types.TaskStatus{
-		State:     0,
+		State:     enum.TaskStatusNeedsRetry,
 		Progress:  0,
 		Error:     nil,
 		Timestamp: time.Now(),
@@ -54,7 +54,7 @@ func (s *TestTaskHandler) TransitionStart() (*types.TaskContext, *types.TaskStat
 
 func (s *TestTaskHandler) TransitionFinish() (*types.TaskContext, *types.TaskStatus, error) {
 	status := &types.TaskStatus{
-		State:     0,
+		State:     enum.TaskStatusNeedsRetry,
 		Progress:  0,
 		Error:     nil,
 		Timestamp: time.Now(),
@@ -64,7 +64,7 @@ func (s *TestTaskHandler) TransitionFinish() (*types.TaskContext, *types.TaskSta
 
 func (s *TestTaskHandler) TransitionError() (*types.TaskContext, *types.TaskStatus, error) {
 	status := &types.TaskStatus{
-		State:     0,
+		State:     enum.TaskStatusFailed,
 		Progress:  0,
 		Error:     nil,
 		Timestamp: time.Now(),
@@ -100,6 +100,6 @@ func TestKafkaWorker(t *testing.T) {
 		t.Fatalf("error creating worker: %v", err)
 	}
 
-	w.RegisterHandler("test", TaskHandlerFactory)
+	w.RegisterHandler("speechFileHandler", TaskHandlerFactory)
 	w.Start()
 }
