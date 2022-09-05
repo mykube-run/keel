@@ -109,7 +109,7 @@ func (s *server) Start() {
 	// This is where the gRPC-Gateway proxies the requests
 	conn, err := grpc.DialContext(
 		context.Background(),
-		s.config.HttpAddress,
+		s.config.GrpcAddress,
 		grpc.WithBlock(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
