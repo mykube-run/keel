@@ -3,7 +3,9 @@ package scheduler
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/mykube-run/keel/pkg/config"
 	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
 	"github.com/mykube-run/keel/pkg/pb"
@@ -18,12 +20,13 @@ import (
 
 type server struct {
 	pb.UnimplementedScheduleServiceServer
-	db    types.DB
-	sched *Scheduler
+	db     types.DB
+	sched  *Scheduler
+	config config.ServerConfig
 }
 
-func NewServer(db types.DB, sched *Scheduler) *server {
-	return &server{db: db, sched: sched}
+func NewServer(db types.DB, sched *Scheduler, config config.ServerConfig) *server {
+	return &server{db: db, sched: sched, config: config}
 }
 
 func (s *server) NewTenant(ctx context.Context, req *pb.NewTenantRequest) (*pb.Response, error) {
@@ -87,7 +90,7 @@ func (s *server) RestartTask(ctx context.Context, req *pb.RestartTaskRequest) (*
 
 func (s *server) Start() {
 	// Create a listener on TCP port
-	lis, err := net.Listen("tcp", ":8080")
+	lis, err := net.Listen("tcp", s.config.GrpcAddress)
 	if err != nil {
 		log.Fatal().Msgf("failed to listen: %v", err)
 	}
@@ -97,7 +100,7 @@ func (s *server) Start() {
 	// Attach the Greeter service to the server
 	pb.RegisterScheduleServiceServer(srv, s)
 	// Serve gRPC server
-	log.Info().Msg("serving gRPC on 0.0.0.0:8080")
+	log.Info().Msg(fmt.Sprintf("serving gRPC on %s", s.config.GrpcAddress))
 	go func() {
 		log.Fatal().Err(srv.Serve(lis)).Send()
 	}()
@@ -106,7 +109,7 @@ func (s *server) Start() {
 	// This is where the gRPC-Gateway proxies the requests
 	conn, err := grpc.DialContext(
 		context.Background(),
-		"0.0.0.0:8080",
+		s.config.HttpAddress,
 		grpc.WithBlock(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
@@ -122,10 +125,10 @@ func (s *server) Start() {
 	}
 
 	gwServer := &http.Server{
-		Addr:    ":8090",
+		Addr:    s.config.HttpAddress,
 		Handler: gwmux,
 	}
 
-	log.Info().Msg("serving gRPC-Gateway on http://0.0.0.0:8090")
+	log.Info().Msg(fmt.Sprintf("serving gRPC-Gateway on http://%s", s.config.HttpAddress))
 	log.Fatal().Err(gwServer.ListenAndServe()).Send()
 }

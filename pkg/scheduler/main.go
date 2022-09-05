@@ -26,6 +26,7 @@ type Options struct {
 	StaleCheckDelay  int64                  // Time in seconds for checking stale tasks
 	Snapshot         config.SnapshotConfig  // Scheduler state snapshot configurations
 	Transport        config.TransportConfig // Transport config
+	ServerConfig     config.ServerConfig    // http and grpc config
 }
 
 type Scheduler struct {
@@ -46,7 +47,7 @@ func New(opt *Options, db types.DB, lg *zerolog.Logger) (s *Scheduler, err error
 		db:  db,
 		lg:  lg,
 	}
-	s.srv = NewServer(db, s)
+	s.srv = NewServer(db, s, opt.ServerConfig)
 	s.em, err = NewEventManager(opt.Snapshot, s.SchedulerId(), lg)
 	if err != nil {
 		return nil, err

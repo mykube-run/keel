@@ -44,6 +44,11 @@ type TransportConfig struct {
 	Kafka KafkaConfig
 }
 
+type ServerConfig struct {
+	HttpAddress string //httpServer address
+	GrpcAddress string //grpcServer address
+}
+
 type KafkaConfig struct {
 	Brokers    []string    // Broker addresses
 	Topics     KafkaTopics // Topics
