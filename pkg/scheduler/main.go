@@ -202,8 +202,31 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 }
 
 func (s *Scheduler) taskHistory(tenantId, taskId string) (*types.TaskRun, int, error) {
-	// TODO
-	return nil, 0, nil
+	n := -1
+	last := new(types.TaskRun)
+
+	fn := func(e *TaskEvent) bool {
+		switch e.EventType {
+		case string(enum.TaskStarted):
+			n += 1
+			last.Start = e.Timestamp
+		case string(enum.ReportTaskStatus):
+			last.Status = enum.TaskRunStatusRunning
+			// TODO: update progress
+		case string(enum.TaskFinished):
+			last.Status = enum.TaskRunStatusSucceed
+			last.End = e.Timestamp
+			// TODO: update result & error
+		case string(enum.TaskFailed):
+			last.Status = enum.TaskRunStatusFailed
+			last.End = e.Timestamp
+			// TODO: update result & error
+		}
+		return true
+	}
+
+	err := s.em.Iterate(tenantId, taskId, fn)
+	return last, n, err
 }
 
 // dispatch dispatches user tasks
@@ -215,7 +238,7 @@ func (s *Scheduler) dispatch(tasks entity.UserTasks) {
 		le := s.lg.Info().Str("SchedulerId", s.SchedulerId()).Str("tenantId", task.TenantId).
 			Str("taskId", task.Uid)
 
-		// 1. Check task status to avoid repeat dispatching Success/Failed/Canceled tasks
+		// 1. Check task status to avoid repeat dispatching Success/TaskRunStatusFailed/Canceled tasks
 		status, _ := s.db.GetTaskStatus(ctx, types.GetTaskStatusOption{
 			TaskType: enum.TaskTypeUserTask,
 			Uid:      task.Uid,

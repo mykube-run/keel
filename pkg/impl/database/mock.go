@@ -59,7 +59,7 @@ func (m *MockDB) Close() error {
 
 func newUserTask(i int64) *entity.UserTask {
 	return &entity.UserTask{
-		Id:        i,
+		Id:        fmt.Sprintf("%v", i),
 		TenantId:  "10001",
 		Uid:       fmt.Sprintf("mock-user-task-%v", i),
 		Handler:   "mock-user-task",
