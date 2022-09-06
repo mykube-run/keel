@@ -89,7 +89,7 @@ func (c *TaskQueue) FetchTasks() {
 
 func (c *TaskQueue) populateTasks(ctx context.Context) error {
 	opt := types.FindRecentTasksOption{
-		TenantId:      &c.Tenant.Id,
+		TenantId:      &c.Tenant.Uid,
 		MinUserTaskId: &c.maxUserTaskId,
 		TaskType:      enum.TaskTypeUserTask,
 	}
