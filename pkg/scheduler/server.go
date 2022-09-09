@@ -43,7 +43,7 @@ func (s *server) NewTenant(ctx context.Context, req *pb.NewTenantRequest) (*pb.R
 		LastActive: now,
 		ResourceQuota: entity.ResourceQuota{
 			Concurrency: sql.NullInt64{
-				Int64: 1,
+				Int64: req.Quota.Value,
 				Valid: true,
 			},
 		},

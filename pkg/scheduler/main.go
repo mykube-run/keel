@@ -184,7 +184,6 @@ func (s *Scheduler) taskHistory(tenantId, taskId string) (*types.TaskRun, int, e
 	retryCount := 0
 	var startTime time.Time
 	err := s.em.Iterate(tenantId, taskId, func(e *TaskEvent) bool {
-		s.lg.Info().Str("e.EventType", e.EventType).Send()
 		switch e.EventType {
 		case string(enum.RetryTask):
 			retryCount++
@@ -201,9 +200,6 @@ func (s *Scheduler) taskHistory(tenantId, taskId string) (*types.TaskRun, int, e
 		return nil, 0, nil
 	}
 	result := &types.TaskRun{Result: "", Status: enum.Failed, Error: "", Start: startTime, End: latest.Timestamp}
-	if retryCount >= 3 {
-		fmt.Println("max retry count")
-	}
 	return result, retryCount, nil
 }
 
