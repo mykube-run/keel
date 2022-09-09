@@ -1,7 +1,7 @@
 version: '3'
 
 networks:
-  keel-test:
+  test:
     driver: bridge
 
 services:
@@ -12,7 +12,7 @@ services:
       ALLOW_ANONYMOUS_LOGIN: 'yes'
     restart: on-failure
     networks:
-      - keel-test
+      - test
 
   # Kafka
   # See: https://hub.docker.com/r/bitnami/kafka/
@@ -25,7 +25,7 @@ services:
       KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
     restart: on-failure
     networks:
-      - keel-test
+      - test
     depends_on:
       - zookeeper
 
@@ -37,7 +37,7 @@ services:
       MINIO_DEFAULT_BUCKETS: snapshots
     restart: on-failure
     networks:
-      - keel-test
+      - test
 
   # Keel
   keel:
@@ -48,7 +48,7 @@ services:
       - ./tests/test.env
     restart: on-failure
     networks:
-      - keel-test
+      - test
     depends_on:
       - zookeeper
       - kafka
