@@ -170,7 +170,12 @@ func (m *EventManager) Insert(e *TaskEvent) error {
 		if err = task.Put([]byte(MilestoneStarted), key); err != nil {
 			return fmt.Errorf("error inserting milestone event: %w", err)
 		}
+		fmt.Println(task.Get([]byte(MilestoneStarted)))
 	}
+	task.ForEach(func(k, v []byte) error {
+		fmt.Println(fmt.Sprintf("key :%s value: %s", string(k), string(v)))
+		return nil
+	})
 	return tx.Commit()
 }
 
@@ -178,15 +183,18 @@ func (m *EventManager) Iterate(tenantId, taskId string, fn func(e *TaskEvent) bo
 	return m.db.View(func(tx *bbolt.Tx) error {
 		tenant := tx.Bucket([]byte(tenantId))
 		if tenant == nil {
+			m.lg.Warn().Msg("tenant db is empty")
 			return nil
 		}
 
 		task := tenant.Bucket([]byte(taskId))
 		if task == nil {
+			m.lg.Warn().Msg("task db is empty")
 			return nil
 		}
 
 		c := task.Cursor()
+		m.lg.Info().Interface("course", c).Send()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
 			if m.isMilestone(k) {
 				continue
@@ -323,8 +331,8 @@ func (m *EventManager) isMilestone(k []byte) bool {
 
 // loadSnapshot tries to load the newest snapshot from object storage
 // NOTE:
-//		- Does nothing when no snapshot available
-//		- Report an error when there is an local event db file existing
+//   - Does nothing when no snapshot available
+//   - Report an error when there is an local event db file existing
 func (m *EventManager) loadSnapshot() error {
 	var (
 		newest time.Time

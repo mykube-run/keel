@@ -64,9 +64,7 @@ func New(opt *Options, db types.DB, lg *zerolog.Logger) (s *Scheduler, err error
 
 func (s *Scheduler) Start() {
 	s.lg.Info().Str("SchedulerId", s.SchedulerId()).Str("transport", s.opt.Transport.Type).Msg("starting scheduler")
-
 	_, _ = s.updateActiveTenants()
-
 	go s.schedule()
 	go s.checkStaleTasks()
 	go s.srv.Start()
@@ -148,36 +146,17 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 	switch m.Type {
 	case enum.RetryTask:
 		s.lg.Warn().Str("tenantId", ev.TenantId).Str("taskId", ev.TaskId).Msg("task needs retry")
-		//tasks, err := s.db.GetTask(context.Background(), types.GetTaskOption{
-		//	TaskType: m.Task.Type,
-		//	Uid:      m.Task.Uid,
-		//})
-		//if err != nil {
-		//	s.lg.Err(err).Str("tenantId", ev.TenantId).Str("taskId", ev.TaskId).Msg("error getting task from database")
-		//	return
-		//}
-		//
-		//tc, ok := s.cs[ev.TenantId]
-		//if !ok {
-		//	s.lg.Warn().Str("tenantId", ev.TenantId).Str("taskId", ev.TaskId).Msg("tenant task cache does not exist, can not be retried")
-		//	return
-		//}
-		//switch m.Task.Type {
-		//case entity.TaskTypeUserTask:
-		//	if len(tasks.UserTasks) != 1 {
-		//		s.lg.Warn().Str("tenantId", ev.TenantId).Str("taskId", ev.TaskId).Msg("found no task")
-		//		return
-		//	}
-		//	if err = s.db.UpdateTaskStatus(context.Background(), types.UpdateTaskStatusOption{
-		//		TaskType: entity.TaskTypeUserTask,
-		//		Uids:     tasks.UserTasks.TaskIds(),
-		//		Status:   entity.TaskStatusScheduling,
-		//	}); err != nil {
-		//		return
-		//	}
-		//	t := tasks.UserTasks[0]
-		//	tc.EnqueueUserTask(t, 1)
-		//}
+		tasks, err := s.db.GetTask(context.Background(), types.GetTaskOption{
+			TaskType: m.Task.Type,
+			Uid:      m.Task.Uid,
+		})
+		if err != nil {
+			s.lg.Err(err).Str("tenantId", ev.TenantId).Str("taskId", ev.TaskId).Msg("error getting task from database")
+			return
+		}
+		s.dispatch(tasks.UserTasks)
+	case enum.TaskFailed:
+		s.lg.Error().Str("tenantId", ev.TenantId).Str("taskId", ev.TaskId).Msg("task run fail")
 	case enum.ReportTaskStatus:
 		// Does nothing
 	case enum.TaskStarted:
@@ -202,31 +181,29 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 }
 
 func (s *Scheduler) taskHistory(tenantId, taskId string) (*types.TaskRun, int, error) {
-	n := -1
-	last := new(types.TaskRun)
+	var (
+		retried = 0
+		start   time.Time
+	)
 
-	fn := func(e *TaskEvent) bool {
+	err := s.em.Iterate(tenantId, taskId, func(e *TaskEvent) bool {
 		switch e.EventType {
+		case string(enum.RetryTask):
+			retried++
 		case string(enum.TaskStarted):
-			n += 1
-			last.Start = e.Timestamp
-		case string(enum.ReportTaskStatus):
-			last.Status = enum.TaskRunStatusRunning
-			// TODO: update progress
-		case string(enum.TaskFinished):
-			last.Status = enum.TaskRunStatusSucceed
-			last.End = e.Timestamp
-			// TODO: update result & error
-		case string(enum.TaskFailed):
-			last.Status = enum.TaskRunStatusFailed
-			last.End = e.Timestamp
-			// TODO: update result & error
+			start = e.Timestamp
 		}
 		return true
+	})
+	if err != nil {
+		return nil, 0, err
 	}
-
-	err := s.em.Iterate(tenantId, taskId, fn)
-	return last, n, err
+	latest, err := s.em.Latest(tenantId, taskId)
+	if err != nil {
+		return nil, 0, nil
+	}
+	last := &types.TaskRun{Result: "", Status: enum.TaskRunStatusFailed, Error: "", Start: start, End: latest.Timestamp}
+	return last, retried, nil
 }
 
 // dispatch dispatches user tasks
