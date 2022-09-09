@@ -6,6 +6,7 @@ import (
 	"github.com/mykube-run/keel/pkg/types"
 	"github.com/rs/zerolog/log"
 	"github.com/satori/uuid"
+	"os"
 	"strings"
 	"time"
 )
@@ -20,13 +21,7 @@ var task = types.Task{
 	LastRun:      nil,
 }
 
-var brokers = []string{
-	"172.26.2.119:33092",
-	// "172.26.2.120:33092",
-	"172.26.2.121:33092",
-	"172.26.2.122:33092",
-	"172.26.2.123:33092",
-}
+var brokers = strings.Split(os.Getenv("KEEL_TRANSPORT_KAFKA_BROKERS"), ",")
 
 var topic = "cloud-keel-tasks-test-0"
 

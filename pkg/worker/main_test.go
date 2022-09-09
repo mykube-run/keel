@@ -7,7 +7,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"os"
-	"strings"
 	"testing"
 	"time"
 )
@@ -73,26 +72,14 @@ func (s *TestTaskHandler) TransitionError() (*types.TaskContext, *types.TaskStat
 }
 
 func TestKafkaWorker(t *testing.T) {
-	name, _ := os.Hostname()
-	brokers := strings.Split(os.Getenv("KEEL_KAFKA_BROKERS"), ",")
+	cfg := config.DefaultFromEnv()
+	cfg.Transport.Role = string(enum.TransportRoleWorker)
 	opt := &Options{
-		PoolSize:       10,
-		Name:           name,
-		Generation:     0,
-		ReportInterval: time.Second * 10,
-		Transport: config.TransportConfig{
-			Type: "kafka",
-			Role: string(enum.TransportRoleWorker),
-			Kafka: config.KafkaConfig{
-				Brokers: brokers,
-				Topics: config.KafkaTopics{
-					Tasks:    []string{"cloud-keel-tasks-test-0"},
-					Messages: []string{"cloud-keel-messages-test"},
-				},
-				GroupId:    "cloud-keel-worker-test",
-				MessageTTL: 60 * 60,
-			},
-		},
+		PoolSize:       cfg.Worker.PoolSize,
+		Name:           cfg.Worker.Name,
+		Generation:     int64(cfg.Worker.Generation),
+		ReportInterval: time.Second * time.Duration(cfg.Worker.ReportInterval),
+		Transport:      cfg.Transport,
 	}
 	lg := zerolog.New(os.Stdout)
 	w, err := New(opt, &lg)
@@ -100,6 +87,6 @@ func TestKafkaWorker(t *testing.T) {
 		t.Fatalf("error creating worker: %v", err)
 	}
 
-	w.RegisterHandler("speechFileHandler", TaskHandlerFactory)
+	w.RegisterHandler("test", TaskHandlerFactory)
 	w.Start()
 }

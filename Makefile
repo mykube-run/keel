@@ -15,3 +15,9 @@ gen:
 
 test:
 	go clean -testcache && go test -v -cover -failfast ./pkg/**/
+
+integration-test:
+	sudo docker-compose -f docker-compose.yaml up -d --build
+
+stop-integration-test:
+	sudo docker-compose -f docker-compose.yaml down -v

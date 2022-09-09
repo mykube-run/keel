@@ -11,7 +11,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"os"
-	"strings"
 	"testing"
 	"time"
 )
@@ -97,35 +96,15 @@ func (t *testdb) Close() error {
 }
 
 func TestKafkaScheduler(t *testing.T) {
-	brokers := strings.Split(os.Getenv("KEEL_KAFKA_BROKERS"), ",")
+	cfg := config.DefaultFromEnv()
+	cfg.Transport.Role = string(enum.TransportRoleScheduler)
 	opt := &Options{
-		Name:             "scheduler-1",
-		Zone:             "cn",
-		ScheduleInterval: 5,
-		StaleCheckDelay:  60,
-		Snapshot: config.SnapshotConfig{
-			Enabled:      false,
-			MaxVersions:  10,
-			Interval:     time.Second * 60,
-			Endpoint:     os.Getenv("KEEL_SNAPSHOT_ENDPOINT"),
-			Region:       os.Getenv("KEEL_SNAPSHOT_REGION"),
-			Bucket:       os.Getenv("KEEL_SNAPSHOT_BUCKET"),
-			AccessKey:    os.Getenv("KEEL_SNAPSHOT_ACCESS_KEY"),
-			AccessSecret: os.Getenv("KEEL_SNAPSHOT_ACCESS_SECRET"),
-			Secure:       true,
-		},
-		Transport: config.TransportConfig{
-			Type: "kafka",
-			Role: string(enum.TransportRoleScheduler),
-			Kafka: config.KafkaConfig{
-				Brokers: brokers,
-				Topics: config.KafkaTopics{
-					Tasks:    []string{"cloud-keel-tasks-test-0"},
-					Messages: []string{"cloud-keel-messages-test"},
-				},
-				MessageTTL: 60 * 60,
-			},
-		},
+		Name:             cfg.Scheduler.Id,
+		Zone:             cfg.Scheduler.Zone,
+		ScheduleInterval: int64(cfg.Scheduler.ScheduleInterval),
+		StaleCheckDelay:  int64(cfg.Scheduler.StaleCheckDelay),
+		Snapshot:         cfg.Snapshot,
+		Transport:        cfg.Transport,
 	}
 	db := new(testdb)
 	lg := zerolog.New(os.Stdout)
