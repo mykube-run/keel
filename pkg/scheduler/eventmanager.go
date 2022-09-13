@@ -21,6 +21,7 @@ var (
 	DefaultDBPath               = "./events.db"
 	DefaultDBSnapshotPrefix     = "events-db-snapshot"
 	DefaultEventCompactDuration = 60 // 60 seconds
+	DefaultTaskCounterTTL       = 30 // 30 seconds
 )
 
 var BoltDBOption = &bbolt.Options{
@@ -223,15 +224,30 @@ func (m *EventManager) Tasks(tenantId string) (ids []string, err error) {
 }
 
 func (m *EventManager) CountTasks(tenantId string) (n int, err error) {
-	fn := func(k, v []byte) error {
-		n += 1
-		return nil
-	}
 	err = m.db.View(func(tx *bbolt.Tx) error {
 		tenant := tx.Bucket([]byte(tenantId))
 		if tenant == nil {
 			return nil
 		}
+
+		fn := func(k, v []byte) error {
+			tb := tenant.Bucket(k)
+			if tb == nil {
+				// The task bucket is nil
+				return nil
+			}
+			ev, e := m.latestEvent(tb)
+			if e != nil {
+				m.lg.Err(e).Msg("error getting latest event")
+				return nil
+			}
+			// Check the task's latest event timestamp is fresh
+			if ev.Timestamp.Add(time.Second * time.Duration(DefaultTaskCounterTTL)).After(time.Now()) {
+				n += 1
+			}
+			return nil
+		}
+
 		return tenant.ForEach(fn)
 	})
 	return
@@ -372,11 +388,11 @@ func (m *EventManager) latestEvent(bucket *bbolt.Bucket) (ev *TaskEvent, err err
 
 func (m *EventManager) getEventByKey(bucket *bbolt.Bucket, key []byte) (ev *TaskEvent, err error) {
 	if bucket == nil || key == nil {
-		return nil, nil
+		return nil, fmt.Errorf("nil bucket or key while getting event by key")
 	}
 	byt := bucket.Get(key)
 	if byt == nil {
-		return nil, nil
+		return nil, fmt.Errorf("nil event")
 	}
 
 	ev = new(TaskEvent)

@@ -1,0 +1,56 @@
+version: '3'
+
+networks:
+  test:
+    driver: bridge
+
+services:
+  # Zookeeper for Kafka
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    environment:
+      ALLOW_ANONYMOUS_LOGIN: 'yes'
+    restart: on-failure
+    networks:
+      - test
+
+  # Kafka
+  # See: https://hub.docker.com/r/bitnami/kafka/
+  kafka:
+    image: bitnami/kafka:latest
+    environment:
+      ALLOW_PLAINTEXT_LISTENER: 'yes'
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_CFG_NUM_PARTITIONS: 3
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+    restart: on-failure
+    networks:
+      - test
+    depends_on:
+      - zookeeper
+
+  # Minio object storage
+  # See: https://hub.docker.com/r/bitnami/minio/
+  minio:
+    image: bitnami/minio:latest
+    environment:
+      MINIO_DEFAULT_BUCKETS: snapshots
+    restart: on-failure
+    networks:
+      - test
+
+  # Keel
+  keel:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    env_file:
+      - ./tests/test.env
+    restart: on-failure
+    networks:
+      - test
+    depends_on:
+      - zookeeper
+      - kafka
+      - minio
+

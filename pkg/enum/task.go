@@ -29,6 +29,7 @@ const (
 type TaskRunStatus string
 
 const (
-	Succeed TaskRunStatus = "Succeed"
-	Failed  TaskRunStatus = "Failed"
+	TaskRunStatusSucceed TaskRunStatus = "Succeed"
+	TaskRunStatusFailed  TaskRunStatus = "Failed"
+	TaskRunStatusRunning TaskRunStatus = "Running"
 )

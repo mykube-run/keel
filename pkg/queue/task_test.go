@@ -1,8 +1,9 @@
 package queue
 
 import (
-	"github.com/mykube-run/keel/pkg/database"
 	"github.com/mykube-run/keel/pkg/entity"
+	"github.com/mykube-run/keel/pkg/enum"
+	"github.com/mykube-run/keel/pkg/impl/database"
 	"github.com/rs/zerolog"
 	"os"
 	"testing"
@@ -13,12 +14,12 @@ var (
 	db     = database.NewMockDB()
 	lg     = zerolog.New(os.Stdout)
 	tenant = &entity.Tenant{
-		Id:            10001,
+		Id:            "10001",
 		Uid:           "tenant-10001",
 		Zone:          "default",
 		Priority:      0,
 		Name:          "Tenant-10001",
-		Status:        0,
+		Status:        enum.TenantStatusActive,
 		ResourceQuota: entity.ResourceQuota{},
 	}
 )
@@ -82,7 +83,7 @@ func TestTaskCache_EnqueueUserTask(t *testing.T) {
 	}
 
 	task := tasks[0]
-	if task.Id == 0 {
+	if task.Id == "0" {
 		t.Fatalf("invalid task with id %v", task.Id)
 	}
 	id := task.Id

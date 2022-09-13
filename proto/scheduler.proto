@@ -10,7 +10,7 @@ import "common.proto";
 
 option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
   info: {
-    title: "Keel scheduler API";
+    title: "Keel Scheduler API";
     version: "1.0";
     contact: {
       name: "Keel project";

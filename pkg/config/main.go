@@ -9,6 +9,8 @@ type Config struct {
 	Log       LogConfig
 	Database  DatabaseConfig
 	Scheduler SchedulerConfig
+	Snapshot  SnapshotConfig
+	Worker    WorkerConfig
 	Transport TransportConfig
 }
 
@@ -30,12 +32,21 @@ type DatabaseConfig struct {
 }
 
 type SchedulerConfig struct {
-	Id                string // id also used to identify partition
-	Numbers           int
+	Id                string // Scheduler id, also used to identify partition
 	Zone              string
 	Port              int
+	Numbers           int // Number of schedulers within the same zone
 	Address           string
 	AdvertisedAddress string
+	ScheduleInterval  int // Schedule interval in seconds
+	StaleCheckDelay   int // Stale tasks check delay after start up in seconds
+}
+
+type WorkerConfig struct {
+	Name           string
+	PoolSize       int
+	Generation     int
+	ReportInterval int
 }
 
 type TransportConfig struct {

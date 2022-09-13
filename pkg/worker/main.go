@@ -149,9 +149,9 @@ func (w *Worker) run(tc *types.TaskContext) error {
 			Msg("start to process task")
 
 		defer func() {
-			status := enum.Succeed
+			status := enum.TaskRunStatusSucceed
 			if e != nil {
-				status = enum.Failed
+				status = enum.TaskRunStatusFailed
 			}
 			tc.MarkDone(status, enum.ResultOmitted, e)
 			w.running.Delete(tc.Task.Uid)
