@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "Keel scheduler API",
+    "title": "Keel Scheduler API",
     "version": "1.0",
     "contact": {
       "name": "Keel project",
@@ -185,6 +185,40 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/pb.NewTenantRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Tenant API"
+        ]
+      }
+    },
+    "/v1/tenants/status": {
+      "post": {
+        "summary": "query tenant task status",
+        "description": "query tenant task status",
+        "operationId": "ScheduleService_TenantTaskInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/pb.TenantTaskResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/google.rpc.Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pb.TenantTaskRequest"
             }
           }
         ],
@@ -386,11 +420,6 @@
     "pb.QueryTaskRequest": {
       "type": "object",
       "properties": {
-        "type": {
-          "type": "string",
-          "description": "Task type, available options are: CronTask, DelayTask, UserTask",
-          "title": "Task type"
-        },
         "uid": {
           "type": "string",
           "description": "Task id, must be unique",
@@ -400,7 +429,6 @@
         }
       },
       "required": [
-        "type",
         "uid"
       ]
     },
@@ -448,6 +476,41 @@
         "type",
         "uid"
       ]
+    },
+    "pb.TenantTaskRequest": {
+      "type": "object",
+      "properties": {
+        "tenantID": {
+          "type": "string",
+          "description": "tenant id, must be unique",
+          "maxLength": 255,
+          "minLength": 1
+        }
+      },
+      "required": [
+        "tenantID"
+      ]
+    },
+    "pb.TenantTaskResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "#/definitions/pb.Code",
+          "title": "Task uid"
+        },
+        "running": {
+          "type": "string",
+          "format": "int64"
+        },
+        "pending": {
+          "type": "string",
+          "format": "int64"
+        },
+        "limit": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
     }
   }
 }

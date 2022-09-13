@@ -15,8 +15,7 @@ type MockDB struct {
 }
 
 func NewMockDB() *MockDB {
-	return &MockDB{
-	}
+	return &MockDB{}
 }
 
 func (m *MockDB) CreateTenant(ctx context.Context, t entity.Tenant) error {
@@ -25,6 +24,14 @@ func (m *MockDB) CreateTenant(ctx context.Context, t entity.Tenant) error {
 
 func (m *MockDB) CreateNewTask(ctx context.Context, t entity.UserTask) error {
 	return nil
+}
+
+func (m *MockDB) FindTenant(ctx context.Context, opt types.GetTenantInfoOption) (entity.Tenant, error) {
+	panic("implement me")
+}
+
+func (m *MockDB) FindTenantPendingTaskCount(ctx context.Context, opt types.GetTenantPendingTaskOption) (int64, error) {
+	panic("implement me")
 }
 
 func (m *MockDB) FindActiveTenants(ctx context.Context, opt types.FindActiveTenantsOption) (entity.Tenants, error) {

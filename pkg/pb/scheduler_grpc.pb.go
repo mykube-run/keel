@@ -19,6 +19,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ScheduleServiceClient interface {
 	NewTenant(ctx context.Context, in *NewTenantRequest, opts ...grpc.CallOption) (*Response, error)
+	TenantTaskInfo(ctx context.Context, in *TenantTaskRequest, opts ...grpc.CallOption) (*TenantTaskResponse, error)
 	NewTask(ctx context.Context, in *NewTaskRequest, opts ...grpc.CallOption) (*Response, error)
 	PauseTask(ctx context.Context, in *PauseTaskRequest, opts ...grpc.CallOption) (*Response, error)
 	RestartTask(ctx context.Context, in *RestartTaskRequest, opts ...grpc.CallOption) (*Response, error)
@@ -36,6 +37,15 @@ func NewScheduleServiceClient(cc grpc.ClientConnInterface) ScheduleServiceClient
 func (c *scheduleServiceClient) NewTenant(ctx context.Context, in *NewTenantRequest, opts ...grpc.CallOption) (*Response, error) {
 	out := new(Response)
 	err := c.cc.Invoke(ctx, "/pb.ScheduleService/NewTenant", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *scheduleServiceClient) TenantTaskInfo(ctx context.Context, in *TenantTaskRequest, opts ...grpc.CallOption) (*TenantTaskResponse, error) {
+	out := new(TenantTaskResponse)
+	err := c.cc.Invoke(ctx, "/pb.ScheduleService/TenantTaskInfo", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -83,6 +93,7 @@ func (c *scheduleServiceClient) QueryTaskStatus(ctx context.Context, in *QueryTa
 // for forward compatibility
 type ScheduleServiceServer interface {
 	NewTenant(context.Context, *NewTenantRequest) (*Response, error)
+	TenantTaskInfo(context.Context, *TenantTaskRequest) (*TenantTaskResponse, error)
 	NewTask(context.Context, *NewTaskRequest) (*Response, error)
 	PauseTask(context.Context, *PauseTaskRequest) (*Response, error)
 	RestartTask(context.Context, *RestartTaskRequest) (*Response, error)
@@ -96,6 +107,9 @@ type UnimplementedScheduleServiceServer struct {
 
 func (UnimplementedScheduleServiceServer) NewTenant(context.Context, *NewTenantRequest) (*Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NewTenant not implemented")
+}
+func (UnimplementedScheduleServiceServer) TenantTaskInfo(context.Context, *TenantTaskRequest) (*TenantTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TenantTaskInfo not implemented")
 }
 func (UnimplementedScheduleServiceServer) NewTask(context.Context, *NewTaskRequest) (*Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NewTask not implemented")
@@ -136,6 +150,24 @@ func _ScheduleService_NewTenant_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ScheduleServiceServer).NewTenant(ctx, req.(*NewTenantRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ScheduleService_TenantTaskInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TenantTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ScheduleServiceServer).TenantTaskInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.ScheduleService/TenantTaskInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ScheduleServiceServer).TenantTaskInfo(ctx, req.(*TenantTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -222,6 +254,10 @@ var ScheduleService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "NewTenant",
 			Handler:    _ScheduleService_NewTenant_Handler,
+		},
+		{
+			MethodName: "TenantTaskInfo",
+			Handler:    _ScheduleService_TenantTaskInfo_Handler,
 		},
 		{
 			MethodName: "NewTask",

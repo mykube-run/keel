@@ -34,6 +34,19 @@ service ScheduleService {
       tags: "Tenant API";
     };
   };
+
+  rpc TenantTaskInfo (TenantTaskRequest) returns (TenantTaskResponse) {
+    option (google.api.http) = {
+      post: "/v1/tenants/status",
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      description: "query tenant task status";
+      summary: "query tenant task status";
+      tags: "Tenant API";
+    };
+  };
+
   rpc NewTask (NewTaskRequest) returns (Response) {
     option (google.api.http) = {
       post: "/v1/tasks",
@@ -205,17 +218,22 @@ message RestartTaskRequest {
 }
 
 message QueryTaskRequest {
-  // Task type
-  string type = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "Task type, available options are: CronTask, DelayTask, UserTask"
-  }];
-
   // Task uid
-  string uid = 2 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+  string uid = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "Task id, must be unique",
     max_length: 255,
     min_length: 1
   }];
 }
+
+
+message TenantTaskRequest {
+  string tenantID = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "tenant id, must be unique",
+    max_length: 255,
+    min_length: 1
+  }];
+}
+
 
 

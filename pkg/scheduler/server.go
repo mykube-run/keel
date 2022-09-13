@@ -57,6 +57,44 @@ func (s *server) NewTenant(ctx context.Context, req *pb.NewTenantRequest) (*pb.R
 	return resp, nil
 }
 
+func (s *server) TenantTaskInfo(ctx context.Context, req *pb.TenantTaskRequest) (resp *pb.TenantTaskResponse, err error) {
+	queue, ex := s.sched.cs[req.GetTenantID()]
+	pendingCount, err := s.db.FindTenantPendingTaskCount(ctx, types.GetTenantPendingTaskOption{TenantId: req.TenantID})
+	if err != nil {
+		return nil, err
+	}
+	if ex {
+		limit := queue.Tenant.ResourceQuota.Concurrency.Int64
+		runningTasks := 0
+		runningTasks, err = s.sched.em.CountTasks(req.TenantID)
+		if err != nil {
+			resp = &pb.TenantTaskResponse{
+				Code: pb.Code_TaskNotExist,
+			}
+			return
+		}
+		resp = &pb.TenantTaskResponse{
+			Code: pb.Code_Ok, Running: int64(runningTasks), Limit: limit,
+			Pending: pendingCount,
+		}
+		return
+	} else {
+		var tenant entity.Tenant
+		tenant, err = s.db.FindTenant(ctx, types.GetTenantInfoOption{TenantId: &req.TenantID})
+		if err != nil {
+			resp = &pb.TenantTaskResponse{
+				Code: pb.Code_TaskNotExist,
+			}
+			return
+		}
+		resp = &pb.TenantTaskResponse{
+			Code: pb.Code_Ok, Running: 0, Pending: pendingCount,
+			Limit: tenant.ResourceQuota.Concurrency.Int64,
+		}
+		return resp, nil
+	}
+}
+
 func (s *server) NewTask(ctx context.Context, req *pb.NewTaskRequest) (*pb.Response, error) {
 	now := time.Now()
 	t := entity.UserTask{
@@ -70,6 +108,22 @@ func (s *server) NewTask(ctx context.Context, req *pb.NewTaskRequest) (*pb.Respo
 		CreatedAt:        now,
 		UpdatedAt:        now,
 		Status:           enum.TaskStatusPending,
+	}
+	if req.Options.GetCheckResourceQuota() {
+		queue, ex := s.sched.cs[req.TenantId]
+		if ex {
+			limit := queue.Tenant.ResourceQuota.Concurrency.Int64
+			runningTasks, err := s.sched.em.CountTasks(req.TenantId)
+			if err != nil {
+				return nil, err
+			}
+			if int64(runningTasks) > limit {
+				resp := &pb.Response{
+					Code: pb.Code_TenantQuotaExceeded,
+				}
+				return resp, nil
+			}
+		}
 	}
 	if err := s.db.CreateNewTask(ctx, t); err != nil {
 		return nil, err
@@ -89,7 +143,7 @@ func (s *server) RestartTask(ctx context.Context, req *pb.RestartTaskRequest) (*
 }
 
 func (s *server) QueryTaskStatus(ctx context.Context, req *pb.QueryTaskRequest) (*pb.QueryStatusResponse, error) {
-	options := types.GetTaskStatusOption{TaskType: enum.TaskType(req.Type), Uid: req.Uid}
+	options := types.GetTaskStatusOption{Uid: req.Uid}
 	taskStatus, err := s.db.GetTaskStatus(ctx, options)
 	if err != nil {
 		return nil, err
