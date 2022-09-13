@@ -67,6 +67,18 @@ service ScheduleService {
       tags: "Task API";
     };
   };
+
+  rpc QueryTaskStatus (QueryTaskRequest) returns (QueryStatusResponse) {
+    option (google.api.http) = {
+      post: "/v1/tasks/status",
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      description: "Query task status";
+      summary: "Query the specified task";
+      tags: "Task API";
+    };
+  };
 }
 
 message NewTenantRequest {
@@ -191,3 +203,19 @@ message RestartTaskRequest {
     min_length: 1
   }];
 }
+
+message QueryTaskRequest {
+  // Task type
+  string type = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Task type, available options are: CronTask, DelayTask, UserTask"
+  }];
+
+  // Task uid
+  string uid = 2 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Task id, must be unique",
+    max_length: 255,
+    min_length: 1
+  }];
+}
+
+

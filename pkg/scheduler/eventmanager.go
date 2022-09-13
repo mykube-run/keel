@@ -172,10 +172,6 @@ func (m *EventManager) Insert(e *TaskEvent) error {
 		}
 		fmt.Println(task.Get([]byte(MilestoneStarted)))
 	}
-	task.ForEach(func(k, v []byte) error {
-		fmt.Println(fmt.Sprintf("key :%s value: %s", string(k), string(v)))
-		return nil
-	})
 	return tx.Commit()
 }
 

@@ -43,7 +43,7 @@ func (s *server) NewTenant(ctx context.Context, req *pb.NewTenantRequest) (*pb.R
 		LastActive: now,
 		ResourceQuota: entity.ResourceQuota{
 			Concurrency: sql.NullInt64{
-				Int64: 1,
+				Int64: req.Quota.Value,
 				Valid: true,
 			},
 		},
@@ -86,6 +86,19 @@ func (s *server) PauseTask(ctx context.Context, req *pb.PauseTaskRequest) (*pb.R
 
 func (s *server) RestartTask(ctx context.Context, req *pb.RestartTaskRequest) (*pb.Response, error) {
 	panic("implement me")
+}
+
+func (s *server) QueryTaskStatus(ctx context.Context, req *pb.QueryTaskRequest) (*pb.QueryStatusResponse, error) {
+	options := types.GetTaskStatusOption{TaskType: enum.TaskType(req.Type), Uid: req.Uid}
+	taskStatus, err := s.db.GetTaskStatus(ctx, options)
+	if err != nil {
+		return nil, err
+	}
+	resp := &pb.QueryStatusResponse{
+		Code:   pb.Code_Ok,
+		Status: string(taskStatus),
+	}
+	return resp, nil
 }
 
 func (s *server) Start() {

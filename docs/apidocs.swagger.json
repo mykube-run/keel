@@ -125,6 +125,40 @@
         ]
       }
     },
+    "/v1/tasks/status": {
+      "post": {
+        "summary": "Query the specified task",
+        "description": "Query task status",
+        "operationId": "ScheduleService_QueryTaskStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/pb.QueryStatusResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/google.rpc.Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pb.QueryTaskRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Task API"
+        ]
+      }
+    },
     "/v1/tenants": {
       "post": {
         "summary": "Create a new tenant",
@@ -318,6 +352,38 @@
       ]
     },
     "pb.PauseTaskRequest": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Task type, available options are: CronTask, DelayTask, UserTask",
+          "title": "Task type"
+        },
+        "uid": {
+          "type": "string",
+          "description": "Task id, must be unique",
+          "title": "Task uid",
+          "maxLength": 255,
+          "minLength": 1
+        }
+      },
+      "required": [
+        "type",
+        "uid"
+      ]
+    },
+    "pb.QueryStatusResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "#/definitions/pb.Code"
+        },
+        "status": {
+          "type": "string"
+        }
+      }
+    },
+    "pb.QueryTaskRequest": {
       "type": "object",
       "properties": {
         "type": {

@@ -16,3 +16,8 @@ message Response {
   Code code = 1;
   string message = 2;
 }
+
+message QueryStatusResponse {
+  Code code = 1;
+  string status = 2;
+}
