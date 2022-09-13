@@ -22,6 +22,7 @@ type ScheduleServiceClient interface {
 	NewTask(ctx context.Context, in *NewTaskRequest, opts ...grpc.CallOption) (*Response, error)
 	PauseTask(ctx context.Context, in *PauseTaskRequest, opts ...grpc.CallOption) (*Response, error)
 	RestartTask(ctx context.Context, in *RestartTaskRequest, opts ...grpc.CallOption) (*Response, error)
+	QueryTaskStatus(ctx context.Context, in *QueryTaskRequest, opts ...grpc.CallOption) (*QueryStatusResponse, error)
 }
 
 type scheduleServiceClient struct {
@@ -68,6 +69,15 @@ func (c *scheduleServiceClient) RestartTask(ctx context.Context, in *RestartTask
 	return out, nil
 }
 
+func (c *scheduleServiceClient) QueryTaskStatus(ctx context.Context, in *QueryTaskRequest, opts ...grpc.CallOption) (*QueryStatusResponse, error) {
+	out := new(QueryStatusResponse)
+	err := c.cc.Invoke(ctx, "/pb.ScheduleService/QueryTaskStatus", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ScheduleServiceServer is the server API for ScheduleService service.
 // All implementations must embed UnimplementedScheduleServiceServer
 // for forward compatibility
@@ -76,6 +86,7 @@ type ScheduleServiceServer interface {
 	NewTask(context.Context, *NewTaskRequest) (*Response, error)
 	PauseTask(context.Context, *PauseTaskRequest) (*Response, error)
 	RestartTask(context.Context, *RestartTaskRequest) (*Response, error)
+	QueryTaskStatus(context.Context, *QueryTaskRequest) (*QueryStatusResponse, error)
 	mustEmbedUnimplementedScheduleServiceServer()
 }
 
@@ -94,6 +105,9 @@ func (UnimplementedScheduleServiceServer) PauseTask(context.Context, *PauseTaskR
 }
 func (UnimplementedScheduleServiceServer) RestartTask(context.Context, *RestartTaskRequest) (*Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RestartTask not implemented")
+}
+func (UnimplementedScheduleServiceServer) QueryTaskStatus(context.Context, *QueryTaskRequest) (*QueryStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method QueryTaskStatus not implemented")
 }
 func (UnimplementedScheduleServiceServer) mustEmbedUnimplementedScheduleServiceServer() {}
 
@@ -180,6 +194,24 @@ func _ScheduleService_RestartTask_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ScheduleService_QueryTaskStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ScheduleServiceServer).QueryTaskStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.ScheduleService/QueryTaskStatus",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ScheduleServiceServer).QueryTaskStatus(ctx, req.(*QueryTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ScheduleService_ServiceDesc is the grpc.ServiceDesc for ScheduleService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -202,6 +234,10 @@ var ScheduleService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RestartTask",
 			Handler:    _ScheduleService_RestartTask_Handler,
+		},
+		{
+			MethodName: "QueryTaskStatus",
+			Handler:    _ScheduleService_QueryTaskStatus_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

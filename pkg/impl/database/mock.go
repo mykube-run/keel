@@ -36,7 +36,7 @@ func (m *MockDB) FindRecentTasks(ctx context.Context, opt types.FindRecentTasksO
 	}
 	var i int64 = 0
 	for i = 1; i <= 6; i++ {
-		tasks.UserTasks = append(tasks.UserTasks, newUserTask(i))
+		tasks.UserTasks = append(tasks.UserTasks, newUserTask(string(i)))
 	}
 	return tasks, nil
 }
@@ -57,7 +57,7 @@ func (m *MockDB) Close() error {
 	panic("implement me")
 }
 
-func newUserTask(i int64) *entity.UserTask {
+func newUserTask(i string) *entity.UserTask {
 	return &entity.UserTask{
 		Id:        i,
 		TenantId:  "10001",

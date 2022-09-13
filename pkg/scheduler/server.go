@@ -88,6 +88,20 @@ func (s *server) RestartTask(ctx context.Context, req *pb.RestartTaskRequest) (*
 	panic("implement me")
 }
 
+func (s *server) QueryTaskStatus(ctx context.Context, req *pb.QueryTaskRequest) (*pb.QueryStatusResponse, error) {
+	options := types.GetTaskOption{TaskType: enum.TaskType(req.Type), Uid: req.Uid}
+	task, err := s.db.GetTask(ctx, options)
+	if err != nil {
+		return nil, err
+	}
+	status := task.UserTasks[0].Status
+	resp := &pb.QueryStatusResponse{
+		Code:   pb.Code_Ok,
+		Status: string(status),
+	}
+	return resp, nil
+}
+
 func (s *server) Start() {
 	// Create a listener on TCP port
 	lis, err := net.Listen("tcp", s.config.GrpcAddress)
