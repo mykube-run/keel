@@ -89,15 +89,14 @@ func (s *server) RestartTask(ctx context.Context, req *pb.RestartTaskRequest) (*
 }
 
 func (s *server) QueryTaskStatus(ctx context.Context, req *pb.QueryTaskRequest) (*pb.QueryStatusResponse, error) {
-	options := types.GetTaskOption{TaskType: enum.TaskType(req.Type), Uid: req.Uid}
-	task, err := s.db.GetTask(ctx, options)
+	options := types.GetTaskStatusOption{TaskType: enum.TaskType(req.Type), Uid: req.Uid}
+	taskStatus, err := s.db.GetTaskStatus(ctx, options)
 	if err != nil {
 		return nil, err
 	}
-	status := task.UserTasks[0].Status
 	resp := &pb.QueryStatusResponse{
 		Code:   pb.Code_Ok,
-		Status: string(status),
+		Status: string(taskStatus),
 	}
 	return resp, nil
 }
