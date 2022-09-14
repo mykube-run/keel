@@ -89,7 +89,6 @@ func (s *Scheduler) schedule() {
 			if _, err := s.updateActiveTenants(); err != nil {
 				s.lg.Err(err).Msg("failed to update active tenants")
 			}
-
 			for k, c := range s.cs {
 				running, err := s.em.CountTasks(k)
 				if err != nil {
@@ -210,6 +209,7 @@ func (s *Scheduler) taskHistory(tenantId, taskId string) (*types.TaskRun, int, e
 func (s *Scheduler) dispatch(tasks entity.UserTasks) {
 	ctx := context.Background()
 
+	activeTenants := make([]string, 0)
 	for _, task := range tasks {
 		// Log event
 		le := s.lg.Info().Str("SchedulerId", s.SchedulerId()).Str("tenantId", task.TenantId).
@@ -224,7 +224,6 @@ func (s *Scheduler) dispatch(tasks entity.UserTasks) {
 			le.Interface("status", status).Msg("the task can not be dispatched")
 			continue
 		}
-
 		// 2. Dispatch the task
 		v := types.Task{
 			Handler:     task.Handler,
@@ -233,6 +232,8 @@ func (s *Scheduler) dispatch(tasks entity.UserTasks) {
 			SchedulerId: s.SchedulerId(),
 			Type:        enum.TaskTypeUserTask,
 		}
+		// if dispatch this task need active tenant
+		activeTenants = append(activeTenants, task.TenantId)
 
 		cfg, err := json.Marshal(task.Config)
 		if err != nil {
@@ -268,6 +269,14 @@ func (s *Scheduler) dispatch(tasks entity.UserTasks) {
 		if err = s.updateTaskStatus(ev); err != nil {
 			le.Err(err).Msg("failed to update task status")
 		}
+	}
+	//when dispatch task for a loop active tenants
+	if len(activeTenants) > 0 {
+		err := s.db.ActiveTenant(context.Background(), types.ActiveTenantOption{TenantId: activeTenants, ActiveTime: time.Now()})
+		if err != nil {
+			s.lg.Err(err).Msg("active tenant fail")
+		}
+		s.lg.Debug().Strs("tenantIds", activeTenants).Msg("active tenants")
 	}
 }
 

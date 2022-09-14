@@ -170,7 +170,6 @@ func (m *EventManager) Insert(e *TaskEvent) error {
 		if err = task.Put([]byte(MilestoneStarted), key); err != nil {
 			return fmt.Errorf("error inserting milestone event: %w", err)
 		}
-		fmt.Println(task.Get([]byte(MilestoneStarted)))
 	}
 	return tx.Commit()
 }

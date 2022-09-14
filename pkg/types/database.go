@@ -17,6 +17,7 @@ type DB interface {
 	GetTaskStatus(ctx context.Context, opt GetTaskStatusOption) (enum.TaskStatus, error)
 	FindTenant(ctx context.Context, opt GetTenantInfoOption) (entity.Tenant, error)
 	FindTenantPendingTaskCount(ctx context.Context, opt GetTenantPendingTaskOption) (int64, error)
+	ActiveTenant(ctx context.Context, opt ActiveTenantOption) error
 	Close() error
 }
 
@@ -61,4 +62,9 @@ type GetTenantPendingTaskOption struct {
 	TenantId string
 	StartAt  time.Time
 	EndAt    time.Time
+}
+
+type ActiveTenantOption struct {
+	TenantId   []string
+	ActiveTime time.Time
 }

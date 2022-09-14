@@ -58,6 +58,10 @@ func (m *MockDB) FindActiveTenants(ctx context.Context, opt types.FindActiveTena
 	return []*entity.Tenant{tenant}, nil
 }
 
+func (m *MockDB) ActiveTenant(ctx context.Context, opt types.ActiveTenantOption) error {
+	panic("implement me")
+}
+
 func (m *MockDB) FindRecentTasks(ctx context.Context, opt types.FindRecentTasksOption) (entity.Tasks, error) {
 	tasks := entity.Tasks{
 		CronTasks:  nil,
