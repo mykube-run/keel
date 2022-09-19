@@ -23,6 +23,7 @@ type ScheduleServiceClient interface {
 	NewTask(ctx context.Context, in *NewTaskRequest, opts ...grpc.CallOption) (*Response, error)
 	PauseTask(ctx context.Context, in *PauseTaskRequest, opts ...grpc.CallOption) (*Response, error)
 	RestartTask(ctx context.Context, in *RestartTaskRequest, opts ...grpc.CallOption) (*Response, error)
+	StopTask(ctx context.Context, in *StopTaskRequest, opts ...grpc.CallOption) (*Response, error)
 	QueryTaskStatus(ctx context.Context, in *QueryTaskRequest, opts ...grpc.CallOption) (*QueryStatusResponse, error)
 }
 
@@ -79,6 +80,15 @@ func (c *scheduleServiceClient) RestartTask(ctx context.Context, in *RestartTask
 	return out, nil
 }
 
+func (c *scheduleServiceClient) StopTask(ctx context.Context, in *StopTaskRequest, opts ...grpc.CallOption) (*Response, error) {
+	out := new(Response)
+	err := c.cc.Invoke(ctx, "/pb.ScheduleService/StopTask", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *scheduleServiceClient) QueryTaskStatus(ctx context.Context, in *QueryTaskRequest, opts ...grpc.CallOption) (*QueryStatusResponse, error) {
 	out := new(QueryStatusResponse)
 	err := c.cc.Invoke(ctx, "/pb.ScheduleService/QueryTaskStatus", in, out, opts...)
@@ -97,6 +107,7 @@ type ScheduleServiceServer interface {
 	NewTask(context.Context, *NewTaskRequest) (*Response, error)
 	PauseTask(context.Context, *PauseTaskRequest) (*Response, error)
 	RestartTask(context.Context, *RestartTaskRequest) (*Response, error)
+	StopTask(context.Context, *StopTaskRequest) (*Response, error)
 	QueryTaskStatus(context.Context, *QueryTaskRequest) (*QueryStatusResponse, error)
 	mustEmbedUnimplementedScheduleServiceServer()
 }
@@ -119,6 +130,9 @@ func (UnimplementedScheduleServiceServer) PauseTask(context.Context, *PauseTaskR
 }
 func (UnimplementedScheduleServiceServer) RestartTask(context.Context, *RestartTaskRequest) (*Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RestartTask not implemented")
+}
+func (UnimplementedScheduleServiceServer) StopTask(context.Context, *StopTaskRequest) (*Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StopTask not implemented")
 }
 func (UnimplementedScheduleServiceServer) QueryTaskStatus(context.Context, *QueryTaskRequest) (*QueryStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method QueryTaskStatus not implemented")
@@ -226,6 +240,24 @@ func _ScheduleService_RestartTask_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ScheduleService_StopTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StopTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ScheduleServiceServer).StopTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.ScheduleService/StopTask",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ScheduleServiceServer).StopTask(ctx, req.(*StopTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ScheduleService_QueryTaskStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(QueryTaskRequest)
 	if err := dec(in); err != nil {
@@ -270,6 +302,10 @@ var ScheduleService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RestartTask",
 			Handler:    _ScheduleService_RestartTask_Handler,
+		},
+		{
+			MethodName: "StopTask",
+			Handler:    _ScheduleService_StopTask_Handler,
 		},
 		{
 			MethodName: "QueryTaskStatus",

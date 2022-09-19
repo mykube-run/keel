@@ -159,6 +159,40 @@
         ]
       }
     },
+    "/v1/tasks/stop": {
+      "post": {
+        "summary": "Close the specified task",
+        "description": "Close task",
+        "operationId": "ScheduleService_StopTask",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/pb.Response"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/google.rpc.Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pb.StopTaskRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Task API"
+        ]
+      }
+    },
     "/v1/tenants": {
       "post": {
         "summary": "Create a new tenant",
@@ -474,6 +508,27 @@
       },
       "required": [
         "type",
+        "uid"
+      ]
+    },
+    "pb.StopTaskRequest": {
+      "type": "object",
+      "properties": {
+        "tenantID": {
+          "type": "string",
+          "description": "tenant id, must be unique",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "uid": {
+          "type": "string",
+          "description": "task id, must be unique",
+          "maxLength": 255,
+          "minLength": 1
+        }
+      },
+      "required": [
+        "tenantID",
         "uid"
       ]
     },

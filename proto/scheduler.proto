@@ -81,6 +81,19 @@ service ScheduleService {
     };
   };
 
+  rpc StopTask (StopTaskRequest) returns (Response) {
+    option (google.api.http) = {
+      post: "/v1/tasks/stop",
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      description: "Close task";
+      summary: "Close the specified task";
+      tags: "Task API";
+    };
+  };
+
+
   rpc QueryTaskStatus (QueryTaskRequest) returns (QueryStatusResponse) {
     option (google.api.http) = {
       post: "/v1/tasks/status",
@@ -230,6 +243,19 @@ message QueryTaskRequest {
 message TenantTaskRequest {
   string tenantID = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "tenant id, must be unique",
+    max_length: 255,
+    min_length: 1
+  }];
+}
+
+message StopTaskRequest {
+  string tenantID = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "tenant id, must be unique",
+    max_length: 255,
+    min_length: 1
+  }];
+  string uid = 2 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "task id, must be unique",
     max_length: 255,
     min_length: 1
   }];

@@ -142,6 +142,10 @@ func (s *server) RestartTask(ctx context.Context, req *pb.RestartTaskRequest) (*
 	panic("implement me")
 }
 
+func (s *server) StopTask(ctx context.Context, req *pb.StopTaskRequest) (*pb.Response, error) {
+	panic("implement me")
+}
+
 func (s *server) QueryTaskStatus(ctx context.Context, req *pb.QueryTaskRequest) (*pb.QueryStatusResponse, error) {
 	options := types.GetTaskStatusOption{Uid: req.Uid}
 	taskStatus, err := s.db.GetTaskStatus(ctx, options)
