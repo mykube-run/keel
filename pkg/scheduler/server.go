@@ -12,7 +12,9 @@ import (
 	"github.com/mykube-run/keel/pkg/types"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"net"
 	"net/http"
 	"time"
@@ -53,9 +55,8 @@ func (s *server) NewTenant(ctx context.Context, req *pb.NewTenantRequest) (*pb.R
 	}
 	if err := s.db.CreateTenant(ctx, t); err != nil {
 		if err == types.ErrorTenantAlreadyExists {
-			resp.Code = pb.Code_ResourceAlreadyExists
-			err = nil
-			return resp, nil
+			err = status.Error(codes.AlreadyExists, types.ErrorTenantAlreadyExists.Error())
+			return nil, err
 		}
 		return nil, err
 	}
