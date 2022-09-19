@@ -30,6 +30,9 @@ func NewServer(db types.DB, sched *Scheduler, config config.ServerConfig) *serve
 }
 
 func (s *server) NewTenant(ctx context.Context, req *pb.NewTenantRequest) (*pb.Response, error) {
+	resp := &pb.Response{
+		Code: pb.Code_Ok,
+	}
 	now := time.Now()
 	t := entity.Tenant{
 		Uid:        req.Uid,
@@ -49,10 +52,10 @@ func (s *server) NewTenant(ctx context.Context, req *pb.NewTenantRequest) (*pb.R
 		},
 	}
 	if err := s.db.CreateTenant(ctx, t); err != nil {
+		if err == types.ErrorTenantAlreadyExists {
+			resp.Code = pb.Code_ResourceAlreadyExists
+		}
 		return nil, err
-	}
-	resp := &pb.Response{
-		Code: pb.Code_Ok,
 	}
 	return resp, nil
 }

@@ -2,10 +2,13 @@ package types
 
 import (
 	"context"
+	"errors"
 	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
 	"time"
 )
+
+var ErrorTenantAlreadyExists = errors.New("tenant already exists")
 
 type DB interface {
 	CreateTenant(ctx context.Context, t entity.Tenant) error
