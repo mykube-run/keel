@@ -54,6 +54,8 @@ func (s *server) NewTenant(ctx context.Context, req *pb.NewTenantRequest) (*pb.R
 	if err := s.db.CreateTenant(ctx, t); err != nil {
 		if err == types.ErrorTenantAlreadyExists {
 			resp.Code = pb.Code_ResourceAlreadyExists
+			err = nil
+			return resp, nil
 		}
 		return nil, err
 	}
