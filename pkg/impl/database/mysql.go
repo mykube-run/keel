@@ -75,6 +75,21 @@ func (m *MySQL) GetTaskStatus(ctx context.Context, opt types.GetTaskStatusOption
 	return "", nil
 }
 
+func (m *MySQL) FindTenant(ctx context.Context, opt types.GetTenantInfoOption) (entity.Tenant, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *MySQL) FindTenantPendingTaskCount(ctx context.Context, opt types.GetTenantPendingTaskOption) (int64, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *MySQL) ActiveTenant(ctx context.Context, opt types.ActiveTenantOption) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (m *MySQL) Close() error {
 	return m.db.Close()
 }

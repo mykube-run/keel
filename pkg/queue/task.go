@@ -5,8 +5,8 @@ import (
 	"context"
 	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
+	"github.com/mykube-run/keel/pkg/logger"
 	"github.com/mykube-run/keel/pkg/types"
-	"github.com/rs/zerolog"
 	"sync"
 	"time"
 )
@@ -27,10 +27,10 @@ type TaskQueue struct {
 
 	db types.DB
 	mu sync.RWMutex
-	lg *zerolog.Logger
+	lg logger.Logger
 }
 
-func NewTaskQueue(db types.DB, lg *zerolog.Logger, t *entity.Tenant) *TaskQueue {
+func NewTaskQueue(db types.DB, lg logger.Logger, t *entity.Tenant) *TaskQueue {
 	pq := make(PriorityQueue, 0)
 	heap.Init(&pq)
 
@@ -83,7 +83,7 @@ func (c *TaskQueue) FetchTasks() {
 	defer cancel()
 
 	if err := c.populateTasks(ctx); err != nil {
-		c.lg.Err(err).Msg("failed to fetch tasks from database")
+		_ = c.lg.Log(logger.LevelError, "err", err.Error(), "msg", "failed to fetch tasks from database")
 	}
 }
 
@@ -113,6 +113,6 @@ func (c *TaskQueue) populateTasks(ctx context.Context) error {
 		heap.Push(c.UserTasks, item)
 		n += 1
 	}
-	c.lg.Debug().Int("populated", n).Msg("fetched user tasks from database")
+	_ = c.lg.Log(logger.LevelDebug, "populated", n, "msg", "fetched user tasks from database")
 	return nil
 }

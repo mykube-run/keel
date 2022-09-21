@@ -6,9 +6,9 @@ import (
 	"github.com/mykube-run/keel/pkg/config"
 	"github.com/mykube-run/keel/pkg/enum"
 	"github.com/mykube-run/keel/pkg/impl/transport"
+	"github.com/mykube-run/keel/pkg/logger"
 	"github.com/mykube-run/keel/pkg/types"
 	"github.com/panjf2000/ants/v2"
-	"github.com/rs/zerolog"
 	"os"
 	"os/signal"
 	"sync"
@@ -33,7 +33,7 @@ func (o *Options) validate() {
 }
 
 type Worker struct {
-	lg        *zerolog.Logger
+	lg        logger.Logger
 	opt       *Options
 	pool      *ants.Pool
 	tran      types.Transport
@@ -43,7 +43,7 @@ type Worker struct {
 }
 
 // New initializes a new Worker
-func New(opt *Options, lg *zerolog.Logger) (*Worker, error) {
+func New(opt *Options, lg logger.Logger) (*Worker, error) {
 	opt.validate()
 
 	var err error
@@ -78,7 +78,7 @@ func (w *Worker) RegisterHandler(name string, f types.TaskHandlerFactory) {
 
 // Start starts the worker
 func (w *Worker) Start() {
-	w.lg.Info().Str("workerId", w.opt.Name).Int("poolSize", w.opt.PoolSize).Msg("starting worker")
+	_ = w.lg.Log(logger.LevelInfo, "workerId", w.opt.Name, "poolSize", w.opt.PoolSize, "msg", "starting worker")
 	go w.report()
 
 	stopC := make(chan os.Signal)
@@ -86,7 +86,7 @@ func (w *Worker) Start() {
 
 	select {
 	case <-stopC:
-		w.lg.Info().Msg("received stop signal")
+		_ = w.lg.Log(logger.LevelInfo, "msg", "received stop signal")
 		_ = w.tran.Close()
 		w.transferAllTasks()
 		// TODO: send out retry message
@@ -97,21 +97,17 @@ func (w *Worker) Start() {
 func (w *Worker) onReceiveMessage(from string, msg []byte) (result []byte, err error) {
 	var task types.Task
 	if err = json.Unmarshal(msg, &task); err != nil {
-		w.lg.Err(err).Msg("failed to unmarshal task message")
+		_ = w.lg.Log(logger.LevelError, "err", err.Error(), "msg", "failed to unmarshal task message")
 		return nil, err
 	}
-
-	w.lg.Debug().Int("running", w.pool.Running()).Int("capacity", w.pool.Cap()).
-		Str("taskId", task.Uid).Str("tenantId", task.TenantId).
-		Str("schedulerId", task.SchedulerId).Str("handler", task.Handler).
-		Msg("dispatching task within task pool")
-
+	_ = w.lg.Log(logger.LevelDebug, "running", w.pool.Running(), "capacity", w.pool.Cap(), "taskId", task.Uid,
+		"tenantId", task.TenantId, "schedulerId", task.SchedulerId, "handler", task.Handler, "msg", "dispatching task within task pool")
 	tc := &types.TaskContext{
 		Worker: w.info,
 		Task:   task,
 	}
 	if err = w.run(tc); err != nil {
-		w.lg.Err(err).Msg("failed to start task")
+		_ = w.lg.Log(logger.LevelError, "err", err.Error(), "msg", "failed to start task")
 		return nil, err
 	}
 	return []byte("success"), nil
@@ -144,9 +140,8 @@ func (w *Worker) run(tc *types.TaskContext) error {
 		// Notify scheduler that we have started the task
 		tc.MarkRunning()
 		w.notify(tc.NewMessage(enum.TaskStarted, nil))
-		w.lg.Info().Str("taskId", tc.Task.Uid).Str("tenantId", tc.Task.TenantId).
-			Str("schedulerId", tc.Task.SchedulerId).Str("handler", tc.Task.Handler).
-			Msg("start to process task")
+		_ = w.lg.Log(logger.LevelInfo, "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId,
+			"schedulerId", tc.Task.SchedulerId, "handler", tc.Task.Handler, "msg", "start to process task")
 
 		defer func() {
 			status := enum.TaskRunStatusSucceed
@@ -166,9 +161,8 @@ func (w *Worker) run(tc *types.TaskContext) error {
 		}()
 
 		retry, e = hdl.Start()
-		w.lg.Info().Str("taskId", tc.Task.Uid).Str("tenantId", tc.Task.TenantId).
-			Str("schedulerId", tc.Task.SchedulerId).Str("handler", tc.Task.Handler).
-			Err(e).Bool("retry", retry).Msg("finished processing task")
+		_ = w.lg.Log(logger.LevelInfo, "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId, "retry", retry,
+			"schedulerId", tc.Task.SchedulerId, "handler", tc.Task.Handler, "msg", "finished processing task")
 	}
 	return w.pool.Submit(fn)
 }
@@ -187,7 +181,7 @@ func (w *Worker) report() {
 
 				tc, s, err := hdl.HeartBeat()
 				if err != nil {
-					w.lg.Err(err).Msg("heartbeat error")
+					_ = w.lg.Log(logger.LevelError, "err", err.Error(), "msg", "heartbeat error")
 					return true
 				}
 				w.notify(tc.NewMessage(enum.ReportTaskStatus, s))
@@ -201,12 +195,12 @@ func (w *Worker) report() {
 func (w *Worker) notify(m *types.TaskMessage) {
 	byt, err := json.Marshal(m)
 	if err != nil {
-		w.lg.Err(err).Msg("failed to marshal message")
+		_ = w.lg.Log(logger.LevelError, "err", err.Error(), "msg", "failed to marshal message")
 		return
 	}
 
 	if err = w.tran.Send(w.info.Id, m.SchedulerId, byt); err != nil {
-		w.lg.Err(err).Msg("failed to send message")
+		_ = w.lg.Log(logger.LevelError, "err", err.Error(), "msg", "failed to send message")
 	}
 }
 
@@ -221,7 +215,7 @@ func (w *Worker) transferAllTasks() {
 
 		tc, s, err := hdl.TransitionStart()
 		if err != nil {
-			w.lg.Err(err).Msg("failed to start task transition")
+			_ = w.lg.Log(logger.LevelError, "err", err.Error(), "msg", "failed to start task transition")
 			w.notify(tc.NewMessage(enum.RetryTask, nil))
 			return true
 		}

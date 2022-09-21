@@ -8,8 +8,8 @@ import (
 	"github.com/mykube-run/keel/pkg/config"
 	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
+	"github.com/mykube-run/keel/pkg/logger"
 	"github.com/mykube-run/keel/pkg/types"
-	"github.com/rs/zerolog"
 	"go.etcd.io/bbolt"
 	"io"
 	"os"
@@ -84,11 +84,11 @@ type EventManager struct {
 	sc    config.SnapshotConfig
 	s3    *minio.Client
 	sv    int // snapshot version
-	lg    *zerolog.Logger
+	lg    logger.Logger
 	sched string
 }
 
-func NewEventManager(sc config.SnapshotConfig, schedulerId string, lg *zerolog.Logger) (*EventManager, error) {
+func NewEventManager(sc config.SnapshotConfig, schedulerId string, lg logger.Logger) (*EventManager, error) {
 	m := &EventManager{
 		sc:    sc,
 		lg:    lg,
@@ -178,18 +178,18 @@ func (m *EventManager) Iterate(tenantId, taskId string, fn func(e *TaskEvent) bo
 	return m.db.View(func(tx *bbolt.Tx) error {
 		tenant := tx.Bucket([]byte(tenantId))
 		if tenant == nil {
-			m.lg.Warn().Msg("tenant db is empty")
+			_ = m.lg.Log(logger.LevelWarn, "msg", "tenant db is empty")
 			return nil
 		}
 
 		task := tenant.Bucket([]byte(taskId))
 		if task == nil {
-			m.lg.Warn().Msg("task db is empty")
+			_ = m.lg.Log(logger.LevelWarn, "msg", "task db is empty")
 			return nil
 		}
 
 		c := task.Cursor()
-		m.lg.Info().Interface("course", c).Send()
+		_ = m.lg.Log(logger.LevelInfo, "course", c, "msg", "task db is empty")
 		for k, v := c.First(); k != nil; k, v = c.Next() {
 			if m.isMilestone(k) {
 				continue
@@ -237,7 +237,7 @@ func (m *EventManager) CountTasks(tenantId string) (n int, err error) {
 			}
 			ev, e := m.latestEvent(tb)
 			if e != nil {
-				m.lg.Err(e).Msg("error getting latest event")
+				_ = m.lg.Log(logger.LevelError, "err", err.Error(), "msg", "error getting latest event")
 				return nil
 			}
 			// Check the task's latest event timestamp is fresh
@@ -337,7 +337,7 @@ func (m *EventManager) loadSnapshot() error {
 		tmp := m.snapshotKey(i)
 		info, err := m.s3.StatObject(m.sc.Bucket, tmp, minio.StatObjectOptions{})
 		if err != nil {
-			m.lg.Debug().Err(err).Msg("stat object error")
+			_ = m.lg.Log(logger.LevelDebug, "err", err.Error(), "msg", "stat object error")
 			continue
 		}
 		if info.LastModified.After(newest) {
@@ -346,11 +346,11 @@ func (m *EventManager) loadSnapshot() error {
 		}
 	}
 	if key == "" {
-		m.lg.Warn().Msg("no available snapshot")
+		_ = m.lg.Log(logger.LevelWarn, "msg", "no available snapshot")
 		return nil
 	}
+	_ = m.lg.Log(logger.LevelInfo, "key", key, "updated", newest, "msg", "found the newest snapshot")
 
-	m.lg.Info().Str("key", key).Time("updated", newest).Msg("found the newest snapshot")
 	obj, err := m.s3.GetObject(m.sc.Bucket, key, minio.GetObjectOptions{})
 	if err != nil {
 		return fmt.Errorf("error fetching the newest snapshot file")
@@ -368,7 +368,7 @@ func (m *EventManager) loadSnapshot() error {
 	if err = os.WriteFile(DefaultDBPath, byt, os.ModePerm); err != nil {
 		return fmt.Errorf("error writing snapshot file to db: %w", err)
 	}
-	m.lg.Info().Str("key", key).Time("updated", newest).Msg("loaded the newest snapshot")
+	_ = m.lg.Log(logger.LevelInfo, "key", key, "updated", newest, "msg", "loaded the newest snapshot")
 	return nil
 }
 
@@ -412,7 +412,7 @@ func (m *EventManager) maybeCompactEvents(bucket *bbolt.Bucket, key []byte, ev *
 		if ev.Timestamp.After(latest.Timestamp) &&
 			ev.Timestamp.Sub(latest.Timestamp).Seconds() >= float64(DefaultEventCompactDuration) {
 			if err := bucket.Delete(ev.Key()); err != nil {
-				m.lg.Err(err).Msg("error performing db compaction (while removing outdated task status report event)")
+				_ = m.lg.Log(logger.LevelError, "key", key, "updated", "err", "error performing db compaction (while removing outdated task status report event)")
 			}
 		}
 	}
@@ -429,9 +429,9 @@ func (m *EventManager) backgroundBackup() {
 		select {
 		case <-tick.C:
 			if key, err := m.Backup(); err != nil {
-				m.lg.Err(err).Msg("error saving events db snapshot")
+				_ = m.lg.Log(logger.LevelError, "err", err.Error(), "msg", "error saving events db snapshot")
 			} else {
-				m.lg.Info().Str("key", key).Msg("saved events db snapshot")
+				_ = m.lg.Log(logger.LevelInfo, "key", key, "msg", "saved events db snapshot")
 			}
 		}
 	}
