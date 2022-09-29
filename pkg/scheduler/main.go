@@ -30,14 +30,16 @@ type Options struct {
 }
 
 type Scheduler struct {
-	opt  *Options
-	mu   sync.Mutex
-	cs   map[string]*queue.TaskQueue
-	em   *EventManager
-	db   types.DB
-	lg   logger.Logger
-	srv  *server
-	tran types.Transport
+	opt              *Options
+	mu               sync.Mutex
+	cs               map[string]*queue.TaskQueue
+	em               *EventManager
+	db               types.DB
+	lg               logger.Logger
+	srv              *server
+	tran             types.Transport
+	workerActiveTime map[string]time.Time //key is worker id, value is lastActiveTime
+	aliveWorker      []string             // all alive workers id
 }
 
 func New(opt *Options, db types.DB, lg logger.Logger) (s *Scheduler, err error) {
@@ -59,11 +61,15 @@ func New(opt *Options, db types.DB, lg logger.Logger) (s *Scheduler, err error) 
 		return nil, err
 	}
 	s.tran.OnReceive(s.onReceiveMessage)
+	s.workerActiveTime = make(map[string]time.Time)
+	s.aliveWorker = make([]string, 0)
 	return s, nil
 }
 
 func (s *Scheduler) Start() {
 	_ = s.lg.Log(logger.LevelInfo, "SchedulerId", s.SchedulerId(), "transport", s.opt.Transport.Type, "msg", "starting scheduler")
+	_, _ = s.updateActiveTenants()
+	_, _ = s.updateActiveTenants()
 	_, _ = s.updateActiveTenants()
 	go s.schedule()
 	go s.checkStaleTasks()
@@ -105,7 +111,11 @@ func (s *Scheduler) schedule() {
 				if n <= 0 {
 					continue
 				}
-
+				if s.aliveWorkerNum() == 0 {
+					_ = s.lg.Log(logger.LevelWarn, "msg", "no more active worker,cancel dispatch tasks")
+					time.Sleep(2 * time.Second)
+					continue
+				}
 				tasks, _, err := c.PopUserTasks(n)
 				if err != nil {
 					_ = s.lg.Log(logger.LevelError, "msg", "failed to pop user tasks from local task queue")
@@ -140,7 +150,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 	if err := s.updateTaskStatus(ev); err != nil {
 		_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "msg", "failed to update tasks status")
 	}
-
+	s.workerActiveTime[m.WorkerId] = time.Now()
 	switch m.Type {
 	case enum.RetryTask:
 		_ = s.lg.Log(logger.LevelWarn, "tenantId", ev.TenantId, "taskId", ev.TaskId, "msg", "task needs retry")
@@ -182,6 +192,17 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 		}
 		s.dispatch(tasks)
 	}
+}
+
+func (s *Scheduler) aliveWorkerNum() int {
+	activeNumber := 0
+	for _, v := range s.workerActiveTime {
+		//if worker not send any message for 5m, we believe it is not active
+		if v.Add(time.Minute * 5).After(time.Now()) {
+			activeNumber++
+		}
+	}
+	return activeNumber
 }
 
 func (s *Scheduler) taskHistory(tenantId, taskId string) (*types.TaskRun, int, error) {
