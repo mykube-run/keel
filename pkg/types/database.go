@@ -34,8 +34,8 @@ type FindActiveTenantsOption struct {
 type FindRecentTasksOption struct {
 	TaskType      enum.TaskType
 	TenantId      *string
-	From          *time.Time
 	MinUserTaskId *string
+	Status        []enum.TaskStatus
 }
 
 // GetTaskOption specifies the options for getting task by uid

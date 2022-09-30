@@ -92,6 +92,7 @@ func (c *TaskQueue) populateTasks(ctx context.Context) error {
 		TenantId:      &c.Tenant.Uid,
 		MinUserTaskId: &c.maxUserTaskId,
 		TaskType:      enum.TaskTypeUserTask,
+		Status:        []enum.TaskStatus{enum.TaskStatusPending, enum.TaskStatusScheduling},
 	}
 	tasks, err := c.db.FindRecentTasks(ctx, opt)
 	if err != nil {

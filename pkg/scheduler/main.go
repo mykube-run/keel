@@ -69,8 +69,6 @@ func New(opt *Options, db types.DB, lg logger.Logger) (s *Scheduler, err error) 
 func (s *Scheduler) Start() {
 	_ = s.lg.Log(logger.LevelInfo, "SchedulerId", s.SchedulerId(), "transport", s.opt.Transport.Type, "msg", "starting scheduler")
 	_, _ = s.updateActiveTenants()
-	_, _ = s.updateActiveTenants()
-	_, _ = s.updateActiveTenants()
 	go s.schedule()
 	go s.checkStaleTasks()
 	go s.srv.Start()
@@ -111,11 +109,6 @@ func (s *Scheduler) schedule() {
 				if n <= 0 {
 					continue
 				}
-				if s.aliveWorkerNum() == 0 {
-					_ = s.lg.Log(logger.LevelWarn, "msg", "no more active worker,cancel dispatch tasks")
-					time.Sleep(2 * time.Second)
-					continue
-				}
 				tasks, _, err := c.PopUserTasks(n)
 				if err != nil {
 					_ = s.lg.Log(logger.LevelError, "msg", "failed to pop user tasks from local task queue")
@@ -154,16 +147,13 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 	switch m.Type {
 	case enum.RetryTask:
 		_ = s.lg.Log(logger.LevelWarn, "tenantId", ev.TenantId, "taskId", ev.TaskId, "msg", "task needs retry")
-		tasks, err := s.db.GetTask(context.Background(), types.GetTaskOption{
-			TaskType: m.Task.Type,
-			Uid:      m.Task.Uid,
-		})
-		if err != nil {
-			_ = s.lg.Log(logger.LevelError, "err", err.Error(), "tenantId", ev.TenantId, "taskId",
-				ev.TaskId, "msg", "error getting task from database")
+		c, ok := s.cs[ev.TenantId]
+		if !ok {
+			_ = s.lg.Log(logger.LevelWarn, "tenantId", ev.TenantId, "taskId", ev.TaskId, "msg", "task needs retry")
 			return
 		}
-		s.dispatch(tasks.UserTasks)
+		c.EnqueueUserTask(&entity.UserTask{TenantId: m.Task.TenantId, Uid: m.Task.Uid,
+			Handler: m.Task.Handler, Config: m.Task.Config}, 999)
 	case enum.TaskFailed:
 		_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId",
 			ev.TaskId, "msg", "task run fail")
@@ -192,17 +182,6 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 		}
 		s.dispatch(tasks)
 	}
-}
-
-func (s *Scheduler) aliveWorkerNum() int {
-	activeNumber := 0
-	for _, v := range s.workerActiveTime {
-		//if worker not send any message for 5m, we believe it is not active
-		if v.Add(time.Minute * 5).After(time.Now()) {
-			activeNumber++
-		}
-	}
-	return activeNumber
 }
 
 func (s *Scheduler) taskHistory(tenantId, taskId string) (*types.TaskRun, int, error) {
