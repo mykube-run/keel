@@ -147,14 +147,19 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 	switch m.Type {
 	case enum.RetryTask:
 		_ = s.lg.Log(logger.LevelWarn, "tenantId", ev.TenantId, "taskId", ev.TaskId, "msg", "task needs retry")
-		c, ok := s.cs[ev.TenantId]
+		_, ok := s.cs[ev.TenantId]
 		if !ok {
-			_ = s.lg.Log(logger.LevelWarn, "tenantId", ev.TenantId, "taskId", ev.TaskId, "msg", "task needs retry")
+			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "msg", "received message from illegal tenant")
 			return
 		}
-		c.EnqueueUserTask(&entity.UserTask{TenantId: m.Task.TenantId, Uid: m.Task.Uid,
-			Handler: m.Task.Handler, Config: m.Task.Config}, 999)
+		s.dispatch([]*entity.UserTask{{TenantId: m.Task.TenantId, Uid: m.Task.Uid,
+			Handler: m.Task.Handler, Config: m.Task.Config},
+		})
 	case enum.TaskFailed:
+		if err := s.em.Delete(ev.TenantId, ev.TaskId); err != nil {
+			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "err", err.Error(),
+				"msg", "failed to delete task events")
+		}
 		_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId",
 			ev.TaskId, "msg", "task run fail")
 	case enum.ReportTaskStatus:
@@ -169,18 +174,21 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "err", err.Error(),
 				"msg", "failed to delete task events")
 		}
+		runningCount, _ := s.em.CountTasks(ev.TenantId)
+		_ = s.lg.Log(logger.LevelDebug, "tenantId", ev.TenantId, "taskId", "runningTasks", runningCount,
+			"msg", "failed to delete task events")
 		// Dispatch one task
-		c, ok := s.cs[ev.TenantId]
-		if !ok {
-			return
-		}
-		tasks, _, err := c.PopUserTasks(1)
-		if err != nil {
-			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "err", err.Error(),
-				"msg", "failed to pop user tasks from local cache")
-			return
-		}
-		s.dispatch(tasks)
+		//c, ok := s.cs[ev.TenantId]
+		//if !ok {
+		//	return
+		//}
+		//tasks, _, err := c.PopUserTasks(1)
+		//if err != nil {
+		//	_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "err", err.Error(),
+		//		"msg", "failed to pop user tasks from local cache")
+		//	return
+		//}
+		//s.dispatch(tasks)
 	}
 }
 
@@ -215,11 +223,12 @@ func (s *Scheduler) dispatch(tasks entity.UserTasks) {
 	ctx := context.Background()
 
 	activeTenants := make([]string, 0)
-	for _, task := range tasks {
+	if len(tasks) > 0 {
 		// Log event
-		_ = s.lg.Log(logger.LevelInfo, "SchedulerId", s.SchedulerId(), "taskId", task.Uid,
+		_ = s.lg.Log(logger.LevelInfo, "SchedulerId", s.SchedulerId(), "taskId", tasks.TaskIds(),
 			"msg", "dispatch tasks")
-
+	}
+	for _, task := range tasks {
 		// 1. Check task status to avoid repeat dispatching Success/TaskRunStatusFailed/Canceled tasks
 		status, _ := s.db.GetTaskStatus(ctx, types.GetTaskStatusOption{
 			TaskType: enum.TaskTypeUserTask,
@@ -266,8 +275,6 @@ func (s *Scheduler) dispatch(tasks entity.UserTasks) {
 
 		// 3. Record the dispatch event and update task status accordingly
 		ev := NewEventFromUserTask(TaskDispatched, task)
-		_ = s.lg.Log(logger.LevelInfo, "msg", "dispatched task to workers")
-
 		if err = s.em.Insert(ev); err != nil {
 			_ = s.lg.Log(logger.LevelInfo, "err", err.Error(), "msg", "failed to record task dispatch event")
 		}

@@ -184,12 +184,11 @@ func (m *EventManager) Iterate(tenantId, taskId string, fn func(e *TaskEvent) bo
 
 		task := tenant.Bucket([]byte(taskId))
 		if task == nil {
-			_ = m.lg.Log(logger.LevelWarn, "msg", "task db is empty")
+			_ = m.lg.Log(logger.LevelDebug, "msg", "task db is empty")
 			return nil
 		}
 
 		c := task.Cursor()
-		_ = m.lg.Log(logger.LevelInfo, "course", c, "msg", "task db is empty")
 		for k, v := c.First(); k != nil; k, v = c.Next() {
 			if m.isMilestone(k) {
 				continue
@@ -222,33 +221,42 @@ func (m *EventManager) Tasks(tenantId string) (ids []string, err error) {
 	return
 }
 
+//func (m *EventManager) CountTasks(tenantId string) (n int, err error) {
+//	err = m.db.View(func(tx *bbolt.Tx) error {
+//		tenant := tx.Bucket([]byte(tenantId))
+//		if tenant == nil {
+//			return nil
+//		}
+//
+//		fn := func(k, v []byte) error {
+//			tb := tenant.Bucket(k)
+//			if tb == nil {
+//				// The task bucket is nil
+//				return nil
+//			}
+//			ev, e := m.latestEvent(tb)
+//			if e != nil {
+//				_ = m.lg.Log(logger.LevelError, "err", err.Error(), "msg", "error getting latest event")
+//				return nil
+//			}
+//			// Check the task's latest event timestamp is fresh
+//			if ev.Timestamp.Add(time.Second * time.Duration(DefaultTaskCounterTTL)).After(time.Now()) {
+//				n += 1
+//			}
+//			return nil
+//		}
+//
+//		return tenant.ForEach(fn)
+//	})
+//	return
+//}
+
 func (m *EventManager) CountTasks(tenantId string) (n int, err error) {
-	err = m.db.View(func(tx *bbolt.Tx) error {
-		tenant := tx.Bucket([]byte(tenantId))
-		if tenant == nil {
-			return nil
-		}
-
-		fn := func(k, v []byte) error {
-			tb := tenant.Bucket(k)
-			if tb == nil {
-				// The task bucket is nil
-				return nil
-			}
-			ev, e := m.latestEvent(tb)
-			if e != nil {
-				_ = m.lg.Log(logger.LevelError, "err", err.Error(), "msg", "error getting latest event")
-				return nil
-			}
-			// Check the task's latest event timestamp is fresh
-			if ev.Timestamp.Add(time.Second * time.Duration(DefaultTaskCounterTTL)).After(time.Now()) {
-				n += 1
-			}
-			return nil
-		}
-
-		return tenant.ForEach(fn)
-	})
+	ids, err := m.Tasks(tenantId)
+	if err != nil {
+		return
+	}
+	n = len(ids)
 	return
 }
 

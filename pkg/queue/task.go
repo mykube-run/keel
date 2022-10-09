@@ -88,11 +88,17 @@ func (c *TaskQueue) FetchTasks() {
 }
 
 func (c *TaskQueue) populateTasks(ctx context.Context) error {
+	var status []enum.TaskStatus
+	if c.maxUserTaskId == "" {
+		status = []enum.TaskStatus{enum.TaskStatusPending, enum.TaskStatusScheduling}
+	} else {
+		status = []enum.TaskStatus{enum.TaskStatusPending}
+	}
 	opt := types.FindRecentTasksOption{
 		TenantId:      &c.Tenant.Uid,
 		MinUserTaskId: &c.maxUserTaskId,
 		TaskType:      enum.TaskTypeUserTask,
-		Status:        []enum.TaskStatus{enum.TaskStatusPending, enum.TaskStatusScheduling},
+		Status:        status,
 	}
 	tasks, err := c.db.FindRecentTasks(ctx, opt)
 	if err != nil {
