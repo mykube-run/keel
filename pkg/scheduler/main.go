@@ -410,7 +410,8 @@ func (s *Scheduler) shouldRevive(ev *TaskEvent) (enum.TaskStatus, bool) {
 	case string(enum.ReportTaskStatus):
 		return enum.TaskStatusPending, sec > 60
 	case string(enum.RetryTask):
-		return enum.TaskStatusPending, sec > 120
+		//return enum.TaskStatusPending, sec > 120
+		return "", false
 	case string(enum.StartTransition):
 		return enum.TaskStatusPending, sec > 60
 	case string(enum.FinishTransition):
