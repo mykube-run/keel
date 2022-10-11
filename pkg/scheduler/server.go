@@ -80,7 +80,7 @@ func (s *server) TenantTaskInfo(ctx context.Context, req *pb.TenantTaskRequest) 
 	if ex {
 		limit := queue.Tenant.ResourceQuota.Concurrency.Int64
 		runningTasks := 0
-		runningTasks, err = s.sched.em.CountTasks(req.TenantID)
+		runningTasks, err = s.sched.em.CountRunningTasks(req.TenantID)
 		if err != nil {
 			resp = &pb.TenantTaskResponse{
 				Code: pb.Code_TaskNotExist,
@@ -130,7 +130,7 @@ func (s *server) NewTask(ctx context.Context, req *pb.NewTaskRequest) (*pb.Respo
 		queue, ex := s.sched.cs[req.TenantId]
 		if ex {
 			limit := queue.Tenant.ResourceQuota.Concurrency.Int64
-			runningTasks, err := s.sched.em.CountTasks(req.TenantId)
+			runningTasks, err := s.sched.em.CountRunningTasks(req.TenantId)
 			if err != nil {
 				return nil, err
 			}

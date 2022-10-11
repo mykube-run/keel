@@ -39,7 +39,6 @@ type Scheduler struct {
 	srv              *server
 	tran             types.Transport
 	workerActiveTime map[string]time.Time //key is worker id, value is lastActiveTime
-	aliveWorker      []string             // all alive workers id
 }
 
 func New(opt *Options, db types.DB, lg logger.Logger) (s *Scheduler, err error) {
@@ -62,7 +61,6 @@ func New(opt *Options, db types.DB, lg logger.Logger) (s *Scheduler, err error) 
 	}
 	s.tran.OnReceive(s.onReceiveMessage)
 	s.workerActiveTime = make(map[string]time.Time)
-	s.aliveWorker = make([]string, 0)
 	return s, nil
 }
 
@@ -94,7 +92,7 @@ func (s *Scheduler) schedule() {
 				_ = s.lg.Log(logger.LevelError, "msg", "failed to update active tenants")
 			}
 			for k, c := range s.cs {
-				running, err := s.em.CountTasks(k)
+				running, err := s.em.CountRunningTasks(k)
 				if err != nil {
 					_ = s.lg.Log(logger.LevelError, "msg", "failed to count running tasks")
 					continue
@@ -174,7 +172,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "err", err.Error(),
 				"msg", "failed to delete task events")
 		}
-		runningCount, _ := s.em.CountTasks(ev.TenantId)
+		runningCount, _ := s.em.CountRunningTasks(ev.TenantId)
 		_ = s.lg.Log(logger.LevelDebug, "tenantId", ev.TenantId, "taskId", "runningTasks", runningCount,
 			"msg", "failed to delete task events")
 		// Dispatch one task
@@ -387,7 +385,13 @@ func (s *Scheduler) checkStaleTasks() {
 						_ = s.lg.Log(logger.LevelDebug, "err", err.Error(), "msg", "failed to update task status")
 						continue
 					}
-					_ = s.em.Delete(tenant, task)
+					var dbTask entity.Tasks
+					dbTask, err = s.db.GetTask(context.Background(), types.GetTaskOption{Uid: task, TaskType: enum.TaskTypeUserTask})
+					if err != nil {
+						_ = s.lg.Log(logger.LevelError, "err", err.Error(), "msg", "failed query taskInfo")
+						return
+					}
+					s.dispatch(dbTask.UserTasks)
 				}
 			}
 		}
@@ -410,8 +414,7 @@ func (s *Scheduler) shouldRevive(ev *TaskEvent) (enum.TaskStatus, bool) {
 	case string(enum.ReportTaskStatus):
 		return enum.TaskStatusPending, sec > 60
 	case string(enum.RetryTask):
-		//return enum.TaskStatusPending, sec > 120
-		return "", false
+		return enum.TaskStatusPending, sec > 120
 	case string(enum.StartTransition):
 		return enum.TaskStatusPending, sec > 60
 	case string(enum.FinishTransition):

@@ -80,6 +80,19 @@ func (w *Worker) RegisterHandler(name string, f types.TaskHandlerFactory) {
 func (w *Worker) Start() {
 	_ = w.lg.Log(logger.LevelInfo, "workerId", w.opt.Name, "poolSize", w.opt.PoolSize, "msg", "starting worker")
 	go w.report()
+	go func() {
+		count := 0
+		for {
+			time.Sleep(time.Second)
+			fmt.Println(fmt.Sprintf("runing poll  %d", w.pool.Running()))
+			w.running.Range(func(key, value interface{}) bool {
+				count++
+				return true
+			})
+			fmt.Println(fmt.Sprintf("runing tasks  %d", count))
+			count = 0
+		}
+	}()
 
 	stopC := make(chan os.Signal)
 	signal.Notify(stopC, os.Interrupt, syscall.SIGTERM /* SIGTERM is expected inside k8s */)

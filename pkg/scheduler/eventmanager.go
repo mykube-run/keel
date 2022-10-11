@@ -251,7 +251,7 @@ func (m *EventManager) Tasks(tenantId string) (ids []string, err error) {
 //	return
 //}
 
-func (m *EventManager) CountTasks(tenantId string) (n int, err error) {
+func (m *EventManager) CountRunningTasks(tenantId string) (n int, err error) {
 	ids, err := m.Tasks(tenantId)
 	if err != nil {
 		return
