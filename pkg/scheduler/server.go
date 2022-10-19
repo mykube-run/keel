@@ -23,14 +23,15 @@ import (
 
 type server struct {
 	pb.UnimplementedScheduleServiceServer
-	db     types.DB
-	sched  *Scheduler
-	config config.ServerConfig
-	log    logger.Logger
+	db       types.DB
+	sched    *Scheduler
+	config   config.ServerConfig
+	log      logger.Logger
+	listener types.Listener
 }
 
-func NewServer(db types.DB, sched *Scheduler, config config.ServerConfig, log logger.Logger) *server {
-	return &server{db: db, sched: sched, config: config, log: log}
+func NewServer(db types.DB, sched *Scheduler, config config.ServerConfig, log logger.Logger, listener types.Listener) *server {
+	return &server{db: db, sched: sched, config: config, log: log, listener: listener}
 }
 
 func (s *server) NewTenant(ctx context.Context, req *pb.NewTenantRequest) (*pb.Response, error) {
@@ -146,6 +147,8 @@ func (s *server) NewTask(ctx context.Context, req *pb.NewTaskRequest) (*pb.Respo
 		_ = s.log.Log(logger.LevelError, "tenantID", req.TenantId, "taskID", req.Uid, "msg", "create task error", "err", err.Error())
 		return nil, err
 	}
+	msg := types.ListenerEventMessage{TenantUID: req.TenantId, TaskUID: req.Uid}
+	s.listener.OnTaskCreated(msg)
 	resp := &pb.Response{
 		Code: pb.Code_Ok,
 	}

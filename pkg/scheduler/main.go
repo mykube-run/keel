@@ -7,6 +7,7 @@ import (
 	"github.com/mykube-run/keel/pkg/config"
 	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
+	listener2 "github.com/mykube-run/keel/pkg/impl/listener"
 	"github.com/mykube-run/keel/pkg/impl/transport"
 	"github.com/mykube-run/keel/pkg/logger"
 	"github.com/mykube-run/keel/pkg/queue"
@@ -38,17 +39,22 @@ type Scheduler struct {
 	lg               logger.Logger
 	srv              *server
 	tran             types.Transport
+	listener         types.Listener
 	workerActiveTime map[string]time.Time //key is worker id, value is lastActiveTime
 }
 
-func New(opt *Options, db types.DB, lg logger.Logger) (s *Scheduler, err error) {
-	s = &Scheduler{
-		opt: opt,
-		cs:  make(map[string]*queue.TaskQueue),
-		db:  db,
-		lg:  lg,
+func New(opt *Options, db types.DB, lg logger.Logger, listener types.Listener) (s *Scheduler, err error) {
+	if listener == nil {
+		listener = listener2.DefaultListener{}
 	}
-	s.srv = NewServer(db, s, opt.ServerConfig, lg)
+	s = &Scheduler{
+		opt:      opt,
+		cs:       make(map[string]*queue.TaskQueue),
+		db:       db,
+		lg:       lg,
+		listener: listener,
+	}
+	s.srv = NewServer(db, s, opt.ServerConfig, lg, listener)
 	s.em, err = NewEventManager(opt.Snapshot, s.SchedulerId(), lg)
 	if err != nil {
 		return nil, err
@@ -144,6 +150,8 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 	s.workerActiveTime[m.WorkerId] = time.Now()
 	switch m.Type {
 	case enum.RetryTask:
+		msg := types.ListenerEventMessage{TenantUID: ev.TenantId, TaskUID: ev.TaskId}
+		s.listener.OnTaskNeedRetry(msg)
 		_ = s.lg.Log(logger.LevelWarn, "tenantId", ev.TenantId, "taskId", ev.TaskId, "msg", "task needs retry")
 		_, ok := s.cs[ev.TenantId]
 		if !ok {
@@ -163,9 +171,13 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 	case enum.ReportTaskStatus:
 		// Does nothing
 	case enum.TaskStarted:
+		msg := types.ListenerEventMessage{TenantUID: ev.TenantId, TaskUID: ev.TaskId}
+		s.listener.OnTaskRunning(msg)
 		_ = s.lg.Log(logger.LevelInfo, "tenantId", ev.TenantId, "taskId",
 			ev.TaskId, "msg", "worker starting to process task")
 	case enum.TaskFinished:
+		msg := types.ListenerEventMessage{TenantUID: ev.TenantId, TaskUID: ev.TaskId}
+		s.listener.OnTaskFinished(msg)
 		_ = s.lg.Log(logger.LevelInfo, "tenantId", ev.TenantId, "taskId",
 			ev.TaskId, "msg", "worker has finished processing task")
 		if err := s.em.Delete(ev.TenantId, ev.TaskId); err != nil {
@@ -279,6 +291,8 @@ func (s *Scheduler) dispatch(tasks entity.UserTasks) {
 		if err = s.updateTaskStatus(ev); err != nil {
 			_ = s.lg.Log(logger.LevelInfo, "err", err.Error(), "msg", "failed to update task status")
 		}
+		msg := types.ListenerEventMessage{TenantUID: task.TenantId, TaskUID: task.Uid}
+		s.listener.OnTaskDispatching(msg)
 	}
 	//when dispatch task for a loop active tenants
 	if len(activeTenants) > 0 {
@@ -310,7 +324,7 @@ func (s *Scheduler) updateActiveTenants() (entity.Tenants, error) {
 	for i, v := range tenants {
 		if _, ok := s.cs[v.Uid]; !ok {
 			_ = s.lg.Log(logger.LevelInfo, "tenantId", v.Uid, "msg", "found new active tenant")
-			s.cs[v.Uid] = queue.NewTaskQueue(s.db, s.lg, tenants[i])
+			s.cs[v.Uid] = queue.NewTaskQueue(s.db, s.lg, tenants[i], s.listener)
 		} else {
 			// Update tenant
 			s.cs[v.Uid].Tenant = tenants[i]
