@@ -31,5 +31,4 @@ type TaskRunStatus string
 const (
 	TaskRunStatusSucceed TaskRunStatus = "Succeed"
 	TaskRunStatusFailed  TaskRunStatus = "Failed"
-	TaskRunStatusRunning TaskRunStatus = "Running"
 )

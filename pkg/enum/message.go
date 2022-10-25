@@ -12,3 +12,9 @@ const (
 	StartTransition  TaskMessageType = "StartTransition"
 	FinishTransition TaskMessageType = "FinishTransition"
 )
+
+type ScheduleTaskMessageType string
+
+const (
+	StopTask ScheduleTaskMessageType = "StopTask"
+)

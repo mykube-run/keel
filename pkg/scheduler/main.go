@@ -37,7 +37,7 @@ type Scheduler struct {
 	em               *EventManager
 	db               types.DB
 	lg               logger.Logger
-	srv              *server
+	srv              *Server
 	tran             types.Transport
 	listener         types.Listener
 	workerActiveTime map[string]time.Time //key is worker id, value is lastActiveTime
@@ -184,21 +184,9 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "err", err.Error(),
 				"msg", "failed to delete task events")
 		}
-		runningCount, _ := s.em.CountRunningTasks(ev.TenantId)
-		_ = s.lg.Log(logger.LevelDebug, "tenantId", ev.TenantId, "taskId", "runningTasks", runningCount,
-			"msg", "failed to delete task events")
-		// Dispatch one task
-		//c, ok := s.cs[ev.TenantId]
-		//if !ok {
-		//	return
-		//}
-		//tasks, _, err := c.PopUserTasks(1)
-		//if err != nil {
-		//	_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "err", err.Error(),
-		//		"msg", "failed to pop user tasks from local cache")
-		//	return
-		//}
-		//s.dispatch(tasks)
+		//runningCount, _ := s.em.CountRunningTasks(ev.TenantId)
+		//_ = s.lg.Log(logger.LevelDebug, "tenantId", ev.TenantId, "taskId", "runningTasks", runningCount,
+		//	"msg", "failed to delete task events")
 	}
 }
 
@@ -255,6 +243,7 @@ func (s *Scheduler) dispatch(tasks entity.UserTasks) {
 			Uid:         task.Uid,
 			SchedulerId: s.SchedulerId(),
 			Type:        enum.TaskTypeUserTask,
+			OtherInfo:   nil,
 		}
 		// if dispatch this task need active tenant
 		activeTenants = append(activeTenants, task.TenantId)

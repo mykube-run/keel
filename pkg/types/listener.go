@@ -19,4 +19,6 @@ type Listener interface {
 	OnTaskNeedRetry(message ListenerEventMessage)
 
 	OnTaskFinished(message ListenerEventMessage)
+
+	OnTaskFail(message ListenerEventMessage)
 }

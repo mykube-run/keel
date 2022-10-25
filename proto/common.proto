@@ -10,6 +10,8 @@ enum Code {
   TenantNotExist = 4;
   TaskNotExist = 5;
   TenantQuotaExceeded = 6;
+  TaskExecuted = 7;
+  TaskIsNotRunning = 8;
 }
 
 message Response {

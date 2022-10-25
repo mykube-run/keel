@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-type server struct {
+type Server struct {
 	pb.UnimplementedScheduleServiceServer
 	db       types.DB
 	sched    *Scheduler
@@ -30,11 +30,11 @@ type server struct {
 	listener types.Listener
 }
 
-func NewServer(db types.DB, sched *Scheduler, config config.ServerConfig, log logger.Logger, listener types.Listener) *server {
-	return &server{db: db, sched: sched, config: config, log: log, listener: listener}
+func NewServer(db types.DB, sched *Scheduler, config config.ServerConfig, log logger.Logger, listener types.Listener) *Server {
+	return &Server{db: db, sched: sched, config: config, log: log, listener: listener}
 }
 
-func (s *server) NewTenant(ctx context.Context, req *pb.NewTenantRequest) (*pb.Response, error) {
+func (s *Server) NewTenant(ctx context.Context, req *pb.NewTenantRequest) (*pb.Response, error) {
 	_ = s.log.Log(logger.LevelDebug, "tenantID", req.Uid, "msg", "create tenant")
 	resp := &pb.Response{
 		Code: pb.Code_Ok,
@@ -70,7 +70,7 @@ func (s *server) NewTenant(ctx context.Context, req *pb.NewTenantRequest) (*pb.R
 	return resp, nil
 }
 
-func (s *server) TenantTaskInfo(ctx context.Context, req *pb.TenantTaskRequest) (resp *pb.TenantTaskResponse, err error) {
+func (s *Server) TenantTaskInfo(ctx context.Context, req *pb.TenantTaskRequest) (resp *pb.TenantTaskResponse, err error) {
 	_ = s.log.Log(logger.LevelDebug, "tenantID", req.TenantID, "msg", "get tenant tasks")
 	queue, ex := s.sched.cs[req.GetTenantID()]
 	pendingCount, err := s.db.FindTenantPendingTaskCount(ctx, types.GetTenantPendingTaskOption{TenantId: req.TenantID})
@@ -112,7 +112,7 @@ func (s *server) TenantTaskInfo(ctx context.Context, req *pb.TenantTaskRequest) 
 	}
 }
 
-func (s *server) NewTask(ctx context.Context, req *pb.NewTaskRequest) (*pb.Response, error) {
+func (s *Server) NewTask(ctx context.Context, req *pb.NewTaskRequest) (*pb.Response, error) {
 	_ = s.log.Log(logger.LevelDebug, "tenantID", req.TenantId, "taskID", req.Uid, "msg", "create task")
 	now := time.Now()
 	t := entity.UserTask{
@@ -156,22 +156,72 @@ func (s *server) NewTask(ctx context.Context, req *pb.NewTaskRequest) (*pb.Respo
 	return resp, nil
 }
 
-func (s *server) PauseTask(ctx context.Context, req *pb.PauseTaskRequest) (*pb.Response, error) {
-	_ = s.log.Log(logger.LevelDebug, "taskID", req.Uid, "msg", "pause task")
-	panic("implement me")
+func (s *Server) PauseTask(ctx context.Context, req *pb.PauseTaskRequest) (*pb.Response, error) {
+	taskStatus, err := s.db.GetTaskStatus(ctx, types.GetTaskStatusOption{Uid: req.Uid, TaskType: enum.TaskTypeUserTask})
+	if taskStatus != enum.TaskStatusRunning {
+		resp := &pb.Response{
+			Code:    pb.Code_TaskIsNotRunning,
+			Message: "The task is not running",
+		}
+		return resp, nil
+	}
+	err = s.db.UpdateTaskStatus(ctx, types.UpdateTaskStatusOption{
+		Uids: []string{req.Uid}, TaskType: enum.TaskTypeUserTask,
+		Status: enum.TaskStatusDispatched,
+	})
+	if err != nil {
+		return nil, err
+	}
+	resp := &pb.Response{
+		Code: pb.Code_Ok,
+	}
+	return resp, nil
 }
 
-func (s *server) RestartTask(ctx context.Context, req *pb.RestartTaskRequest) (*pb.Response, error) {
+func (s *Server) RestartTask(ctx context.Context, req *pb.RestartTaskRequest) (*pb.Response, error) {
 	_ = s.log.Log(logger.LevelDebug, "taskID", req.Uid, "msg", "restart task")
 	panic("implement me")
 }
 
-func (s *server) StopTask(ctx context.Context, req *pb.StopTaskRequest) (*pb.Response, error) {
-	_ = s.log.Log(logger.LevelDebug, "taskID", req.Uid, "msg", "stop task")
-	panic("implement me")
+func (s *Server) StopTask(ctx context.Context, req *pb.StopTaskRequest) (*pb.Response, error) {
+	task, err := s.db.GetTask(ctx, types.GetTaskOption{TaskType: enum.TaskTypeUserTask, Uid: req.Uid})
+	if err != nil {
+		return nil, err
+	}
+	if len(task.UserTasks.TaskIds()) == 0 {
+		resp := &pb.Response{
+			Code:    pb.Code_TaskNotExist,
+			Message: "task not found",
+		}
+		return resp, nil
+	}
+	findTask := task.UserTasks[0]
+	if findTask.TenantId != req.TenantID {
+		resp := &pb.Response{
+			Code:    pb.Code_PermissionDenied,
+			Message: "task not found in this tenant",
+		}
+		return resp, nil
+	}
+	if findTask.Status == enum.TaskStatusSuccess || findTask.Status == enum.TaskStatusFailed {
+		resp := &pb.Response{
+			Code:    pb.Code_TaskExecuted,
+			Message: "The task has finished running",
+		}
+		return resp, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	resp := &pb.Response{
+		Code: pb.Code_Ok,
+	}
+
+	return resp, nil
 }
 
-func (s *server) QueryTaskStatus(ctx context.Context, req *pb.QueryTaskRequest) (*pb.QueryStatusResponse, error) {
+func (s *Server) QueryTaskStatus(ctx context.Context, req *pb.QueryTaskRequest) (*pb.QueryStatusResponse, error) {
 	_ = s.log.Log(logger.LevelDebug, "taskID", req.Uid, "msg", "query task status")
 	options := types.GetTaskStatusOption{Uid: req.Uid}
 	taskStatus, err := s.db.GetTaskStatus(ctx, options)
@@ -187,7 +237,7 @@ func (s *server) QueryTaskStatus(ctx context.Context, req *pb.QueryTaskRequest) 
 	return resp, nil
 }
 
-func (s *server) Start() {
+func (s *Server) Start() {
 	// Create a listener on TCP port
 	lis, err := net.Listen("tcp", s.config.GrpcAddress)
 	if err != nil {

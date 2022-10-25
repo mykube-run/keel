@@ -115,6 +115,20 @@ func (w *Worker) onReceiveMessage(from string, msg []byte) (result []byte, err e
 }
 
 // run pushes a Task into pool and returns immediately
+func (w *Worker) stopTask(tc *types.TaskContext) error {
+	handler, ok := w.running.Load(tc.Task.Uid)
+	if !ok {
+		_ = w.lg.Log(logger.LevelInfo, "msg", "revive stop signal but task is not running")
+		return nil
+	}
+	realHandler, ok := handler.(types.TaskHandler)
+	if !ok {
+		return nil
+	}
+	return realHandler.Stop()
+}
+
+// run pushes a Task into pool and returns immediately
 func (w *Worker) run(tc *types.TaskContext) error {
 	_, ok := w.running.Load(tc.Task.Uid)
 	if ok {
@@ -159,8 +173,12 @@ func (w *Worker) run(tc *types.TaskContext) error {
 				// Task can be retried, notify scheduler to retry this task
 				w.notify(tc.NewMessage(enum.RetryTask, nil))
 			} else {
-				// No retry is needed, notify scheduler task finished
-				w.notify(tc.NewMessage(enum.TaskFinished, nil))
+				if e != nil {
+					w.notify(tc.NewMessage(enum.TaskFailed, nil))
+				} else {
+					// No retry is needed, notify scheduler task finished
+					w.notify(tc.NewMessage(enum.TaskFinished, nil))
+				}
 			}
 		}()
 
