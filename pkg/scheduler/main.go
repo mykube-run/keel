@@ -243,7 +243,6 @@ func (s *Scheduler) dispatch(tasks entity.UserTasks) {
 			Uid:         task.Uid,
 			SchedulerId: s.SchedulerId(),
 			Type:        enum.TaskTypeUserTask,
-			OtherInfo:   nil,
 		}
 		// if dispatch this task need active tenant
 		activeTenants = append(activeTenants, task.TenantId)
