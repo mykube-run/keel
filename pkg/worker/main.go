@@ -101,6 +101,10 @@ func (w *Worker) onReceiveMessage(from string, msg []byte) (result []byte, err e
 		_ = w.lg.Log(logger.LevelError, "err", err.Error(), "msg", "failed to unmarshal task message")
 		return nil, err
 	}
+	if _, ok := w.factories[task.Handler]; !ok {
+		_ = w.lg.Log(logger.LevelDebug, "taskHandler", task.Handler, "supportHandler", w.factories, "msg", "task not support drop message")
+		return []byte("success"), nil
+	}
 	_ = w.lg.Log(logger.LevelDebug, "running", w.pool.Running(), "capacity", w.pool.Cap(), "taskId", task.Uid,
 		"tenantId", task.TenantId, "schedulerId", task.SchedulerId, "handler", task.Handler, "msg", "dispatching task within task pool")
 	tc := &types.TaskContext{
