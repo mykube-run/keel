@@ -79,7 +79,12 @@ func (w *Worker) RegisterHandler(name string, f types.TaskHandlerFactory) {
 
 // Start starts the worker
 func (w *Worker) Start() {
-	_ = w.lg.Log(logger.LevelInfo, "workerId", w.opt.Name, "poolSize", w.opt.PoolSize, "msg", "starting worker")
+	handlerNames := make([]string, 0)
+	for k, _ := range w.factories {
+		handlerNames = append(handlerNames, k)
+	}
+	_ = w.lg.Log(logger.LevelInfo, "supportHandlers", handlerNames,
+		"workerId", w.opt.Name, "poolSize", w.opt.PoolSize, "msg", "starting worker")
 	go w.report()
 
 	stopC := make(chan os.Signal)
@@ -101,8 +106,12 @@ func (w *Worker) onReceiveMessage(from string, msg []byte) (result []byte, err e
 		_ = w.lg.Log(logger.LevelError, "err", err.Error(), "msg", "failed to unmarshal task message")
 		return nil, err
 	}
+	names := make([]string, 0)
+	for k, _ := range w.factories {
+		names = append(names, k)
+	}
 	if _, ok := w.factories[task.Handler]; !ok {
-		_ = w.lg.Log(logger.LevelDebug, "taskHandler", task.Handler, "supportHandler", w.factories, "msg", "task not support drop message")
+		_ = w.lg.Log(logger.LevelDebug, "taskHandler", task.Handler, "supportHandler", names, "msg", "task not support drop message")
 		return []byte("success"), nil
 	}
 	_ = w.lg.Log(logger.LevelDebug, "running", w.pool.Running(), "capacity", w.pool.Cap(), "taskId", task.Uid,
