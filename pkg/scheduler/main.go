@@ -144,9 +144,6 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 	if err := s.em.Insert(ev); err != nil {
 		_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "msg", "failed to insert task event")
 	}
-	if err := s.updateTaskStatus(ev); err != nil {
-		_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "msg", "failed to update tasks status")
-	}
 	s.workerActiveTime[m.WorkerId] = time.Now()
 	switch m.Type {
 	case enum.RetryTask:
@@ -162,6 +159,9 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 			Handler: m.Task.Handler, Config: m.Task.Config},
 		})
 	case enum.TaskFailed:
+		if err := s.updateTaskStatus(ev); err != nil {
+			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "msg", "failed to update tasks status")
+		}
 		if err := s.em.Delete(ev.TenantId, ev.TaskId); err != nil {
 			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "err", err.Error(),
 				"msg", "failed to delete task events")
@@ -171,11 +171,17 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 	case enum.ReportTaskStatus:
 		// Does nothing
 	case enum.TaskStarted:
+		if err := s.updateTaskStatus(ev); err != nil {
+			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "msg", "failed to update tasks status")
+		}
 		msg := types.ListenerEventMessage{TenantUID: ev.TenantId, TaskUID: ev.TaskId}
 		s.listener.OnTaskRunning(msg)
 		_ = s.lg.Log(logger.LevelInfo, "tenantId", ev.TenantId, "taskId",
 			ev.TaskId, "msg", "worker starting to process task")
 	case enum.TaskFinished:
+		if err := s.updateTaskStatus(ev); err != nil {
+			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "msg", "failed to update tasks status")
+		}
 		msg := types.ListenerEventMessage{TenantUID: ev.TenantId, TaskUID: ev.TaskId}
 		s.listener.OnTaskFinished(msg)
 		_ = s.lg.Log(logger.LevelInfo, "tenantId", ev.TenantId, "taskId",
