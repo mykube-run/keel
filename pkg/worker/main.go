@@ -9,9 +9,9 @@ import (
 	"github.com/mykube-run/keel/pkg/logger"
 	"github.com/mykube-run/keel/pkg/types"
 	"github.com/panjf2000/ants/v2"
-	"github.com/pkg/errors"
 	"os"
 	"os/signal"
+	"runtime"
 	"sync"
 	"syscall"
 	"time"
@@ -173,9 +173,8 @@ func (w *Worker) run(tc *types.TaskContext) error {
 
 		defer func() {
 			if boom := recover(); boom != nil {
-				e = errors.New("task panic")
-				_ = w.lg.Log(logger.LevelError, "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId, "error", boom, "handler", tc.Task.Handler,
-					"msg", "task panic")
+				w.printStack(tc.Task, boom)
+				e = fmt.Errorf("task panic: %v", boom)
 			}
 			status := enum.TaskRunStatusSucceed
 			if e != nil {
@@ -228,7 +227,7 @@ func (w *Worker) report() {
 	}
 }
 
-// notify notifies scheduler about task events through Kafka topic
+// notify scheduler about task events through Kafka topic
 func (w *Worker) notify(m *types.TaskMessage) {
 	byt, err := json.Marshal(m)
 	if err != nil {
@@ -259,4 +258,13 @@ func (w *Worker) transferAllTasks() {
 		w.notify(tc.NewMessage(enum.ReportTaskStatus, s))
 		return true
 	})
+}
+
+func (w *Worker) printStack(t types.Task, err interface{}) {
+	var buf [4096]byte
+	n := runtime.Stack(buf[:], false)
+
+	_ = w.lg.Log(logger.LevelError, "taskId", t.Uid,
+		"tenantId", t.TenantId, "error", err,
+		"stack", string(buf[:n]), "msg", "task panicked")
 }
