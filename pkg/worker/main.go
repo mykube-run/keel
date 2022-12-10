@@ -174,6 +174,8 @@ func (w *Worker) run(tc *types.TaskContext) error {
 		defer func() {
 			if boom := recover(); boom != nil {
 				e = errors.New("task panic")
+				_ = w.lg.Log(logger.LevelError, "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId, "error", boom, "handler", tc.Task.Handler,
+					"msg", "task panic")
 			}
 			status := enum.TaskRunStatusSucceed
 			if e != nil {
