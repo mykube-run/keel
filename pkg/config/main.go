@@ -33,7 +33,7 @@ type DatabaseConfig struct {
 
 type SchedulerConfig struct {
 	Id                string // Scheduler id, also used to identify partition
-	Zone              string
+	Zone              string // The zone to which schedule belongs to
 	Port              int
 	Numbers           int // Number of schedulers within the same zone
 	Address           string
@@ -43,21 +43,21 @@ type SchedulerConfig struct {
 }
 
 type WorkerConfig struct {
-	Name           string
-	PoolSize       int
-	Generation     int
-	ReportInterval int
+	Name           string // Worker name used to identify the worker
+	PoolSize       int    // Worker executor pool size
+	Generation     int    // Worker generation
+	ReportInterval int    // Interval in seconds that the worker reports events to scheduler
 }
 
 type TransportConfig struct {
-	Type  string // Transport type, e.g. kafka
-	Role  string // Transport role, available values are enum.TransportRole
-	Kafka KafkaConfig
+	Type  string      // Transport type, e.g. kafka
+	Role  string      // Transport role, available values are enum.TransportRole
+	Kafka KafkaConfig // Kafka config
 }
 
 type ServerConfig struct {
-	HttpAddress string //httpServer address
-	GrpcAddress string //grpcServer address
+	HttpAddress string // HTTP server address
+	GrpcAddress string // GRPC server address
 }
 
 type KafkaConfig struct {
@@ -68,18 +68,18 @@ type KafkaConfig struct {
 }
 
 type KafkaTopics struct {
-	Tasks    []string
-	Messages []string
+	Tasks    []string // Tasks topics
+	Messages []string // Messages topics
 }
 
 type SnapshotConfig struct {
-	Enabled      bool
-	MaxVersions  int
-	Interval     time.Duration
-	Endpoint     string
-	Region       string
-	Bucket       string
-	AccessKey    string
-	AccessSecret string
-	Secure       bool
+	Enabled      bool          // When enabled, schedulers save snapshot files to specified S3 bucket
+	MaxVersions  int           // The maximum number of snapshot versions being kept
+	Interval     time.Duration // Interval to take snapshots
+	Endpoint     string        // S3 endpoint
+	Region       string        // S3 region
+	Bucket       string        // S3 bucket
+	AccessKey    string        // S3 access key
+	AccessSecret string        // S3 access secret
+	Secure       bool          // Whether LTS is enabled
 }

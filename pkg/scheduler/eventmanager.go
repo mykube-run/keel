@@ -236,7 +236,7 @@ func (m *EventManager) Tasks(tenantId string) (ids []string, err error) {
 //			}
 //			ev, e := m.latestEvent(tb)
 //			if e != nil {
-//				_ = m.lg.Log(logger.LevelError, "err", err.Error(), "msg", "error getting latest event")
+//				_ = m.lg.Log(logger.LevelError, "error", err.Error(), "msg", "error getting latest event")
 //				return nil
 //			}
 //			// Check the task's latest event timestamp is fresh
@@ -420,7 +420,10 @@ func (m *EventManager) maybeCompactEvents(bucket *bbolt.Bucket, key []byte, ev *
 		if ev.Timestamp.After(latest.Timestamp) &&
 			ev.Timestamp.Sub(latest.Timestamp).Seconds() >= float64(DefaultEventCompactDuration) {
 			if err := bucket.Delete(ev.Key()); err != nil {
-				_ = m.lg.Log(logger.LevelError, "key", key, "updated", "err", "error performing db compaction (while removing outdated task status report event)")
+				_ = m.lg.Log(logger.LevelError,
+					"key", key,
+					"error", err,
+					"msg", "error performing db compaction (while removing outdated task status report event)")
 			}
 		}
 	}
@@ -437,9 +440,13 @@ func (m *EventManager) backgroundBackup() {
 		select {
 		case <-tick.C:
 			if key, err := m.Backup(); err != nil {
-				_ = m.lg.Log(logger.LevelError, "err", err.Error(), "msg", "error saving events db snapshot")
+				_ = m.lg.Log(logger.LevelError,
+					"error", err.Error(),
+					"msg", "error saving events db snapshot")
 			} else {
-				_ = m.lg.Log(logger.LevelInfo, "key", key, "msg", "saved events db snapshot")
+				_ = m.lg.Log(logger.LevelInfo,
+					"key", key,
+					"msg", "saved events db snapshot")
 			}
 		}
 	}

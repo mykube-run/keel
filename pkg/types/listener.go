@@ -1,9 +1,9 @@
 package types
 
 type ListenerEventMessage struct {
-	//tenant info
+	// tenant id
 	TenantUID string
-	//TaskUID
+	// task id
 	TaskUID string
 }
 

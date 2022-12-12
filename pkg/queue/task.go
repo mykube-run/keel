@@ -83,7 +83,9 @@ func (c *TaskQueue) FetchTasks() {
 	defer cancel()
 
 	if err := c.populateTasks(ctx); err != nil {
-		_ = c.lg.Log(logger.LevelError, "err", err.Error(), "msg", "failed to fetch tasks from database")
+		_ = c.lg.Log(logger.LevelError,
+			"error", err.Error(),
+			"msg", "failed to fetch tasks from database")
 	}
 }
 

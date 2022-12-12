@@ -75,7 +75,10 @@ func (s *Server) TenantTaskInfo(ctx context.Context, req *pb.TenantTaskRequest) 
 	queue, ex := s.sched.cs[req.GetTenantID()]
 	pendingCount, err := s.db.FindTenantPendingTaskCount(ctx, types.GetTenantPendingTaskOption{TenantId: req.TenantID})
 	if err != nil {
-		_ = s.log.Log(logger.LevelError, "tenantID", req.TenantID, "msg", "FindTenantPendingTaskCount error", "error", err.Error())
+		_ = s.log.Log(logger.LevelError,
+			"error", err,
+			"tenantID", req.TenantID,
+			"msg", "failed to count pending tasks by tenant")
 		return nil, err
 	}
 	if ex {
@@ -97,7 +100,10 @@ func (s *Server) TenantTaskInfo(ctx context.Context, req *pb.TenantTaskRequest) 
 		var tenant entity.Tenant
 		tenant, err = s.db.FindTenant(ctx, types.GetTenantInfoOption{TenantId: &req.TenantID})
 		if err != nil {
-			_ = s.log.Log(logger.LevelError, "tenantID", req.TenantID, "msg", "get tenant task,but tenant not exist", "error", err.Error())
+			_ = s.log.Log(logger.LevelError,
+				"error", err,
+				"tenantID", req.TenantID,
+				"msg", "get tenant task, but tenant not exist")
 			resp = &pb.TenantTaskResponse{
 				Code: pb.Code_TaskNotExist,
 			}
@@ -144,7 +150,11 @@ func (s *Server) NewTask(ctx context.Context, req *pb.NewTaskRequest) (*pb.Respo
 		}
 	}
 	if err := s.db.CreateNewTask(ctx, t); err != nil {
-		_ = s.log.Log(logger.LevelError, "tenantID", req.TenantId, "taskID", req.Uid, "msg", "create task error", "err", err.Error())
+		_ = s.log.Log(logger.LevelError,
+			"error", err,
+			"tenantID", req.TenantId,
+			"taskID", req.Uid,
+			"msg", "create task error")
 		return nil, err
 	}
 	msg := types.ListenerEventMessage{TenantUID: req.TenantId, TaskUID: req.Uid}
@@ -226,7 +236,10 @@ func (s *Server) QueryTaskStatus(ctx context.Context, req *pb.QueryTaskRequest) 
 	options := types.GetTaskStatusOption{Uid: req.Uid}
 	taskStatus, err := s.db.GetTaskStatus(ctx, options)
 	if err != nil {
-		_ = s.log.Log(logger.LevelError, "taskID", req.Uid, "msg", "query task error", "err", err.Error())
+		_ = s.log.Log(logger.LevelError,
+			"error", err,
+			"taskID", req.Uid,
+			"msg", "query task error")
 		return nil, err
 	}
 	resp := &pb.QueryStatusResponse{
