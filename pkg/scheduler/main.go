@@ -71,7 +71,7 @@ func New(opt *Options, db types.DB, lg logger.Logger, listener types.Listener) (
 }
 
 func (s *Scheduler) Start() {
-	_ = s.lg.Log(logger.LevelInfo, "SchedulerId", s.SchedulerId(), "transport", s.opt.Transport.Type, "message", "starting scheduler")
+	_ = s.lg.Log(logger.LevelInfo, "SchedulerId", s.SchedulerId(), "transport", s.opt.Transport.Type, "msg", "starting scheduler")
 	_, _ = s.updateActiveTenants()
 	go s.schedule()
 	go s.checkStaleTasks()
@@ -82,9 +82,9 @@ func (s *Scheduler) Start() {
 
 	select {
 	case <-stopC:
-		_ = s.lg.Log(logger.LevelInfo, "message", "received stop signal")
+		_ = s.lg.Log(logger.LevelInfo, "msg", "received stop signal")
 		key, err := s.em.Backup()
-		_ = s.lg.Log(logger.LevelInfo, "key", key, "err", err.Error(), "message", "saved events db snapshot")
+		_ = s.lg.Log(logger.LevelInfo, "key", key, "err", err.Error(), "msg", "saved events db snapshot")
 		_ = s.tran.Close()
 	}
 }
@@ -95,27 +95,27 @@ func (s *Scheduler) schedule() {
 		select {
 		case <-tick.C:
 			if _, err := s.updateActiveTenants(); err != nil {
-				_ = s.lg.Log(logger.LevelError, "message", "failed to update active tenants")
+				_ = s.lg.Log(logger.LevelError, "msg", "failed to update active tenants")
 			}
 			for k, c := range s.cs {
 				running, err := s.em.CountRunningTasks(k)
 				if err != nil {
-					_ = s.lg.Log(logger.LevelError, "message", "failed to count running tasks")
+					_ = s.lg.Log(logger.LevelError, "msg", "failed to count running tasks")
 					continue
 				}
 				if !c.Tenant.ResourceQuota.Concurrency.Valid {
-					_ = s.lg.Log(logger.LevelWarn, "message", "tenant resource quota concurrency was invalid")
+					_ = s.lg.Log(logger.LevelWarn, "msg", "tenant resource quota concurrency was invalid")
 					continue
 				}
 				_ = s.lg.Log(logger.LevelDebug, "tenantId", k, "quota", c.Tenant.ResourceQuota.Concurrency.Int64,
-					"running", running, "message", "tenant concurrency state")
+					"running", running, "msg", "tenant concurrency state")
 				n := int(c.Tenant.ResourceQuota.Concurrency.Int64) - running
 				if n <= 0 {
 					continue
 				}
 				tasks, _, err := c.PopUserTasks(n)
 				if err != nil {
-					_ = s.lg.Log(logger.LevelError, "message", "failed to pop user tasks from local task queue")
+					_ = s.lg.Log(logger.LevelError, "msg", "failed to pop user tasks from local task queue")
 					continue
 				}
 				s.dispatch(tasks)
@@ -127,7 +127,7 @@ func (s *Scheduler) schedule() {
 func (s *Scheduler) onReceiveMessage(from string, msg []byte) ([]byte, error) {
 	var m types.TaskMessage
 	if err := json.Unmarshal(msg, &m); err != nil {
-		_ = s.lg.Log(logger.LevelError, "message", "failed to unmarshal task message")
+		_ = s.lg.Log(logger.LevelError, "msg", "failed to unmarshal task message")
 		return nil, err
 	}
 
@@ -142,17 +142,17 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 
 	ev := NewEventFromMessage(m)
 	if err := s.em.Insert(ev); err != nil {
-		_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "message", "failed to insert task event")
+		_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "msg", "failed to insert task event")
 	}
 	s.workerActiveTime[m.WorkerId] = time.Now()
 	switch m.Type {
 	case enum.RetryTask:
 		msg := types.ListenerEventMessage{TenantUID: ev.TenantId, TaskUID: ev.TaskId}
 		s.listener.OnTaskNeedRetry(msg)
-		_ = s.lg.Log(logger.LevelWarn, "tenantId", ev.TenantId, "taskId", ev.TaskId, "message", "task needs retry")
+		_ = s.lg.Log(logger.LevelWarn, "tenantId", ev.TenantId, "taskId", ev.TaskId, "msg", "task needs retry")
 		_, ok := s.cs[ev.TenantId]
 		if !ok {
-			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "message", "received message from illegal tenant")
+			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "msg", "received message from illegal tenant")
 			return
 		}
 		s.dispatch([]*entity.UserTask{{TenantId: m.Task.TenantId, Uid: m.Task.Uid,
@@ -160,39 +160,39 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 		})
 	case enum.TaskFailed:
 		if err := s.updateTaskStatus(ev); err != nil {
-			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "message", "failed to update tasks status")
+			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "msg", "failed to update tasks status")
 		}
 		if err := s.em.Delete(ev.TenantId, ev.TaskId); err != nil {
 			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "err", err.Error(),
-				"message", "failed to delete task events")
+				"msg", "failed to delete task events")
 		}
 		_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId",
-			ev.TaskId, "message", "task run fail")
+			ev.TaskId, "msg", "task run fail")
 	case enum.ReportTaskStatus:
 		// Does nothing
 	case enum.TaskStarted:
 		if err := s.updateTaskStatus(ev); err != nil {
-			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "message", "failed to update tasks status")
+			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "msg", "failed to update tasks status")
 		}
 		msg := types.ListenerEventMessage{TenantUID: ev.TenantId, TaskUID: ev.TaskId}
 		s.listener.OnTaskRunning(msg)
 		_ = s.lg.Log(logger.LevelInfo, "tenantId", ev.TenantId, "taskId",
-			ev.TaskId, "message", "worker starting to process task")
+			ev.TaskId, "msg", "worker starting to process task")
 	case enum.TaskFinished:
 		if err := s.updateTaskStatus(ev); err != nil {
-			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "message", "failed to update tasks status")
+			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "msg", "failed to update tasks status")
 		}
 		msg := types.ListenerEventMessage{TenantUID: ev.TenantId, TaskUID: ev.TaskId}
 		s.listener.OnTaskFinished(msg)
 		_ = s.lg.Log(logger.LevelInfo, "tenantId", ev.TenantId, "taskId",
-			ev.TaskId, "message", "worker has finished processing task")
+			ev.TaskId, "msg", "worker has finished processing task")
 		if err := s.em.Delete(ev.TenantId, ev.TaskId); err != nil {
 			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "err", err.Error(),
-				"message", "failed to delete task events")
+				"msg", "failed to delete task events")
 		}
 		//runningCount, _ := s.em.CountRunningTasks(ev.TenantId)
 		//_ = s.lg.Log(logger.LevelDebug, "tenantId", ev.TenantId, "taskId", "runningTasks", runningCount,
-		//	"message", "failed to delete task events")
+		//	"msg", "failed to delete task events")
 	}
 }
 
@@ -230,7 +230,7 @@ func (s *Scheduler) dispatch(tasks entity.UserTasks) {
 	if len(tasks) > 0 {
 		// Log event
 		_ = s.lg.Log(logger.LevelInfo, "SchedulerId", s.SchedulerId(), "taskId", tasks.TaskIds(),
-			"message", "dispatch tasks")
+			"msg", "dispatch tasks")
 	}
 	for _, task := range tasks {
 		// 1. Check task status to avoid repeat dispatching Success/TaskRunStatusFailed/Canceled tasks
@@ -239,7 +239,7 @@ func (s *Scheduler) dispatch(tasks entity.UserTasks) {
 			Uid:      task.Uid,
 		})
 		if status == enum.TaskStatusSuccess || status == enum.TaskStatusFailed || status == enum.TaskStatusCanceled {
-			_ = s.lg.Log(logger.LevelInfo, "status", status, "message", "the task can not be dispatched")
+			_ = s.lg.Log(logger.LevelInfo, "status", status, "msg", "the task can not be dispatched")
 			continue
 		}
 		// 2. Dispatch the task
@@ -255,35 +255,35 @@ func (s *Scheduler) dispatch(tasks entity.UserTasks) {
 
 		cfg, err := json.Marshal(task.Config)
 		if err != nil {
-			_ = s.lg.Log(logger.LevelError, "message", "failed to marshal task config")
+			_ = s.lg.Log(logger.LevelError, "msg", "failed to marshal task config")
 			continue
 		}
 		v.Config = cfg
 		v.LastRun, v.RestartTimes, err = s.taskHistory(task.TenantId, task.Uid)
 		if err != nil {
-			_ = s.lg.Log(logger.LevelError, "message", "failed to lookup task history")
+			_ = s.lg.Log(logger.LevelError, "msg", "failed to lookup task history")
 			continue
 		}
 
 		byt, err := json.Marshal(v)
 		if err != nil {
-			_ = s.lg.Log(logger.LevelError, "message", "failed to marshal message")
+			_ = s.lg.Log(logger.LevelError, "msg", "failed to marshal message")
 			continue
 		}
 
 		err = s.tran.Send(s.SchedulerId(), "Any", byt)
 		if err != nil {
-			_ = s.lg.Log(logger.LevelError, "message", "failed to dispatch task")
+			_ = s.lg.Log(logger.LevelError, "msg", "failed to dispatch task")
 			continue
 		}
 
 		// 3. Record the dispatch event and update task status accordingly
 		ev := NewEventFromUserTask(TaskDispatched, task)
 		if err = s.em.Insert(ev); err != nil {
-			_ = s.lg.Log(logger.LevelInfo, "err", err.Error(), "message", "failed to record task dispatch event")
+			_ = s.lg.Log(logger.LevelInfo, "err", err.Error(), "msg", "failed to record task dispatch event")
 		}
 		if err = s.updateTaskStatus(ev); err != nil {
-			_ = s.lg.Log(logger.LevelInfo, "err", err.Error(), "message", "failed to update task status")
+			_ = s.lg.Log(logger.LevelInfo, "err", err.Error(), "msg", "failed to update task status")
 		}
 		msg := types.ListenerEventMessage{TenantUID: task.TenantId, TaskUID: task.Uid}
 		s.listener.OnTaskDispatching(msg)
@@ -292,9 +292,9 @@ func (s *Scheduler) dispatch(tasks entity.UserTasks) {
 	if len(activeTenants) > 0 {
 		err := s.db.ActiveTenant(context.Background(), types.ActiveTenantOption{TenantId: activeTenants, ActiveTime: time.Now()})
 		if err != nil {
-			_ = s.lg.Log(logger.LevelInfo, "err", err.Error(), "message", "active tenant fail")
+			_ = s.lg.Log(logger.LevelInfo, "err", err.Error(), "msg", "active tenant fail")
 		}
-		_ = s.lg.Log(logger.LevelDebug, "tenantIds", activeTenants, "message", "active tenants")
+		_ = s.lg.Log(logger.LevelDebug, "tenantIds", activeTenants, "msg", "active tenants")
 	}
 }
 
@@ -317,7 +317,7 @@ func (s *Scheduler) updateActiveTenants() (entity.Tenants, error) {
 	defer s.mu.Unlock()
 	for i, v := range tenants {
 		if _, ok := s.cs[v.Uid]; !ok {
-			_ = s.lg.Log(logger.LevelInfo, "tenantId", v.Uid, "message", "found new active tenant")
+			_ = s.lg.Log(logger.LevelInfo, "tenantId", v.Uid, "msg", "found new active tenant")
 			s.cs[v.Uid] = queue.NewTaskQueue(s.db, s.lg, tenants[i], s.listener)
 		} else {
 			// Update tenant
@@ -370,14 +370,14 @@ func (s *Scheduler) checkStaleTasks() {
 			for tenant, _ := range s.cs {
 				tasks, err = s.em.Tasks(tenant)
 				if err != nil {
-					_ = s.lg.Log(logger.LevelDebug, "err", err.Error(), "message", "error finding tasks")
+					_ = s.lg.Log(logger.LevelDebug, "err", err.Error(), "msg", "error finding tasks")
 					continue
 				}
 
 				for _, task := range tasks {
 					ev, err = s.em.Latest(tenant, task)
 					if err != nil {
-						_ = s.lg.Log(logger.LevelDebug, "err", err.Error(), "message", "error finding the latest event")
+						_ = s.lg.Log(logger.LevelDebug, "err", err.Error(), "msg", "error finding the latest event")
 						continue
 					}
 					status, ok := s.shouldRevive(ev)
@@ -390,13 +390,13 @@ func (s *Scheduler) checkStaleTasks() {
 						Status:   status,
 					})
 					if err != nil {
-						_ = s.lg.Log(logger.LevelDebug, "err", err.Error(), "message", "failed to update task status")
+						_ = s.lg.Log(logger.LevelDebug, "err", err.Error(), "msg", "failed to update task status")
 						continue
 					}
 					var dbTask entity.Tasks
 					dbTask, err = s.db.GetTask(context.Background(), types.GetTaskOption{Uid: task, TaskType: enum.TaskTypeUserTask})
 					if err != nil {
-						_ = s.lg.Log(logger.LevelError, "err", err.Error(), "message", "failed query taskInfo")
+						_ = s.lg.Log(logger.LevelError, "err", err.Error(), "msg", "failed query taskInfo")
 						return
 					}
 					s.dispatch(dbTask.UserTasks)
