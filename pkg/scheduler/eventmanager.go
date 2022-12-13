@@ -178,13 +178,13 @@ func (m *EventManager) Iterate(tenantId, taskId string, fn func(e *TaskEvent) bo
 	return m.db.View(func(tx *bbolt.Tx) error {
 		tenant := tx.Bucket([]byte(tenantId))
 		if tenant == nil {
-			_ = m.lg.Log(logger.LevelWarn, "msg", "tenant db is empty")
+			_ = m.lg.Log(logger.LevelWarn, "message", "tenant db is empty")
 			return nil
 		}
 
 		task := tenant.Bucket([]byte(taskId))
 		if task == nil {
-			_ = m.lg.Log(logger.LevelDebug, "msg", "task db is empty")
+			_ = m.lg.Log(logger.LevelDebug, "message", "task db is empty")
 			return nil
 		}
 
@@ -236,7 +236,7 @@ func (m *EventManager) Tasks(tenantId string) (ids []string, err error) {
 //			}
 //			ev, e := m.latestEvent(tb)
 //			if e != nil {
-//				_ = m.lg.Log(logger.LevelError, "err", err.Error(), "msg", "error getting latest event")
+//				_ = m.lg.Log(logger.LevelError, "err", err.Error(), "message", "error getting latest event")
 //				return nil
 //			}
 //			// Check the task's latest event timestamp is fresh
@@ -345,7 +345,7 @@ func (m *EventManager) loadSnapshot() error {
 		tmp := m.snapshotKey(i)
 		info, err := m.s3.StatObject(m.sc.Bucket, tmp, minio.StatObjectOptions{})
 		if err != nil {
-			_ = m.lg.Log(logger.LevelDebug, "err", err.Error(), "msg", "stat object error")
+			_ = m.lg.Log(logger.LevelDebug, "err", err.Error(), "message", "stat object error")
 			continue
 		}
 		if info.LastModified.After(newest) {
@@ -354,10 +354,10 @@ func (m *EventManager) loadSnapshot() error {
 		}
 	}
 	if key == "" {
-		_ = m.lg.Log(logger.LevelWarn, "msg", "no available snapshot")
+		_ = m.lg.Log(logger.LevelWarn, "message", "no available snapshot")
 		return nil
 	}
-	_ = m.lg.Log(logger.LevelInfo, "key", key, "updated", newest, "msg", "found the newest snapshot")
+	_ = m.lg.Log(logger.LevelInfo, "key", key, "updated", newest, "message", "found the newest snapshot")
 
 	obj, err := m.s3.GetObject(m.sc.Bucket, key, minio.GetObjectOptions{})
 	if err != nil {
@@ -376,7 +376,7 @@ func (m *EventManager) loadSnapshot() error {
 	if err = os.WriteFile(DefaultDBPath, byt, os.ModePerm); err != nil {
 		return fmt.Errorf("error writing snapshot file to db: %w", err)
 	}
-	_ = m.lg.Log(logger.LevelInfo, "key", key, "updated", newest, "msg", "loaded the newest snapshot")
+	_ = m.lg.Log(logger.LevelInfo, "key", key, "updated", newest, "message", "loaded the newest snapshot")
 	return nil
 }
 
@@ -437,9 +437,9 @@ func (m *EventManager) backgroundBackup() {
 		select {
 		case <-tick.C:
 			if key, err := m.Backup(); err != nil {
-				_ = m.lg.Log(logger.LevelError, "err", err.Error(), "msg", "error saving events db snapshot")
+				_ = m.lg.Log(logger.LevelError, "err", err.Error(), "message", "error saving events db snapshot")
 			} else {
-				_ = m.lg.Log(logger.LevelInfo, "key", key, "msg", "saved events db snapshot")
+				_ = m.lg.Log(logger.LevelInfo, "key", key, "message", "saved events db snapshot")
 			}
 		}
 	}

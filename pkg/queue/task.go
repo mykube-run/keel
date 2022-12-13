@@ -83,7 +83,7 @@ func (c *TaskQueue) FetchTasks() {
 	defer cancel()
 
 	if err := c.populateTasks(ctx); err != nil {
-		_ = c.lg.Log(logger.LevelError, "err", err.Error(), "msg", "failed to fetch tasks from database")
+		_ = c.lg.Log(logger.LevelError, "err", err.Error(), "message", "failed to fetch tasks from database")
 	}
 }
 
@@ -123,6 +123,6 @@ func (c *TaskQueue) populateTasks(ctx context.Context) error {
 		heap.Push(c.UserTasks, item)
 		n += 1
 	}
-	_ = c.lg.Log(logger.LevelDebug, "populated", n, "msg", "fetched user tasks from database")
+	_ = c.lg.Log(logger.LevelDebug, "populated", n, "message", "fetched user tasks from database")
 	return nil
 }
