@@ -271,7 +271,7 @@ func (s *Scheduler) dispatch(tasks entity.UserTasks) {
 			continue
 		}
 
-		err = s.tran.Send(s.SchedulerId(), "Any", byt)
+		err = s.tran.Send(s.SchedulerId(), "", byt)
 		if err != nil {
 			_ = s.lg.Log(logger.LevelError, "message", "failed to dispatch task")
 			continue

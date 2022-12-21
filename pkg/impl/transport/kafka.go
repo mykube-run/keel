@@ -74,8 +74,12 @@ func (t *KafkaTransport) OnReceive(omr types.OnMessageReceived) {
 
 func (t *KafkaTransport) Send(from, to string, msg []byte) error {
 	topic := t.selectTopic()
+	var key []byte
+	if len(to) != 0 {
+		key = []byte(to)
+	}
 	kmsg := &kafka.Message{
-		Key: []byte(to),
+		Key: key,
 		TopicPartition: kafka.TopicPartition{
 			Topic:     &topic,
 			Partition: kafka.PartitionAny,
