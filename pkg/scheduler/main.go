@@ -171,19 +171,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 	case enum.ReportTaskStatus:
 		// Does nothing
 	case enum.TaskStarted:
-		status, err := s.db.GetTaskStatus(context.Background(), types.GetTaskStatusOption{TaskType: ev.TaskType, Uid: ev.TaskId})
-		if err != nil {
-			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "message", "failed get tasks status")
-			return
-		}
-		if status == enum.TaskStatusFailed || status == enum.TaskStatusSuccess {
-			if err = s.em.Delete(ev.TenantId, ev.TaskId); err != nil {
-				_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "err", err.Error(),
-					"message", "failed to delete task events")
-			}
-			return
-		}
-		if err = s.updateTaskStatus(ev); err != nil {
+		if err := s.updateTaskStatus(ev); err != nil {
 			_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "message", "failed to update tasks status")
 		}
 		msg := types.ListenerEventMessage{TenantUID: ev.TenantId, TaskUID: ev.TaskId}
