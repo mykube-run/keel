@@ -177,9 +177,9 @@ func newConsumerConfig(conf config.KafkaConfig) *kafka.ConfigMap {
 		"heartbeat.interval.ms":     3 * enum.Second,    // 3s
 		"session.timeout.ms":        30 * enum.Second,   // 30s
 		"max.poll.interval.ms":      7200 * enum.Second, // 7200s, 2hours
-		"message.max.bytes":         100 * enum.KB,      // 100KB
-		"fetch.max.bytes":           100 * enum.KB,      // 100KB
-		"max.partition.fetch.bytes": 100 * enum.KB,      // 100KB
+		"message.max.bytes":         500 * enum.KB,      // 100KB
+		"fetch.max.bytes":           500 * enum.KB,      // 100KB
+		"max.partition.fetch.bytes": 500 * enum.KB,      // 100KB
 		"security.protocol":         "PLAINTEXT",
 
 		// "group.instance.id": ""
