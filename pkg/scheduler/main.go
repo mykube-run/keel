@@ -74,7 +74,7 @@ func (s *Scheduler) Start() {
 	_ = s.lg.Log(logger.LevelInfo, "SchedulerId", s.SchedulerId(), "transport", s.opt.Transport.Type, "message", "starting scheduler")
 	_, _ = s.updateActiveTenants()
 	go s.schedule()
-	//go s.checkStaleTasks()
+	go s.checkStaleTasks()
 	go s.srv.Start()
 
 	stopC := make(chan os.Signal)
@@ -380,7 +380,7 @@ func (s *Scheduler) checkStaleTasks() {
 						_ = s.lg.Log(logger.LevelDebug, "err", err.Error(), "message", "error finding the latest event")
 						continue
 					}
-					status, ok := s.shouldRevive(ev)
+					ok := s.shouldDeleteEvent(ev)
 					if !ok {
 						continue
 					}
@@ -389,15 +389,6 @@ func (s *Scheduler) checkStaleTasks() {
 						_ = s.lg.Log(logger.LevelDebug, "err", err.Error(), "message", "delete tenant error")
 						return
 					}
-					err = s.db.UpdateTaskStatus(context.Background(), types.UpdateTaskStatusOption{
-						TaskType: ev.TaskType,
-						Uids:     []string{ev.TaskId},
-						Status:   status,
-					})
-					if err != nil {
-						_ = s.lg.Log(logger.LevelDebug, "err", err.Error(), "message", "failed to update task status")
-						continue
-					}
 				}
 			}
 		}
@@ -405,33 +396,16 @@ func (s *Scheduler) checkStaleTasks() {
 }
 
 // shouldRevive checks whether event is outdated, returns the expected next status
-func (s *Scheduler) shouldRevive(ev *TaskEvent) (enum.TaskStatus, bool) {
+func (s *Scheduler) shouldDeleteEvent(ev *TaskEvent) bool {
 	now := time.Now()
 	if now.Before(ev.Timestamp) /* The event timestamp is in the future */ {
-		return "", false
+		return false
 	}
 	sec := int(now.Sub(ev.Timestamp).Seconds())
-
-	switch ev.EventType {
-	case TaskDispatched:
-		return enum.TaskStatusPending, false
-	case string(enum.TaskStarted):
-		return enum.TaskStatusPending, sec > 180
-	case string(enum.TaskStatusRunning):
-		return enum.TaskStatusPending, sec > 180
-	case string(enum.ReportTaskStatus):
-		return enum.TaskStatusPending, sec > 180
-	case string(enum.RetryTask):
-		return enum.TaskStatusPending, sec > 180
-	case string(enum.StartTransition):
-		return enum.TaskStatusPending, sec > 180
-	case string(enum.FinishTransition):
-		return enum.TaskStatusPending, false
-	case string(enum.TaskFinished):
-		return "", false
-	default:
-		return "", false
+	if sec > int(time.Hour.Seconds()) {
+		return true
 	}
+	return false
 }
 
 func (s *Scheduler) SchedulerId() string {
