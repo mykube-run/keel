@@ -74,7 +74,7 @@ func (s *Scheduler) Start() {
 	_ = s.lg.Log(logger.LevelInfo, "SchedulerId", s.SchedulerId(), "transport", s.opt.Transport.Type, "message", "starting scheduler")
 	_, _ = s.updateActiveTenants()
 	go s.schedule()
-	//go s.checkStaleTasks()
+	go s.checkStaleTasks()
 	go s.srv.Start()
 
 	stopC := make(chan os.Signal)
@@ -396,6 +396,11 @@ func (s *Scheduler) checkStaleTasks() {
 					if !ok {
 						continue
 					}
+					err = s.em.Delete(ev.TenantId, ev.TaskId)
+					if err != nil {
+						_ = s.lg.Log(logger.LevelDebug, "err", err.Error(), "message", "delete tenant error")
+						return
+					}
 					err = s.db.UpdateTaskStatus(context.Background(), types.UpdateTaskStatusOption{
 						TaskType: ev.TaskType,
 						Uids:     []string{ev.TaskId},
@@ -409,7 +414,7 @@ func (s *Scheduler) checkStaleTasks() {
 					dbTask, err = s.db.GetTask(context.Background(), types.GetTaskOption{Uid: task, TaskType: enum.TaskTypeUserTask})
 					if err != nil {
 						_ = s.lg.Log(logger.LevelError, "err", err.Error(), "message", "failed query taskInfo")
-						return
+						continue
 					}
 					s.dispatch(dbTask.UserTasks)
 				}
@@ -428,17 +433,19 @@ func (s *Scheduler) shouldRevive(ev *TaskEvent) (enum.TaskStatus, bool) {
 
 	switch ev.EventType {
 	case TaskDispatched:
-		return enum.TaskStatusPending, sec > 60
+		return enum.TaskStatusPending, sec > 180
 	case string(enum.TaskStarted):
-		return enum.TaskStatusPending, sec > 60
+		return enum.TaskStatusPending, sec > 180
+	case string(enum.TaskStatusRunning):
+		return enum.TaskStatusPending, sec > 180
 	case string(enum.ReportTaskStatus):
 		return enum.TaskStatusPending, sec > 60
 	case string(enum.RetryTask):
-		return enum.TaskStatusPending, sec > 120
+		return enum.TaskStatusPending, sec > 180
 	case string(enum.StartTransition):
-		return enum.TaskStatusPending, sec > 60
+		return enum.TaskStatusPending, sec > 180
 	case string(enum.FinishTransition):
-		return enum.TaskStatusPending, sec > 60
+		return enum.TaskStatusPending, false
 	case string(enum.TaskFinished):
 		return "", false
 	default:
