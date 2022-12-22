@@ -421,13 +421,13 @@ func (s *Scheduler) shouldRevive(ev *TaskEvent) (enum.TaskStatus, bool) {
 
 	switch ev.EventType {
 	case TaskDispatched:
-		return enum.TaskStatusPending, sec > 180
+		return enum.TaskStatusPending, false
 	case string(enum.TaskStarted):
 		return enum.TaskStatusPending, sec > 180
 	case string(enum.TaskStatusRunning):
 		return enum.TaskStatusPending, sec > 180
 	case string(enum.ReportTaskStatus):
-		return enum.TaskStatusPending, sec > 60
+		return enum.TaskStatusPending, sec > 180
 	case string(enum.RetryTask):
 		return enum.TaskStatusPending, sec > 180
 	case string(enum.StartTransition):
