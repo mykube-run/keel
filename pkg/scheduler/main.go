@@ -74,7 +74,7 @@ func (s *Scheduler) Start() {
 	_ = s.lg.Log(logger.LevelInfo, "SchedulerId", s.SchedulerId(), "transport", s.opt.Transport.Type, "message", "starting scheduler")
 	_, _ = s.updateActiveTenants()
 	go s.schedule()
-	go s.checkStaleTasks()
+	//go s.checkStaleTasks()
 	go s.srv.Start()
 
 	stopC := make(chan os.Signal)
