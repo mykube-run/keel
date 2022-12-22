@@ -398,13 +398,6 @@ func (s *Scheduler) checkStaleTasks() {
 						_ = s.lg.Log(logger.LevelDebug, "err", err.Error(), "message", "failed to update task status")
 						continue
 					}
-					var dbTask entity.Tasks
-					dbTask, err = s.db.GetTask(context.Background(), types.GetTaskOption{Uid: task, TaskType: enum.TaskTypeUserTask})
-					if err != nil {
-						_ = s.lg.Log(logger.LevelError, "err", err.Error(), "message", "failed query taskInfo")
-						continue
-					}
-					s.dispatch(dbTask.UserTasks)
 				}
 			}
 		}
