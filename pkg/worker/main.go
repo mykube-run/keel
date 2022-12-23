@@ -111,7 +111,6 @@ func (w *Worker) onReceiveMessage(from string, msg []byte) (result []byte, err e
 		names = append(names, k)
 	}
 	if _, ok := w.factories[task.Handler]; !ok {
-		_ = w.lg.Log(logger.LevelDebug, "taskHandler", task.Handler, "supportHandler", names, "message", "task not support drop message")
 		return []byte("success"), nil
 	}
 	_ = w.lg.Log(logger.LevelDebug, "running", w.pool.Running(), "capacity", w.pool.Cap(), "taskId", task.Uid,
