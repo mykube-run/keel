@@ -28,21 +28,23 @@ func (s *NormalTaskHandler) Start() (bool, error) {
 	return false, nil
 }
 
+func (s *NormalTaskHandler) HeartBeat() (*types.TaskContext, *types.TaskStatus, error) {
+	return nil, nil, nil
+}
+
+func (s *NormalTaskHandler) StartTransitionTask(chan struct{}) (bool, error) {
+	s.started = time.Now()
+	log.Info().Str("taskId", s.ctx.Task.Uid).
+		Msgf("start to process task, will hang up for %v seconds and return error on HeartBeat call", HangUpDuration)
+	time.Sleep(time.Second * HangUpDuration)
+	return false, nil
+}
+
 func (s *NormalTaskHandler) Stop() error {
 	return nil
 }
 
-func (s *NormalTaskHandler) HeartBeat() (*types.TaskContext, *types.TaskStatus, error) {
-	status := &types.TaskStatus{
-		State:     enum.TaskStatusRunning,
-		Progress:  s.progress(),
-		Error:     nil,
-		Timestamp: time.Now(),
-	}
-	return s.ctx, status, nil
-}
-
-func (s *NormalTaskHandler) TransitionStart() (*types.TaskContext, *types.TaskStatus, error) {
+func (s *NormalTaskHandler) BeforeTransitionStart() (*types.TaskContext, *types.TaskStatus, error) {
 	status := &types.TaskStatus{
 		State:     enum.TaskStatusNeedsRetry,
 		Progress:  s.progress(),
@@ -79,4 +81,8 @@ func (s *NormalTaskHandler) progress() int {
 		p = 100
 	}
 	return p
+}
+
+func (s *NormalTaskHandler) NotifyTransitionFinish(signalChan chan struct{}) {
+	signalChan <- struct{}{}
 }

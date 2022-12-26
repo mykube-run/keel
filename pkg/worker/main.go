@@ -174,7 +174,6 @@ func (w *Worker) run(tc *types.TaskContext) error {
 			if boom := recover(); boom != nil {
 				w.printStack(tc.Task, boom)
 				e = fmt.Errorf("task panic: %v", boom)
-
 			}
 			status := enum.TaskRunStatusSucceed
 			if e != nil {
@@ -195,8 +194,18 @@ func (w *Worker) run(tc *types.TaskContext) error {
 				}
 			}
 		}()
-
-		retry, e = hdl.Start()
+		transitionFinishSignal := make(chan struct{})
+		// if task need transition Call the migration task running method of the handler
+		if tc.Task.NeedRunWithTransition {
+			retry, e = hdl.StartTransitionTask(transitionFinishSignal)
+		} else {
+			retry, e = hdl.Start()
+		}
+		// listen task send Transition Finish signal
+		go func() {
+			<-transitionFinishSignal
+			w.notify(tc.NewMessage(enum.FinishTransition, nil))
+		}()
 		_ = w.lg.Log(logger.LevelInfo, "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId, "retry", retry,
 			"schedulerId", tc.Task.SchedulerId, "handler", tc.Task.Handler, "message", "finished processing task")
 	}
@@ -249,13 +258,13 @@ func (w *Worker) transferAllTasks() {
 			return true
 		}
 
-		tc, s, err := hdl.TransitionStart()
+		tc, s, err := hdl.BeforeTransitionStart()
 		if err != nil {
 			_ = w.lg.Log(logger.LevelError, "err", err.Error(), "message", "failed to start task transition")
 			w.notify(tc.NewMessage(enum.RetryTask, nil))
 			return true
 		}
-		w.notify(tc.NewMessage(enum.ReportTaskStatus, s))
+		w.notify(tc.NewMessage(enum.StartTransition, s))
 		return true
 	})
 }

@@ -74,14 +74,15 @@ type WorkerInfo struct {
 
 // Task details
 type Task struct {
-	Handler      string          `json:"handler"`      // Task handler name
-	TenantId     string          `json:"tenantId"`     // Task tenant id
-	Uid          string          `json:"uid"`          // Task uid, aka taskId
-	SchedulerId  string          `json:"schedulerId"`  // Scheduler id that is responsible for scheduling the task
-	Type         enum.TaskType   `json:"type"`         // TaskType
-	Config       json.RawMessage `json:"config"`       // Task configurations in JSON, might be nil
-	RestartTimes int             `json:"restartTimes"` // Number of restart
-	LastRun      *TaskRun        `json:"lastRun"`      // The last TaskRun, nil when Task is never run
+	Handler               string          `json:"handler"`        // Task handler name
+	TenantId              string          `json:"tenantId"`       // Task tenant id
+	Uid                   string          `json:"uid"`            // Task uid, aka taskId
+	SchedulerId           string          `json:"schedulerId"`    // Scheduler id that is responsible for scheduling the task
+	Type                  enum.TaskType   `json:"type"`           // TaskType
+	Config                json.RawMessage `json:"config"`         // Task configurations in JSON, might be nil
+	NeedRunWithTransition bool            `json:"NeedTransition"` // NeedRunWithTransition Indicates whether this run is a migration task
+	RestartTimes          int             `json:"restartTimes"`   // Number of restart
+	LastRun               *TaskRun        `json:"lastRun"`        // The last TaskRun, nil when Task is never run
 }
 
 // TaskRun task last run info

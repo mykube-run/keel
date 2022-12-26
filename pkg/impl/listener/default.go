@@ -29,3 +29,12 @@ func (d DefaultListener) OnTaskFinished(message types.ListenerEventMessage) {
 
 func (d DefaultListener) OnTaskFail(message types.ListenerEventMessage) {
 }
+
+func (d DefaultListener) OnTaskTransition(message types.ListenerEventMessage) {
+}
+
+func (d DefaultListener) OnTaskTransitionError(message types.ListenerEventMessage) {
+}
+
+func (d DefaultListener) OnTaskTransitionFinished(message types.ListenerEventMessage) {
+}

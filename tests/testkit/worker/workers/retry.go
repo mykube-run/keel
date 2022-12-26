@@ -24,7 +24,24 @@ func RetryTaskHandlerFactory(ctx *types.TaskContext, info *types.WorkerInfo) (ty
 	}, nil
 }
 
+func (s *RetryTaskHandler) HeartBeat() (*types.TaskContext, *types.TaskStatus, error) {
+	return nil, nil, nil
+}
+
 func (s *RetryTaskHandler) Start() (bool, error) {
+	s.started = time.Now()
+	log.Info().Str("taskId", s.ctx.Task.Uid).
+		Msgf("start to process task, will sleep for at most %v seconds, retry %v times and finish the task",
+			NormalTaskDuration, NumOfRetries)
+	if s.ctx.Task.RestartTimes <= 2 {
+		time.Sleep(time.Second * time.Duration(rand.Int63n(60)+30))
+		return true, fmt.Errorf("task needs retry")
+	}
+	time.Sleep(time.Second * NormalTaskDuration)
+	return false, nil
+}
+
+func (s *RetryTaskHandler) StartTransitionTask(chan struct{}) (bool, error) {
 	s.started = time.Now()
 	log.Info().Str("taskId", s.ctx.Task.Uid).
 		Msgf("start to process task, will sleep for at most %v seconds, retry %v times and finish the task",
@@ -41,17 +58,7 @@ func (s *RetryTaskHandler) Stop() error {
 	return nil
 }
 
-func (s *RetryTaskHandler) HeartBeat() (*types.TaskContext, *types.TaskStatus, error) {
-	status := &types.TaskStatus{
-		State:     enum.TaskStatusRunning,
-		Progress:  s.progress(),
-		Error:     nil,
-		Timestamp: time.Now(),
-	}
-	return s.ctx, status, nil
-}
-
-func (s *RetryTaskHandler) TransitionStart() (*types.TaskContext, *types.TaskStatus, error) {
+func (s *RetryTaskHandler) BeforeTransitionStart() (*types.TaskContext, *types.TaskStatus, error) {
 	status := &types.TaskStatus{
 		State:     enum.TaskStatusNeedsRetry,
 		Progress:  s.progress(),
@@ -88,4 +95,8 @@ func (s *RetryTaskHandler) progress() int {
 		p = 100
 	}
 	return p
+}
+
+func (s *RetryTaskHandler) NotifyTransitionFinish(signalChan chan struct{}) {
+	signalChan <- struct{}{}
 }

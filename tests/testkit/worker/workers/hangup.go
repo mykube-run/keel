@@ -1,7 +1,6 @@
 package workers
 
 import (
-	"fmt"
 	"github.com/mykube-run/keel/pkg/enum"
 	"github.com/mykube-run/keel/pkg/types"
 	"github.com/rs/zerolog/log"
@@ -29,15 +28,23 @@ func (s *HangUpTaskHandler) Start() (bool, error) {
 	return false, nil
 }
 
+func (s *HangUpTaskHandler) HeartBeat() (*types.TaskContext, *types.TaskStatus, error) {
+	return nil, nil, nil
+}
+
+func (s *HangUpTaskHandler) StartTransitionTask(chan struct{}) (bool, error) {
+	s.started = time.Now()
+	log.Info().Str("taskId", s.ctx.Task.Uid).
+		Msgf("start to process task, will hang up for %v seconds and return error on HeartBeat call", HangUpDuration)
+	time.Sleep(time.Second * HangUpDuration)
+	return false, nil
+}
+
 func (s *HangUpTaskHandler) Stop() error {
 	return nil
 }
 
-func (s *HangUpTaskHandler) HeartBeat() (*types.TaskContext, *types.TaskStatus, error) {
-	return s.ctx, nil, fmt.Errorf("worker hang up")
-}
-
-func (s *HangUpTaskHandler) TransitionStart() (*types.TaskContext, *types.TaskStatus, error) {
+func (s *HangUpTaskHandler) BeforeTransitionStart() (*types.TaskContext, *types.TaskStatus, error) {
 	status := &types.TaskStatus{
 		State:     enum.TaskStatusNeedsRetry,
 		Progress:  s.progress(),
@@ -74,4 +81,8 @@ func (s *HangUpTaskHandler) progress() int {
 		p = 100
 	}
 	return p
+}
+
+func (s *HangUpTaskHandler) NotifyTransitionFinish(signalChan chan struct{}) {
+	signalChan <- struct{}{}
 }

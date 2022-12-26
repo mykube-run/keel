@@ -21,4 +21,10 @@ type Listener interface {
 	OnTaskFinished(message ListenerEventMessage)
 
 	OnTaskFail(message ListenerEventMessage)
+
+	OnTaskTransition(message ListenerEventMessage)
+
+	OnTaskTransitionError(message ListenerEventMessage)
+
+	OnTaskTransitionFinished(message ListenerEventMessage)
 }
