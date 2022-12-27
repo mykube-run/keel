@@ -221,36 +221,6 @@ func (m *EventManager) Tasks(tenantId string) (ids []string, err error) {
 	return
 }
 
-//func (m *EventManager) CountTasks(tenantId string) (n int, err error) {
-//	err = m.db.View(func(tx *bbolt.Tx) error {
-//		tenant := tx.Bucket([]byte(tenantId))
-//		if tenant == nil {
-//			return nil
-//		}
-//
-//		fn := func(k, v []byte) error {
-//			tb := tenant.Bucket(k)
-//			if tb == nil {
-//				// The task bucket is nil
-//				return nil
-//			}
-//			ev, e := m.latestEvent(tb)
-//			if e != nil {
-//				_ = m.lg.Log(logger.LevelError, "err", err.Error(), "message", "error getting latest event")
-//				return nil
-//			}
-//			// Check the task's latest event timestamp is fresh
-//			if ev.Timestamp.Add(time.Second * time.Duration(DefaultTaskCounterTTL)).After(time.Now()) {
-//				n += 1
-//			}
-//			return nil
-//		}
-//
-//		return tenant.ForEach(fn)
-//	})
-//	return
-//}
-
 func (m *EventManager) CountRunningTasks(tenantId string) (n int, err error) {
 	ids, err := m.Tasks(tenantId)
 	if err != nil {
@@ -261,7 +231,6 @@ func (m *EventManager) CountRunningTasks(tenantId string) (n int, err error) {
 }
 
 func (m *EventManager) Latest(tenantId, taskId string) (ev *TaskEvent, err error) {
-	ev = new(TaskEvent)
 	err = m.db.View(func(tx *bbolt.Tx) error {
 		tenant := tx.Bucket([]byte(tenantId))
 		if tenant == nil {
@@ -278,7 +247,7 @@ func (m *EventManager) Latest(tenantId, taskId string) (ev *TaskEvent, err error
 		return err1
 	})
 
-	if ev == nil && err == nil {
+	if ev == nil || err != nil {
 		err = fmt.Errorf("the latest event does not exist")
 	}
 	return
