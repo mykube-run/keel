@@ -126,3 +126,14 @@ func (c *TaskQueue) populateTasks(ctx context.Context) error {
 	_ = c.lg.Log(logger.LevelDebug, "populated", n, "message", "fetched user tasks from database")
 	return nil
 }
+
+func (c *TaskQueue) PopAllUserTasks() (tasks entity.UserTasks, err error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	for c.UserTasks.Len() > 0 {
+		item := heap.Pop(c.UserTasks).(*Item)
+		tasks = append(tasks, item.Value().(*entity.UserTask))
+	}
+	return
+}

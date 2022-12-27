@@ -32,15 +32,16 @@ type Options struct {
 }
 
 type Scheduler struct {
-	opt      *Options
-	mu       sync.Mutex
-	cs       map[string]*queue.TaskQueue
-	em       *EventManager
-	db       types.DB
-	lg       logger.Logger
-	srv      *Server
-	tran     types.Transport
-	listener types.Listener
+	opt       *Options
+	mu        sync.Mutex
+	cs        map[string]*queue.TaskQueue
+	em        *EventManager
+	db        types.DB
+	lg        logger.Logger
+	srv       *Server
+	tran      types.Transport
+	listener  types.Listener
+	closeChan chan struct{}
 }
 
 func New(opt *Options, db types.DB, lg logger.Logger, listener types.Listener) (s *Scheduler, err error) {
@@ -48,11 +49,12 @@ func New(opt *Options, db types.DB, lg logger.Logger, listener types.Listener) (
 		listener = listener2.DefaultListener{}
 	}
 	s = &Scheduler{
-		opt:      opt,
-		cs:       make(map[string]*queue.TaskQueue),
-		db:       db,
-		lg:       lg,
-		listener: listener,
+		opt:       opt,
+		cs:        make(map[string]*queue.TaskQueue),
+		db:        db,
+		lg:        lg,
+		listener:  listener,
+		closeChan: make(chan struct{}),
 	}
 	s.srv = NewServer(db, s, opt.ServerConfig, lg, listener)
 	s.em, err = NewEventManager(opt.Snapshot, s.SchedulerId(), lg)
@@ -82,6 +84,9 @@ func (s *Scheduler) Start() {
 	select {
 	case <-stopC:
 		_ = s.lg.Log(logger.LevelInfo, "message", "received stop signal")
+		//close schedule
+		s.closeChan <- struct{}{}
+		s.RecoverSchedulingTask()
 		key, err := s.em.Backup()
 		_ = s.lg.Log(logger.LevelInfo, "key", key, "err", err.Error(), "message", "saved events db snapshot")
 		_ = s.tran.Close()
@@ -92,6 +97,8 @@ func (s *Scheduler) schedule() {
 	tick := time.NewTicker(time.Duration(s.opt.ScheduleInterval) * time.Second)
 	for {
 		select {
+		case <-s.closeChan:
+			return
 		case <-tick.C:
 			if _, err := s.updateActiveTenants(); err != nil {
 				_ = s.lg.Log(logger.LevelError, "message", "failed to update active tenants")
@@ -467,4 +474,27 @@ func (s *Scheduler) IsTaskTimeout(ev *TaskEvent) bool {
 
 func (s *Scheduler) SchedulerId() string {
 	return strings.ToLower(fmt.Sprintf("%v-%v", s.opt.Zone, s.opt.Name))
+}
+
+func (s *Scheduler) RecoverSchedulingTask() {
+	allSchedulingTask := make([]string, 0)
+	for _, taskQueue := range s.cs {
+		tasks, err := taskQueue.PopAllUserTasks()
+		if err != nil {
+			continue
+		}
+		for _, task := range tasks {
+			allSchedulingTask = append(allSchedulingTask, task.Uid)
+		}
+	}
+	err := s.db.UpdateTaskStatus(context.Background(), types.UpdateTaskStatusOption{
+		TaskType: enum.TaskTypeUserTask,
+		Uids:     allSchedulingTask,
+		Status:   enum.TaskStatusPending,
+	})
+	if err != nil {
+		_ = s.lg.Log(logger.LevelError, "err", err.Error(), "message", "pod close ture Scheduling Task to Pending success")
+		return
+	}
+	_ = s.lg.Log(logger.LevelInfo, "success", len(allSchedulingTask), "message", "")
 }

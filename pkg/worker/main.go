@@ -164,11 +164,6 @@ func (w *Worker) run(tc *types.TaskContext) error {
 			retry bool
 			e     error
 		)
-		// Notify scheduler that we have started the task
-		tc.MarkRunning()
-		w.notify(tc.NewMessage(enum.TaskStarted, nil))
-		_ = w.lg.Log(logger.LevelInfo, "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId,
-			"schedulerId", tc.Task.SchedulerId, "handler", tc.Task.Handler, "message", "start to process task")
 
 		defer func() {
 			if boom := recover(); boom != nil {
@@ -198,14 +193,19 @@ func (w *Worker) run(tc *types.TaskContext) error {
 		// if task need transition Call the migration task running method of the handler
 		if tc.Task.NeedRunWithTransition {
 			retry, e = hdl.StartTransitionTask(transitionFinishSignal)
+			go func() {
+				<-transitionFinishSignal
+				w.notify(tc.NewMessage(enum.FinishTransition, nil))
+			}()
 		} else {
+			// Notify scheduler that we have started the task
+			tc.MarkRunning()
+			w.notify(tc.NewMessage(enum.TaskStarted, nil))
+			_ = w.lg.Log(logger.LevelInfo, "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId,
+				"schedulerId", tc.Task.SchedulerId, "handler", tc.Task.Handler, "message", "start to process task")
 			retry, e = hdl.Start()
 		}
 		// listen task send Transition Finish signal
-		go func() {
-			<-transitionFinishSignal
-			w.notify(tc.NewMessage(enum.FinishTransition, nil))
-		}()
 		_ = w.lg.Log(logger.LevelInfo, "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId, "retry", retry,
 			"schedulerId", tc.Task.SchedulerId, "handler", tc.Task.Handler, "message", "finished processing task")
 	}
