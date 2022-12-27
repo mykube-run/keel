@@ -89,7 +89,6 @@ func (s *Scheduler) Start() {
 		s.RecoverSchedulingTask()
 		key, err := s.em.Backup()
 		_ = s.lg.Log(logger.LevelInfo, "key", key, "err", err.Error(), "message", "saved events db snapshot")
-		_ = s.tran.Close()
 	}
 }
 
@@ -175,7 +174,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 		_ = s.lg.Log(logger.LevelError, "tenantId", ev.TenantId, "taskId",
 			ev.TaskId, "message", "task run fail")
 	case enum.ReportTaskStatus:
-		// Does nothing
+		// Do Nothing
 		return
 	case enum.StartTransition:
 		// mark task transition and wait worker to FinishTransition
@@ -438,7 +437,6 @@ func (s *Scheduler) checkStaleTasks() {
 							continue
 						}
 					}
-
 				}
 			}
 		}

@@ -93,8 +93,10 @@ func (w *Worker) Start() {
 	select {
 	case <-stopC:
 		_ = w.lg.Log(logger.LevelInfo, "message", "received stop signal")
-		_ = w.tran.Close()
+		_ = w.tran.CloseReceiving()
+		time.Sleep(500 * time.Millisecond)
 		w.transferAllTasks()
+		_ = w.tran.CloseSend()
 		// TODO: send out retry message
 	}
 }
@@ -193,10 +195,11 @@ func (w *Worker) run(tc *types.TaskContext) error {
 		// if task need transition Call the migration task running method of the handler
 		if tc.Task.NeedRunWithTransition {
 			retry, e = hdl.StartTransitionTask(transitionFinishSignal)
-			go func() {
+			go func(tc2 *types.TaskContext) {
 				<-transitionFinishSignal
-				w.notify(tc.NewMessage(enum.FinishTransition, nil))
-			}()
+				_ = w.lg.Log(logger.LevelInfo, "message", "revive transition success chan message")
+				w.notify(tc2.NewMessage(enum.FinishTransition, nil))
+			}(tc)
 		} else {
 			// Notify scheduler that we have started the task
 			tc.MarkRunning()
@@ -265,6 +268,7 @@ func (w *Worker) transferAllTasks() {
 			return true
 		}
 		w.notify(tc.NewMessage(enum.StartTransition, s))
+		_ = w.lg.Log(logger.LevelWarn, "message", "transfertask success", "taskId", tc.Task.Uid)
 		return true
 	})
 }

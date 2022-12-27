@@ -20,13 +20,14 @@ var (
 )
 
 type KafkaTransport struct {
-	c       *kafka.Consumer
-	p       *kafka.Producer
-	lg      *zerolog.Logger
-	cfg     *config.TransportConfig
-	omr     types.OnMessageReceived
-	ttl     int
-	closing bool
+	c              *kafka.Consumer
+	p              *kafka.Producer
+	lg             *zerolog.Logger
+	cfg            *config.TransportConfig
+	omr            types.OnMessageReceived
+	ttl            int
+	closeSend      bool
+	closeReceiving bool
 }
 
 func NewKafkaTransport(cfg *config.TransportConfig) (*KafkaTransport, error) {
@@ -52,11 +53,12 @@ func NewKafkaTransport(cfg *config.TransportConfig) (*KafkaTransport, error) {
 	log.Info().Strs("topics", topics).Str("groupId", cfg.Kafka.GroupId).Msg("added subscription to topics")
 
 	t := &KafkaTransport{
-		c:       c,
-		p:       p,
-		lg:      new(zerolog.Logger),
-		cfg:     cfg,
-		closing: false,
+		c:              c,
+		p:              p,
+		lg:             new(zerolog.Logger),
+		cfg:            cfg,
+		closeReceiving: false,
+		closeSend:      false,
 	}
 
 	t.ttl = DefaultMessageTTL
@@ -97,8 +99,13 @@ func (t *KafkaTransport) Send(from, to string, msg []byte) error {
 	return t.p.Produce(kmsg, nil)
 }
 
-func (t *KafkaTransport) Close() error {
-	t.closing = true
+func (t *KafkaTransport) CloseSend() error {
+	t.closeSend = true
+	return nil
+}
+
+func (t *KafkaTransport) CloseReceiving() error {
+	t.closeReceiving = true
 	return nil
 }
 
@@ -115,7 +122,7 @@ func (t *KafkaTransport) consume() {
 	)
 
 	for {
-		if t.closing {
+		if t.closeReceiving {
 			return
 		}
 		if msg, err = t.c.ReadMessage(60); err != nil {
@@ -136,7 +143,7 @@ func (t *KafkaTransport) consume() {
 
 func (t *KafkaTransport) handleProducerEvents() {
 	for e := range t.p.Events() {
-		if t.closing {
+		if t.closeSend {
 			return
 		}
 
