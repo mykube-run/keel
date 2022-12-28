@@ -20,7 +20,7 @@ type DB interface {
 	GetTaskStatus(ctx context.Context, opt GetTaskStatusOption) (enum.TaskStatus, error)
 	FindTenant(ctx context.Context, opt GetTenantInfoOption) (entity.Tenant, error)
 	FindTenantPendingTaskCount(ctx context.Context, opt GetTenantPendingTaskOption) (int64, error)
-	ActiveTenant(ctx context.Context, opt ActiveTenantOption) error
+	ActiveTenant(ctx context.Context, opt ActiveTenantOption) error // TODO: rename to ActivateTenants
 	Close() error
 }
 

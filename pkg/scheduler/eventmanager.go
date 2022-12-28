@@ -178,13 +178,13 @@ func (m *EventManager) Iterate(tenantId, taskId string, fn func(e *TaskEvent) bo
 	return m.db.View(func(tx *bbolt.Tx) error {
 		tenant := tx.Bucket([]byte(tenantId))
 		if tenant == nil {
-			_ = m.lg.Log(logger.LevelWarn, "message", "tenant db is empty")
+			_ = m.lg.Log(logger.LevelWarn, "tenantId", tenantId, "message", "tenant db is empty")
 			return nil
 		}
 
 		task := tenant.Bucket([]byte(taskId))
 		if task == nil {
-			_ = m.lg.Log(logger.LevelDebug, "message", "task db is empty")
+			_ = m.lg.Log(logger.LevelWarn, "taskId", taskId, "message", "task db is empty")
 			return nil
 		}
 
@@ -314,7 +314,7 @@ func (m *EventManager) loadSnapshot() error {
 		tmp := m.snapshotKey(i)
 		info, err := m.s3.StatObject(m.sc.Bucket, tmp, minio.StatObjectOptions{})
 		if err != nil {
-			_ = m.lg.Log(logger.LevelDebug, "err", err.Error(), "message", "stat object error")
+			_ = m.lg.Log(logger.LevelError, "error", err, "message", "stat object error")
 			continue
 		}
 		if info.LastModified.After(newest) {
@@ -389,7 +389,7 @@ func (m *EventManager) maybeCompactEvents(bucket *bbolt.Bucket, key []byte, ev *
 		if ev.Timestamp.After(latest.Timestamp) &&
 			ev.Timestamp.Sub(latest.Timestamp).Seconds() >= float64(DefaultEventCompactDuration) {
 			if err := bucket.Delete(ev.Key()); err != nil {
-				_ = m.lg.Log(logger.LevelError, "key", key, "updated", "err", "error performing db compaction (while removing outdated task status report event)")
+				_ = m.lg.Log(logger.LevelError, "error", err, "key", key, "message", "error performing db compaction (while removing outdated task status report event)")
 			}
 		}
 	}
@@ -406,7 +406,7 @@ func (m *EventManager) backgroundBackup() {
 		select {
 		case <-tick.C:
 			if key, err := m.Backup(); err != nil {
-				_ = m.lg.Log(logger.LevelError, "err", err.Error(), "message", "error saving events db snapshot")
+				_ = m.lg.Log(logger.LevelError, "error", err, "message", "error saving events db snapshot")
 			} else {
 				_ = m.lg.Log(logger.LevelInfo, "key", key, "message", "saved events db snapshot")
 			}

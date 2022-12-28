@@ -11,7 +11,6 @@ import (
 	"github.com/mykube-run/keel/pkg/logger"
 	"github.com/mykube-run/keel/pkg/pb"
 	"github.com/mykube-run/keel/pkg/types"
-	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -35,7 +34,8 @@ func NewServer(db types.DB, sched *Scheduler, config config.ServerConfig, log lo
 }
 
 func (s *Server) NewTenant(ctx context.Context, req *pb.NewTenantRequest) (*pb.Response, error) {
-	_ = s.log.Log(logger.LevelDebug, "tenantID", req.Uid, "message", "create tenant")
+	_ = s.log.Log(logger.LevelInfo, "tenantId", req.Uid, "zone", req.Zone, "name", req.Name,
+		"message", "creating new tenant")
 	resp := &pb.Response{
 		Code: pb.Code_Ok,
 	}
@@ -60,22 +60,22 @@ func (s *Server) NewTenant(ctx context.Context, req *pb.NewTenantRequest) (*pb.R
 	if err := s.db.CreateTenant(ctx, t); err != nil {
 		if err == types.ErrorTenantAlreadyExists {
 			err = status.Error(codes.AlreadyExists, types.ErrorTenantAlreadyExists.Error())
-			_ = s.log.Log(logger.LevelInfo, "tenantID", req.Uid, "message", "tenant AlreadyExists")
+			_ = s.log.Log(logger.LevelInfo, "tenantId", req.Uid, "message", "tenant already exists")
 			return nil, err
 		}
-		_ = s.log.Log(logger.LevelInfo, "tenantID", req.Uid, "message", "create tenant error")
+		_ = s.log.Log(logger.LevelError, "error", err, "tenantId", req.Uid, "message", "failed to create tenant")
 		return nil, err
 	}
-	_ = s.log.Log(logger.LevelDebug, "tenantID", req.Uid, "message", "create tenant success")
+	_ = s.log.Log(logger.LevelInfo, "tenantId", req.Uid, "message", "created new tenant")
 	return resp, nil
 }
 
 func (s *Server) TenantTaskInfo(ctx context.Context, req *pb.TenantTaskRequest) (resp *pb.TenantTaskResponse, err error) {
-	_ = s.log.Log(logger.LevelDebug, "tenantID", req.TenantID, "message", "get tenant tasks")
+	_ = s.log.Log(logger.LevelDebug, "tenantId", req.TenantID, "message", "get tenant tasks")
 	queue, ex := s.sched.cs[req.GetTenantID()]
 	pendingCount, err := s.db.FindTenantPendingTaskCount(ctx, types.GetTenantPendingTaskOption{TenantId: req.TenantID})
 	if err != nil {
-		_ = s.log.Log(logger.LevelError, "tenantID", req.TenantID, "message", "FindTenantPendingTaskCount error", "error", err.Error())
+		_ = s.log.Log(logger.LevelError, "error", err, "tenantId", req.TenantID, "message", "failed to count tenant pending tasks")
 		return nil, err
 	}
 	if ex {
@@ -97,7 +97,7 @@ func (s *Server) TenantTaskInfo(ctx context.Context, req *pb.TenantTaskRequest) 
 		var tenant entity.Tenant
 		tenant, err = s.db.FindTenant(ctx, types.GetTenantInfoOption{TenantId: &req.TenantID})
 		if err != nil {
-			_ = s.log.Log(logger.LevelError, "tenantID", req.TenantID, "message", "get tenant task,but tenant not exist", "error", err.Error())
+			_ = s.log.Log(logger.LevelError, "error", err, "tenantId", req.TenantID, "message", "found tenant tasks, but tenant does not exist")
 			resp = &pb.TenantTaskResponse{
 				Code: pb.Code_TaskNotExist,
 			}
@@ -107,13 +107,12 @@ func (s *Server) TenantTaskInfo(ctx context.Context, req *pb.TenantTaskRequest) 
 			Code: pb.Code_Ok, Running: 0, Pending: pendingCount,
 			Limit: tenant.ResourceQuota.Concurrency.Int64,
 		}
-		_ = s.log.Log(logger.LevelDebug, "tenantID", req.TenantID, "message", "get tenant task,but tenant not exist", "error", err.Error())
 		return resp, nil
 	}
 }
 
 func (s *Server) NewTask(ctx context.Context, req *pb.NewTaskRequest) (*pb.Response, error) {
-	_ = s.log.Log(logger.LevelDebug, "tenantID", req.TenantId, "taskID", req.Uid, "message", "create task")
+	_ = s.log.Log(logger.LevelInfo, "tenantId", req.TenantId, "taskId", req.Uid, "message", "creating new task")
 	now := time.Now()
 	t := entity.UserTask{
 		TenantId:         req.TenantId,
@@ -144,7 +143,8 @@ func (s *Server) NewTask(ctx context.Context, req *pb.NewTaskRequest) (*pb.Respo
 		}
 	}
 	if err := s.db.CreateNewTask(ctx, t); err != nil {
-		_ = s.log.Log(logger.LevelError, "tenantID", req.TenantId, "taskID", req.Uid, "message", "create task error", "err", err.Error())
+		_ = s.log.Log(logger.LevelError, "error", err, "tenantId", req.TenantId, "taskId", req.Uid,
+			"message", "failed to create new task")
 		return nil, err
 	}
 	msg := types.ListenerEventMessage{TenantUID: req.TenantId, TaskUID: req.Uid}
@@ -152,7 +152,8 @@ func (s *Server) NewTask(ctx context.Context, req *pb.NewTaskRequest) (*pb.Respo
 	resp := &pb.Response{
 		Code: pb.Code_Ok,
 	}
-	_ = s.log.Log(logger.LevelDebug, "tenantID", req.TenantId, "taskID", req.Uid, "message", "create task success")
+	_ = s.log.Log(logger.LevelDebug, "tenantId", req.TenantId, "taskId", req.Uid,
+		"message", "created new task")
 	return resp, nil
 }
 
@@ -179,7 +180,7 @@ func (s *Server) PauseTask(ctx context.Context, req *pb.PauseTaskRequest) (*pb.R
 }
 
 func (s *Server) RestartTask(ctx context.Context, req *pb.RestartTaskRequest) (*pb.Response, error) {
-	_ = s.log.Log(logger.LevelDebug, "taskID", req.Uid, "message", "restart task")
+	_ = s.log.Log(logger.LevelDebug, "taskId", req.Uid, "message", "restart task")
 	panic("implement me")
 }
 
@@ -222,18 +223,16 @@ func (s *Server) StopTask(ctx context.Context, req *pb.StopTaskRequest) (*pb.Res
 }
 
 func (s *Server) QueryTaskStatus(ctx context.Context, req *pb.QueryTaskRequest) (*pb.QueryStatusResponse, error) {
-	_ = s.log.Log(logger.LevelDebug, "taskID", req.Uid, "message", "query task status")
 	options := types.GetTaskStatusOption{Uid: req.Uid}
 	taskStatus, err := s.db.GetTaskStatus(ctx, options)
 	if err != nil {
-		_ = s.log.Log(logger.LevelError, "taskID", req.Uid, "message", "query task error", "err", err.Error())
+		_ = s.log.Log(logger.LevelError, "error", err, "taskId", req.Uid, "message", "query task error")
 		return nil, err
 	}
 	resp := &pb.QueryStatusResponse{
 		Code:   pb.Code_Ok,
 		Status: string(taskStatus),
 	}
-	_ = s.log.Log(logger.LevelDebug, "taskID", req.Uid, "message", "query task success")
 	return resp, nil
 }
 
@@ -251,7 +250,7 @@ func (s *Server) Start() {
 	// Serve gRPC server
 	_ = s.log.Log(logger.LevelInfo, "message", fmt.Sprintf("serving gRPC on %s", s.config.GrpcAddress))
 	go func() {
-		_ = s.log.Log(logger.LevelFatal, "err", srv.Serve(lis))
+		_ = s.log.Log(logger.LevelFatal, "error", srv.Serve(lis))
 	}()
 
 	// Create a client connection to the gRPC server we just started
@@ -266,12 +265,11 @@ func (s *Server) Start() {
 		_ = s.log.Log(logger.LevelFatal, "message", fmt.Sprintf("failed to dial gRPC server: %v", err))
 	}
 
+	// Register gateway
 	gwmux := runtime.NewServeMux()
-	// Register Greeter
 	err = pb.RegisterScheduleServiceHandler(context.Background(), gwmux, conn)
 	if err != nil {
-		_ = s.log.Log(logger.LevelFatal, "message", fmt.Sprintf("serving gRPC on %s", s.config.GrpcAddress))
-		log.Fatal().Msgf("failed to register gateway: %v", err)
+		_ = s.log.Log(logger.LevelFatal, "message", fmt.Sprintf("failed to register gateway: %v", err))
 	}
 
 	gwServer := &http.Server{
@@ -279,5 +277,5 @@ func (s *Server) Start() {
 		Handler: gwmux,
 	}
 	_ = s.log.Log(logger.LevelInfo, "message", fmt.Sprintf("serving gRPC-Gateway on http://%s", s.config.HttpAddress))
-	_ = s.log.Log(logger.LevelFatal, "err", gwServer.ListenAndServe())
+	_ = s.log.Log(logger.LevelFatal, "error", gwServer.ListenAndServe())
 }
