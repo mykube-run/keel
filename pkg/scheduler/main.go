@@ -89,7 +89,7 @@ func (s *Scheduler) Start() {
 		s.RecoverSchedulingTask()
 		key, err := s.em.Backup()
 		if err != nil {
-			_ = s.lg.Log(logger.LevelInfo, "key", key, "error", err, "message", "error saving events db snapshot")
+			_ = s.lg.Log(logger.LevelError, "key", key, "error", err, "message", "error saving events db snapshot")
 		}
 	}
 }
