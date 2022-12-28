@@ -247,7 +247,7 @@ func (m *EventManager) Latest(tenantId, taskId string) (ev *TaskEvent, err error
 		return err1
 	})
 
-	if ev == nil || err != nil {
+	if err != nil || ev == nil {
 		err = fmt.Errorf("the latest event does not exist")
 	}
 	return

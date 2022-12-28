@@ -191,15 +191,10 @@ func (w *Worker) run(tc *types.TaskContext) error {
 				}
 			}
 		}()
-		transitionFinishSignal := make(chan struct{})
 		// if task need transition Call the migration task running method of the handler
 		if tc.Task.NeedRunWithTransition {
-			retry, e = hdl.StartTransitionTask(transitionFinishSignal)
-			go func(tc2 *types.TaskContext) {
-				<-transitionFinishSignal
-				_ = w.lg.Log(logger.LevelInfo, "message", "revive transition success chan message")
-				w.notify(tc2.NewMessage(enum.FinishTransition, nil))
-			}(tc)
+			w.notify(tc.NewMessage(enum.FinishTransition, nil))
+			retry, e = hdl.Start()
 		} else {
 			// Notify scheduler that we have started the task
 			tc.MarkRunning()
@@ -254,7 +249,6 @@ func (w *Worker) notify(m *types.TaskMessage) {
 
 // transferAllTasks transfers all tasks to other workers
 func (w *Worker) transferAllTasks() {
-	// TODO: handle task transition properly
 	w.running.Range(func(k, v interface{}) bool {
 		hdl, ok := v.(types.TaskHandler)
 		if !ok {

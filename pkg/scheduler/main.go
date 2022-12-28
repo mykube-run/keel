@@ -88,7 +88,9 @@ func (s *Scheduler) Start() {
 		s.closeChan <- struct{}{}
 		s.RecoverSchedulingTask()
 		key, err := s.em.Backup()
-		_ = s.lg.Log(logger.LevelInfo, "key", key, "err", err.Error(), "message", "saved events db snapshot")
+		if err != nil {
+			_ = s.lg.Log(logger.LevelError, "key", key, "err", err.Error(), "message", "saved events db snapshot")
+		}
 	}
 }
 
@@ -407,7 +409,6 @@ func (s *Scheduler) checkStaleTasks() {
 				for _, task := range tasks {
 					ev, err = s.em.Latest(tenant, task)
 					if err != nil {
-						_ = s.lg.Log(logger.LevelError, "err", err.Error(), "message", "error finding the latest event")
 						continue
 					}
 					ok := s.IsTaskTimeout(ev)
