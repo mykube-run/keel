@@ -11,7 +11,6 @@ import (
 	"github.com/mykube-run/keel/pkg/logger"
 	"github.com/mykube-run/keel/pkg/pb"
 	"github.com/mykube-run/keel/pkg/types"
-	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -266,12 +265,11 @@ func (s *Server) Start() {
 		_ = s.log.Log(logger.LevelFatal, "message", fmt.Sprintf("failed to dial gRPC server: %v", err))
 	}
 
+	// Register gateway
 	gwmux := runtime.NewServeMux()
-	// Register Greeter
 	err = pb.RegisterScheduleServiceHandler(context.Background(), gwmux, conn)
 	if err != nil {
-		_ = s.log.Log(logger.LevelFatal, "message", fmt.Sprintf("serving gRPC on %s", s.config.GrpcAddress))
-		log.Fatal().Msgf("failed to register gateway: %v", err)
+		_ = s.log.Log(logger.LevelFatal, "message", fmt.Sprintf("failed to register gateway: %v", err))
 	}
 
 	gwServer := &http.Server{
