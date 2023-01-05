@@ -4,6 +4,8 @@ import (
 	"github.com/mykube-run/keel/pkg/config"
 	"github.com/mykube-run/keel/pkg/enum"
 	"github.com/mykube-run/keel/pkg/impl/database"
+	"github.com/mykube-run/keel/pkg/impl/listener"
+	"github.com/mykube-run/keel/pkg/impl/logging"
 	"github.com/mykube-run/keel/pkg/scheduler"
 	"github.com/mykube-run/keel/tests/testkit/worker"
 	"github.com/rs/zerolog"
@@ -24,9 +26,8 @@ func Test_Main(t *testing.T) {
 		Transport:        cfg.Transport,
 	}
 	db := database.NewMockDB()
-	//lg := zerolog.New(os.Stdout)
 	zerolog.SetGlobalLevel(zerolog.TraceLevel)
-	s, err := scheduler.New(opt, db, nil, nil)
+	s, err := scheduler.New(opt, db, logging.NewDefaultLogger(nil), listener.Default)
 	if err != nil {
 		t.Fatalf("error creating scheduler: %v", err)
 	}

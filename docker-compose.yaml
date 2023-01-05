@@ -35,6 +35,8 @@ services:
     image: bitnami/minio:latest
     environment:
       MINIO_DEFAULT_BUCKETS: snapshots
+      MINIO_ROOT_USER: 'minio-access-key'
+      MINIO_ROOT_PASSWORD: 'minio-secret-key'
     restart: on-failure
     networks:
       - test

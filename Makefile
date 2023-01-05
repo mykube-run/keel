@@ -17,7 +17,7 @@ test:
 	go clean -testcache && go test -v -cover -failfast ./pkg/**/
 
 integration-test:
-	sudo docker-compose -f docker-compose.yaml up --build --abort-on-container-exit
+	docker-compose -f docker-compose.yaml up --build --abort-on-container-exit
 
 stop-integration-test:
-	sudo docker-compose -f docker-compose.yaml down --volumes --remove-orphans --rmi local
+	docker-compose -f docker-compose.yaml down --volumes --remove-orphans --rmi local
