@@ -27,11 +27,31 @@ func (m *MockDB) CreateTask(ctx context.Context, t entity.UserTask) error {
 }
 
 func (m *MockDB) GetTenant(ctx context.Context, opt types.GetTenantOption) (entity.Tenant, error) {
-	panic("implement me")
+	tenant := entity.Tenant{
+		Id:         "tenant-1",
+		Uid:        "tenant-1",
+		Zone:       "global",
+		Priority:   0,
+		Name:       "Tenant 1",
+		Status:     string(enum.TaskStatusPending),
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+		LastActive: time.Now(),
+		ResourceQuota: entity.ResourceQuota{
+			Id:       "tenant-1",
+			TenantId: "tenant-1",
+			Type:     enum.ResourceTypeConcurrency,
+			Concurrency: sql.NullInt64{
+				Int64: 3,
+				Valid: true,
+			},
+		},
+	}
+	return tenant, nil
 }
 
 func (m *MockDB) CountTenantPendingTasks(ctx context.Context, opt types.CountTenantPendingTasksOption) (int64, error) {
-	panic("implement me")
+	return 0, nil
 }
 
 func (m *MockDB) FindActiveTenants(ctx context.Context, opt types.FindActiveTenantsOption) (entity.Tenants, error) {
@@ -59,7 +79,7 @@ func (m *MockDB) FindActiveTenants(ctx context.Context, opt types.FindActiveTena
 }
 
 func (m *MockDB) ActivateTenants(ctx context.Context, opt types.ActivateTenantsOption) error {
-	panic("implement me")
+	return nil
 }
 
 func (m *MockDB) FindRecentTasks(ctx context.Context, opt types.FindRecentTasksOption) (entity.Tasks, error) {

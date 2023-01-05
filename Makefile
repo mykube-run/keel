@@ -19,5 +19,5 @@ test:
 integration-test:
 	docker-compose -f docker-compose.yaml up --build --abort-on-container-exit
 
-stop-integration-test:
+clear-integration-test:
 	docker-compose -f docker-compose.yaml down --volumes --remove-orphans --rmi local

@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"fmt"
 	"github.com/mykube-run/keel/pkg/config"
 	"github.com/mykube-run/keel/pkg/enum"
 	"github.com/mykube-run/keel/pkg/impl/database"
@@ -24,6 +25,10 @@ func Test_Main(t *testing.T) {
 		StaleCheckDelay:  int64(cfg.Scheduler.StaleCheckDelay),
 		Snapshot:         cfg.Snapshot,
 		Transport:        cfg.Transport,
+		ServerConfig: config.ServerConfig{
+			HttpAddress: fmt.Sprintf("%v:%v", cfg.Scheduler.Address, cfg.Scheduler.Port),
+			GrpcAddress: fmt.Sprintf("%v:%v", cfg.Scheduler.Address, cfg.Scheduler.Port+1000),
+		},
 	}
 	db := database.NewMockDB()
 	zerolog.SetGlobalLevel(zerolog.TraceLevel)
