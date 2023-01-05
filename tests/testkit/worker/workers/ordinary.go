@@ -7,32 +7,32 @@ import (
 	"time"
 )
 
-const NormalTaskDuration = 120
+const OrdinaryTaskDuration = 120
 
-type NormalTaskHandler struct {
+type OrdinaryTaskHandler struct {
 	started time.Time
 	ctx     *types.TaskContext
 }
 
-func NormalTaskHandlerFactory(ctx *types.TaskContext, info *types.WorkerInfo) (types.TaskHandler, error) {
-	return &NormalTaskHandler{
+func OrdinaryTaskHandlerFactory(ctx *types.TaskContext, info *types.WorkerInfo) (types.TaskHandler, error) {
+	return &OrdinaryTaskHandler{
 		ctx: ctx,
 	}, nil
 }
 
-func (s *NormalTaskHandler) Start() (bool, error) {
+func (s *OrdinaryTaskHandler) Start() (bool, error) {
 	s.started = time.Now()
 	log.Info().Str("taskId", s.ctx.Task.Uid).
-		Msgf("start to process task, will sleep for %v seconds and finish the task", NormalTaskDuration)
-	time.Sleep(time.Second * NormalTaskDuration)
+		Msgf("start to process task, will sleep for %v seconds and finish the task", OrdinaryTaskDuration)
+	time.Sleep(time.Second * OrdinaryTaskDuration)
 	return false, nil
 }
 
-func (s *NormalTaskHandler) HeartBeat() (*types.TaskContext, *types.TaskStatus, error) {
+func (s *OrdinaryTaskHandler) HeartBeat() (*types.TaskContext, *types.TaskStatus, error) {
 	return nil, nil, nil
 }
 
-func (s *NormalTaskHandler) StartTransitionTask(chan struct{}) (bool, error) {
+func (s *OrdinaryTaskHandler) StartTransitionTask(chan struct{}) (bool, error) {
 	s.started = time.Now()
 	log.Info().Str("taskId", s.ctx.Task.Uid).
 		Msgf("start to process task, will hang up for %v seconds and return error on HeartBeat call", HangUpDuration)
@@ -40,11 +40,11 @@ func (s *NormalTaskHandler) StartTransitionTask(chan struct{}) (bool, error) {
 	return false, nil
 }
 
-func (s *NormalTaskHandler) Stop() error {
+func (s *OrdinaryTaskHandler) Stop() error {
 	return nil
 }
 
-func (s *NormalTaskHandler) BeforeTransitionStart() (*types.TaskContext, *types.TaskStatus, error) {
+func (s *OrdinaryTaskHandler) BeforeTransitionStart() (*types.TaskContext, *types.TaskStatus, error) {
 	status := &types.TaskStatus{
 		State:     enum.TaskStatusNeedsRetry,
 		Progress:  s.progress(),
@@ -54,7 +54,7 @@ func (s *NormalTaskHandler) BeforeTransitionStart() (*types.TaskContext, *types.
 	return s.ctx, status, nil
 }
 
-func (s *NormalTaskHandler) TransitionFinish() (*types.TaskContext, *types.TaskStatus, error) {
+func (s *OrdinaryTaskHandler) TransitionFinish() (*types.TaskContext, *types.TaskStatus, error) {
 	status := &types.TaskStatus{
 		State:     enum.TaskStatusNeedsRetry,
 		Progress:  s.progress(),
@@ -64,7 +64,7 @@ func (s *NormalTaskHandler) TransitionFinish() (*types.TaskContext, *types.TaskS
 	return s.ctx, status, nil
 }
 
-func (s *NormalTaskHandler) TransitionError() (*types.TaskContext, *types.TaskStatus, error) {
+func (s *OrdinaryTaskHandler) TransitionError() (*types.TaskContext, *types.TaskStatus, error) {
 	status := &types.TaskStatus{
 		State:     enum.TaskStatusFailed,
 		Progress:  s.progress(),
@@ -74,15 +74,15 @@ func (s *NormalTaskHandler) TransitionError() (*types.TaskContext, *types.TaskSt
 	return s.ctx, status, nil
 }
 
-func (s *NormalTaskHandler) progress() int {
+func (s *OrdinaryTaskHandler) progress() int {
 	dur := time.Now().Sub(s.started).Seconds()
-	p := int(dur / float64(NormalTaskDuration) * 100)
+	p := int(dur / float64(OrdinaryTaskDuration) * 100)
 	if p > 100 {
 		p = 100
 	}
 	return p
 }
 
-func (s *NormalTaskHandler) NotifyTransitionFinish(signalChan chan struct{}) {
+func (s *OrdinaryTaskHandler) NotifyTransitionFinish(signalChan chan struct{}) {
 	signalChan <- struct{}{}
 }

@@ -25,7 +25,7 @@ func StartTestWorkers() {
 		log.Fatal().Err(err).Msg("error creating worker")
 	}
 
-	w.RegisterHandler("normal", workers.NormalTaskHandlerFactory)
+	w.RegisterHandler("ordinary", workers.OrdinaryTaskHandlerFactory)
 	w.RegisterHandler("retry", workers.RetryTaskHandlerFactory)
 	w.RegisterHandler("hangup", workers.HangUpTaskHandlerFactory)
 	w.Start()

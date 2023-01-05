@@ -32,12 +32,12 @@ func (s *RetryTaskHandler) Start() (bool, error) {
 	s.started = time.Now()
 	log.Info().Str("taskId", s.ctx.Task.Uid).
 		Msgf("start to process task, will sleep for at most %v seconds, retry %v times and finish the task",
-			NormalTaskDuration, NumOfRetries)
+			OrdinaryTaskDuration, NumOfRetries)
 	if s.ctx.Task.RestartTimes <= 2 {
 		time.Sleep(time.Second * time.Duration(rand.Int63n(60)+30))
 		return true, fmt.Errorf("task needs retry")
 	}
-	time.Sleep(time.Second * NormalTaskDuration)
+	time.Sleep(time.Second * OrdinaryTaskDuration)
 	return false, nil
 }
 
@@ -45,12 +45,12 @@ func (s *RetryTaskHandler) StartTransitionTask(chan struct{}) (bool, error) {
 	s.started = time.Now()
 	log.Info().Str("taskId", s.ctx.Task.Uid).
 		Msgf("start to process task, will sleep for at most %v seconds, retry %v times and finish the task",
-			NormalTaskDuration, NumOfRetries)
+			OrdinaryTaskDuration, NumOfRetries)
 	if s.ctx.Task.RestartTimes <= 2 {
 		time.Sleep(time.Second * time.Duration(rand.Int63n(60)+30))
 		return true, fmt.Errorf("task needs retry")
 	}
-	time.Sleep(time.Second * NormalTaskDuration)
+	time.Sleep(time.Second * OrdinaryTaskDuration)
 	return false, nil
 }
 

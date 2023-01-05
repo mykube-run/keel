@@ -76,7 +76,7 @@ func (s *HangUpTaskHandler) TransitionError() (*types.TaskContext, *types.TaskSt
 
 func (s *HangUpTaskHandler) progress() int {
 	dur := time.Now().Sub(s.started).Seconds()
-	p := int(dur / float64(NormalTaskDuration) * 100)
+	p := int(dur / float64(OrdinaryTaskDuration) * 100)
 	if p > 100 {
 		p = 100
 	}
