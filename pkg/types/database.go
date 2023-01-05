@@ -2,32 +2,32 @@ package types
 
 import (
 	"context"
-	"errors"
 	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
 	"time"
 )
 
-var ErrorTenantAlreadyExists = errors.New("tenant already exists")
-
 type DB interface {
 	CreateTenant(ctx context.Context, t entity.Tenant) error
-	CreateNewTask(ctx context.Context, t entity.UserTask) error
-	FindActiveTenants(context.Context, FindActiveTenantsOption) (entity.Tenants, error)
-	FindRecentTasks(context.Context, FindRecentTasksOption) (entity.Tasks, error)
-	GetTask(context.Context, GetTaskOption) (entity.Tasks, error)
-	UpdateTaskStatus(ctx context.Context, opt UpdateTaskStatusOption) error
+	ActivateTenants(ctx context.Context, opt ActivateTenantsOption) error
+	GetTenant(ctx context.Context, opt GetTenantOption) (entity.Tenant, error)
+	FindActiveTenants(ctx context.Context, opt FindActiveTenantsOption) (entity.Tenants, error)
+	CountTenantPendingTasks(ctx context.Context, opt CountTenantPendingTasksOption) (int64, error)
+
+	GetTask(ctx context.Context, opt GetTaskOption) (entity.Tasks, error)
 	GetTaskStatus(ctx context.Context, opt GetTaskStatusOption) (enum.TaskStatus, error)
-	FindTenant(ctx context.Context, opt GetTenantInfoOption) (entity.Tenant, error)
-	FindTenantPendingTaskCount(ctx context.Context, opt GetTenantPendingTaskOption) (int64, error)
-	ActiveTenant(ctx context.Context, opt ActiveTenantOption) error // TODO: rename to ActivateTenants
+	FindRecentTasks(ctx context.Context, opt FindRecentTasksOption) (entity.Tasks, error)
+	CreateTask(ctx context.Context, t entity.UserTask) error
+	UpdateTaskStatus(ctx context.Context, opt UpdateTaskStatusOption) error
+
 	Close() error
 }
 
 // FindActiveTenantsOption specifies options for finding active tenants
 type FindActiveTenantsOption struct {
-	From *time.Time
-	Zone *string
+	From      *time.Time
+	Zone      *string
+	Partition *string
 }
 
 // FindRecentTasksOption specifies options for finding recent tasks
@@ -57,17 +57,20 @@ type GetTaskStatusOption struct {
 	Uid      string
 }
 
-type GetTenantInfoOption struct {
-	TenantId *string
-}
-
-type GetTenantPendingTaskOption struct {
+// GetTenantOption specifies options for getting tenant entity
+type GetTenantOption struct {
 	TenantId string
-	StartAt  time.Time
-	EndAt    time.Time
 }
 
-type ActiveTenantOption struct {
+// CountTenantPendingTasksOption specifies options for counting the number of pending tasks of specified tenant
+type CountTenantPendingTasksOption struct {
+	TenantId string
+	From     time.Time
+	To       time.Time
+}
+
+// ActivateTenantsOption specifies options for updating tenants' active time
+type ActivateTenantsOption struct {
 	TenantId   []string
 	ActiveTime time.Time
 }

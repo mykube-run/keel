@@ -6,7 +6,6 @@ import (
 	"github.com/mykube-run/keel/pkg/config"
 	"github.com/mykube-run/keel/pkg/enum"
 	"github.com/mykube-run/keel/pkg/impl/transport"
-	"github.com/mykube-run/keel/pkg/logger"
 	"github.com/mykube-run/keel/pkg/types"
 	"github.com/panjf2000/ants/v2"
 	"os"
@@ -34,7 +33,7 @@ func (o *Options) validate() {
 }
 
 type Worker struct {
-	lg        logger.Logger
+	lg        types.Logger
 	opt       *Options
 	pool      *ants.Pool
 	tran      types.Transport
@@ -44,7 +43,7 @@ type Worker struct {
 }
 
 // New initializes a new Worker
-func New(opt *Options, lg logger.Logger) (*Worker, error) {
+func New(opt *Options, lg types.Logger) (*Worker, error) {
 	opt.validate()
 
 	var err error
@@ -79,11 +78,7 @@ func (w *Worker) RegisterHandler(name string, f types.TaskHandlerFactory) {
 
 // Start starts the worker
 func (w *Worker) Start() {
-	handlerNames := make([]string, 0)
-	for k, _ := range w.factories {
-		handlerNames = append(handlerNames, k)
-	}
-	_ = w.lg.Log(logger.LevelInfo, "supportHandlers", handlerNames,
+	w.lg.Log(types.LevelInfo, "handlers", w.handlers(),
 		"workerId", w.opt.Name, "poolSize", w.opt.PoolSize, "message", "starting worker")
 	go w.report()
 
@@ -92,7 +87,7 @@ func (w *Worker) Start() {
 
 	select {
 	case <-stopC:
-		_ = w.lg.Log(logger.LevelInfo, "message", "received stop signal")
+		w.lg.Log(types.LevelInfo, "message", "received stop signal")
 		_ = w.tran.CloseReceiving()
 		time.Sleep(500 * time.Millisecond)
 		w.transferAllTasks()
@@ -105,48 +100,46 @@ func (w *Worker) Start() {
 func (w *Worker) onReceiveMessage(from string, msg []byte) (result []byte, err error) {
 	var task types.Task
 	if err = json.Unmarshal(msg, &task); err != nil {
-		_ = w.lg.Log(logger.LevelError, "err", err.Error(), "message", "failed to unmarshal task message")
+		w.lg.Log(types.LevelError, "error", err, "message", "failed to unmarshal task message")
 		return nil, err
 	}
-	names := make([]string, 0)
-	for k, _ := range w.factories {
-		names = append(names, k)
-	}
 	if _, ok := w.factories[task.Handler]; !ok {
-		return []byte("success"), nil
+		return []byte("unsupported handler"), nil
 	}
-	_ = w.lg.Log(logger.LevelDebug, "running", w.pool.Running(), "capacity", w.pool.Cap(), "taskId", task.Uid,
-		"tenantId", task.TenantId, "schedulerId", task.SchedulerId, "handler", task.Handler, "message", "dispatching task within task pool")
+
+	w.lg.Log(types.LevelDebug, "running", w.pool.Running(), "capacity", w.pool.Cap(), "taskId", task.Uid,
+		"tenantId", task.TenantId, "schedulerId", task.SchedulerId, "handler", task.Handler,
+		"message", "dispatching task within worker pool")
 	tc := &types.TaskContext{
 		Worker: w.info,
 		Task:   task,
 	}
 	if err = w.run(tc); err != nil {
-		_ = w.lg.Log(logger.LevelError, "err", err.Error(), "message", "failed to start task")
+		w.lg.Log(types.LevelError, "error", err, "message", "failed to start task")
 		return nil, err
 	}
 	return []byte("success"), nil
 }
 
-// run pushes a Task into pool and returns immediately
+// run stops the Task
 func (w *Worker) stopTask(tc *types.TaskContext) error {
-	handler, ok := w.running.Load(tc.Task.Uid)
+	tmp, ok := w.running.Load(tc.Task.Uid)
 	if !ok {
-		_ = w.lg.Log(logger.LevelInfo, "message", "revive stop signal but task is not running")
+		w.lg.Log(types.LevelInfo, "message", "received stop signal but task is not running")
 		return nil
 	}
-	realHandler, ok := handler.(types.TaskHandler)
+	hdl, ok := tmp.(types.TaskHandler)
 	if !ok {
 		return nil
 	}
-	return realHandler.Stop()
+	return hdl.Stop()
 }
 
 // run pushes a Task into pool and returns immediately
 func (w *Worker) run(tc *types.TaskContext) error {
 	_, ok := w.running.Load(tc.Task.Uid)
 	if ok {
-		return fmt.Errorf("task already being executed")
+		return fmt.Errorf("task already processing")
 	}
 	// Get handler factory and initialize a new handler for the task
 	f, ok := w.factories[tc.Task.Handler]
@@ -168,9 +161,9 @@ func (w *Worker) run(tc *types.TaskContext) error {
 		)
 
 		defer func() {
-			if boom := recover(); boom != nil {
-				w.printStack(tc.Task, boom)
-				e = fmt.Errorf("task panic: %v", boom)
+			if r := recover(); r != nil {
+				w.printStack(tc.Task, r)
+				e = fmt.Errorf("task handler panicked: %v", r)
 			}
 			status := enum.TaskRunStatusSucceed
 			if e != nil {
@@ -191,21 +184,26 @@ func (w *Worker) run(tc *types.TaskContext) error {
 				}
 			}
 		}()
-		// if task need transition Call the migration task running method of the handler
-		if tc.Task.NeedRunWithTransition {
+
+		// if task is in transition, start transition
+		if tc.Task.InTransition {
 			w.notify(tc.NewMessage(enum.FinishTransition, nil))
+			w.lg.Log(types.LevelInfo, "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId,
+				"schedulerId", tc.Task.SchedulerId, "handler", tc.Task.Handler,
+				"message", "start processing transited task")
 			retry, e = hdl.Start()
 		} else {
 			// Notify scheduler that we have started the task
 			tc.MarkRunning()
 			w.notify(tc.NewMessage(enum.TaskStarted, nil))
-			_ = w.lg.Log(logger.LevelInfo, "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId,
-				"schedulerId", tc.Task.SchedulerId, "handler", tc.Task.Handler, "message", "start to process task")
+			w.lg.Log(types.LevelInfo, "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId,
+				"schedulerId", tc.Task.SchedulerId, "handler", tc.Task.Handler,
+				"message", "start processing task")
 			retry, e = hdl.Start()
 		}
-		// listen task send Transition Finish signal
-		_ = w.lg.Log(logger.LevelInfo, "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId, "retry", retry,
-			"schedulerId", tc.Task.SchedulerId, "handler", tc.Task.Handler, "message", "finished processing task")
+		w.lg.Log(types.LevelInfo, "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId, "retry", retry,
+			"schedulerId", tc.Task.SchedulerId, "handler", tc.Task.Handler,
+			"message", "finished processing task")
 	}
 	return w.pool.Submit(fn)
 }
@@ -224,7 +222,7 @@ func (w *Worker) report() {
 
 				tc, s, err := hdl.HeartBeat()
 				if err != nil {
-					_ = w.lg.Log(logger.LevelError, "err", err.Error(), "message", "heartbeat error")
+					w.lg.Log(types.LevelError, "error", err, "message", "heartbeat error")
 					return true
 				}
 				w.notify(tc.NewMessage(enum.ReportTaskStatus, s))
@@ -238,12 +236,14 @@ func (w *Worker) report() {
 func (w *Worker) notify(m *types.TaskMessage) {
 	byt, err := json.Marshal(m)
 	if err != nil {
-		_ = w.lg.Log(logger.LevelError, "err", err.Error(), "message", "failed to marshal message")
+		w.lg.Log(types.LevelError, "error", err, "message", "failed to marshal message")
 		return
 	}
 
 	if err = w.tran.Send(w.info.Id, m.SchedulerId, byt); err != nil {
-		_ = w.lg.Log(logger.LevelError, "err", err.Error(), "message", "failed to send message")
+		w.lg.Log(types.LevelError, "error", err,
+			"workerId", w.info.Id, "schedulerId", m.SchedulerId,
+			"message", "failed to send message")
 	}
 }
 
@@ -257,21 +257,32 @@ func (w *Worker) transferAllTasks() {
 
 		tc, s, err := hdl.BeforeTransitionStart()
 		if err != nil {
-			_ = w.lg.Log(logger.LevelError, "err", err.Error(), "message", "failed to start task transition")
+			w.lg.Log(types.LevelError, "error", err, "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId,
+				"message", "failed to start task transition")
 			w.notify(tc.NewMessage(enum.RetryTask, nil))
 			return true
 		}
 		w.notify(tc.NewMessage(enum.StartTransition, s))
-		_ = w.lg.Log(logger.LevelWarn, "message", "transfertask success", "taskId", tc.Task.Uid)
+		w.lg.Log(types.LevelWarn, "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId,
+			"message", "succeeded starting task transition")
 		return true
 	})
 }
 
+// handlers returns supported handler names
+func (w *Worker) handlers() []string {
+	hdl := make([]string, 0)
+	for k := range w.factories {
+		hdl = append(hdl, k)
+	}
+	return hdl
+}
+
+// printStack logs exception stack
 func (w *Worker) printStack(t types.Task, err interface{}) {
 	var buf [4096]byte
 	n := runtime.Stack(buf[:], false)
-	fmt.Print(buf[n])
-	_ = w.lg.Log(logger.LevelError, "taskId", t.Uid,
-		"tenantId", t.TenantId, "error", err,
-		"stack", string(buf[:n]), "message", "task panicked")
+	w.lg.Log(types.LevelError, "taskId", t.Uid,
+		"tenantId", t.TenantId, "error", err, "stack", string(buf[:n]),
+		"message", "task handler panicked")
 }

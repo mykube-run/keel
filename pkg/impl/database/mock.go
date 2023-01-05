@@ -22,15 +22,15 @@ func (m *MockDB) CreateTenant(ctx context.Context, t entity.Tenant) error {
 	return nil
 }
 
-func (m *MockDB) CreateNewTask(ctx context.Context, t entity.UserTask) error {
+func (m *MockDB) CreateTask(ctx context.Context, t entity.UserTask) error {
 	return nil
 }
 
-func (m *MockDB) FindTenant(ctx context.Context, opt types.GetTenantInfoOption) (entity.Tenant, error) {
+func (m *MockDB) GetTenant(ctx context.Context, opt types.GetTenantOption) (entity.Tenant, error) {
 	panic("implement me")
 }
 
-func (m *MockDB) FindTenantPendingTaskCount(ctx context.Context, opt types.GetTenantPendingTaskOption) (int64, error) {
+func (m *MockDB) CountTenantPendingTasks(ctx context.Context, opt types.CountTenantPendingTasksOption) (int64, error) {
 	panic("implement me")
 }
 
@@ -58,7 +58,7 @@ func (m *MockDB) FindActiveTenants(ctx context.Context, opt types.FindActiveTena
 	return []*entity.Tenant{tenant}, nil
 }
 
-func (m *MockDB) ActiveTenant(ctx context.Context, opt types.ActiveTenantOption) error {
+func (m *MockDB) ActivateTenants(ctx context.Context, opt types.ActivateTenantsOption) error {
 	panic("implement me")
 }
 

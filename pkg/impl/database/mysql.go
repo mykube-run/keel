@@ -34,7 +34,7 @@ func (m *MySQL) CreateTenant(ctx context.Context, t entity.Tenant) error {
 	return nil
 }
 
-func (m *MySQL) CreateNewTask(ctx context.Context, t entity.UserTask) error {
+func (m *MySQL) CreateTask(ctx context.Context, t entity.UserTask) error {
 	return nil
 }
 
@@ -75,17 +75,17 @@ func (m *MySQL) GetTaskStatus(ctx context.Context, opt types.GetTaskStatusOption
 	return "", nil
 }
 
-func (m *MySQL) FindTenant(ctx context.Context, opt types.GetTenantInfoOption) (entity.Tenant, error) {
+func (m *MySQL) GetTenant(ctx context.Context, opt types.GetTenantOption) (entity.Tenant, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (m *MySQL) FindTenantPendingTaskCount(ctx context.Context, opt types.GetTenantPendingTaskOption) (int64, error) {
+func (m *MySQL) CountTenantPendingTasks(ctx context.Context, opt types.CountTenantPendingTasksOption) (int64, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (m *MySQL) ActiveTenant(ctx context.Context, opt types.ActiveTenantOption) error {
+func (m *MySQL) ActivateTenants(ctx context.Context, opt types.ActivateTenantsOption) error {
 	//TODO implement me
 	panic("implement me")
 }

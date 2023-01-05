@@ -8,7 +8,6 @@ import (
 	"github.com/mykube-run/keel/pkg/config"
 	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
-	"github.com/mykube-run/keel/pkg/logger"
 	"github.com/mykube-run/keel/pkg/types"
 	"go.etcd.io/bbolt"
 	"io"
@@ -84,11 +83,11 @@ type EventManager struct {
 	sc    config.SnapshotConfig
 	s3    *minio.Client
 	sv    int // snapshot version
-	lg    logger.Logger
+	lg    types.Logger
 	sched string
 }
 
-func NewEventManager(sc config.SnapshotConfig, schedulerId string, lg logger.Logger) (*EventManager, error) {
+func NewEventManager(sc config.SnapshotConfig, schedulerId string, lg types.Logger) (*EventManager, error) {
 	m := &EventManager{
 		sc:    sc,
 		lg:    lg,
@@ -178,13 +177,13 @@ func (m *EventManager) Iterate(tenantId, taskId string, fn func(e *TaskEvent) bo
 	return m.db.View(func(tx *bbolt.Tx) error {
 		tenant := tx.Bucket([]byte(tenantId))
 		if tenant == nil {
-			_ = m.lg.Log(logger.LevelWarn, "tenantId", tenantId, "message", "tenant db is empty")
+			m.lg.Log(types.LevelWarn, "tenantId", tenantId, "message", "tenant db is empty")
 			return nil
 		}
 
 		task := tenant.Bucket([]byte(taskId))
 		if task == nil {
-			_ = m.lg.Log(logger.LevelWarn, "taskId", taskId, "message", "task db is empty")
+			m.lg.Log(types.LevelWarn, "taskId", taskId, "message", "task db is empty")
 			return nil
 		}
 
@@ -314,7 +313,7 @@ func (m *EventManager) loadSnapshot() error {
 		tmp := m.snapshotKey(i)
 		info, err := m.s3.StatObject(m.sc.Bucket, tmp, minio.StatObjectOptions{})
 		if err != nil {
-			_ = m.lg.Log(logger.LevelError, "error", err, "message", "stat object error")
+			m.lg.Log(types.LevelError, "error", err, "message", "stat object error")
 			continue
 		}
 		if info.LastModified.After(newest) {
@@ -323,10 +322,10 @@ func (m *EventManager) loadSnapshot() error {
 		}
 	}
 	if key == "" {
-		_ = m.lg.Log(logger.LevelWarn, "message", "no available snapshot")
+		m.lg.Log(types.LevelWarn, "message", "no available snapshot")
 		return nil
 	}
-	_ = m.lg.Log(logger.LevelInfo, "key", key, "updated", newest, "message", "found the newest snapshot")
+	m.lg.Log(types.LevelInfo, "key", key, "updated", newest, "message", "found the newest snapshot")
 
 	obj, err := m.s3.GetObject(m.sc.Bucket, key, minio.GetObjectOptions{})
 	if err != nil {
@@ -345,7 +344,7 @@ func (m *EventManager) loadSnapshot() error {
 	if err = os.WriteFile(DefaultDBPath, byt, os.ModePerm); err != nil {
 		return fmt.Errorf("error writing snapshot file to db: %w", err)
 	}
-	_ = m.lg.Log(logger.LevelInfo, "key", key, "updated", newest, "message", "loaded the newest snapshot")
+	m.lg.Log(types.LevelInfo, "key", key, "updated", newest, "message", "loaded the newest snapshot")
 	return nil
 }
 
@@ -389,7 +388,7 @@ func (m *EventManager) maybeCompactEvents(bucket *bbolt.Bucket, key []byte, ev *
 		if ev.Timestamp.After(latest.Timestamp) &&
 			ev.Timestamp.Sub(latest.Timestamp).Seconds() >= float64(DefaultEventCompactDuration) {
 			if err := bucket.Delete(ev.Key()); err != nil {
-				_ = m.lg.Log(logger.LevelError, "error", err, "key", key, "message", "error performing db compaction (while removing outdated task status report event)")
+				m.lg.Log(types.LevelError, "error", err, "key", key, "message", "error performing db compaction (while removing outdated task status report event)")
 			}
 		}
 	}
@@ -406,9 +405,9 @@ func (m *EventManager) backgroundBackup() {
 		select {
 		case <-tick.C:
 			if key, err := m.Backup(); err != nil {
-				_ = m.lg.Log(logger.LevelError, "error", err, "message", "error saving events db snapshot")
+				m.lg.Log(types.LevelError, "error", err, "message", "error saving events db snapshot")
 			} else {
-				_ = m.lg.Log(logger.LevelInfo, "key", key, "message", "saved events db snapshot")
+				m.lg.Log(types.LevelInfo, "key", key, "message", "saved events db snapshot")
 			}
 		}
 	}

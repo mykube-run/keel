@@ -5,7 +5,6 @@ import (
 	"context"
 	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
-	"github.com/mykube-run/keel/pkg/logger"
 	"github.com/mykube-run/keel/pkg/types"
 	"sync"
 	"time"
@@ -27,10 +26,10 @@ type TaskQueue struct {
 	listener      types.Listener
 	db            types.DB
 	mu            sync.RWMutex
-	lg            logger.Logger
+	lg            types.Logger
 }
 
-func NewTaskQueue(db types.DB, lg logger.Logger, t *entity.Tenant, listener types.Listener) *TaskQueue {
+func NewTaskQueue(db types.DB, lg types.Logger, t *entity.Tenant, listener types.Listener) *TaskQueue {
 	pq := make(PriorityQueue, 0)
 	heap.Init(&pq)
 	c := &TaskQueue{
@@ -83,7 +82,7 @@ func (c *TaskQueue) FetchTasks() {
 	defer cancel()
 
 	if err := c.populateTasks(ctx); err != nil {
-		_ = c.lg.Log(logger.LevelError, "err", err.Error(), "message", "failed to fetch tasks from database")
+		c.lg.Log(types.LevelError, "error", err, "message", "failed to fetch tasks from database")
 	}
 }
 
@@ -111,10 +110,13 @@ func (c *TaskQueue) populateTasks(ctx context.Context) error {
 	}); err != nil {
 		return err
 	}
-	for _, taskId := range tasks.UserTasks.TaskIds() {
-		msg := types.ListenerEventMessage{TenantUID: c.Tenant.Uid, TaskUID: taskId}
-		c.listener.OnTaskScheduling(msg)
-	}
+
+	// TODO: incorrect
+	//for _, t := range tasks.UserTasks {
+	//	msg := types.ListenerEvent{Task: types.NewTaskMetadataFromUserTaskEntity(t)}
+	//	c.listener.OnTaskScheduling(msg)
+	//}
+
 	n := 0
 	for _, v := range tasks.UserTasks {
 		vc := v
@@ -123,7 +125,7 @@ func (c *TaskQueue) populateTasks(ctx context.Context) error {
 		heap.Push(c.UserTasks, item)
 		n += 1
 	}
-	_ = c.lg.Log(logger.LevelDebug, "populated", n, "message", "fetched user tasks from database")
+	c.lg.Log(types.LevelDebug, "populated", n, "message", "fetched user tasks from database")
 	return nil
 }
 

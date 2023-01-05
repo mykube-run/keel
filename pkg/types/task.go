@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
 	"github.com/rs/zerolog/log"
 	"time"
@@ -74,15 +75,15 @@ type WorkerInfo struct {
 
 // Task details
 type Task struct {
-	Handler               string          `json:"handler"`        // Task handler name
-	TenantId              string          `json:"tenantId"`       // Task tenant id
-	Uid                   string          `json:"uid"`            // Task uid, aka taskId
-	SchedulerId           string          `json:"schedulerId"`    // Scheduler id that is responsible for scheduling the task
-	Type                  enum.TaskType   `json:"type"`           // TaskType
-	Config                json.RawMessage `json:"config"`         // Task configurations in JSON, might be nil
-	NeedRunWithTransition bool            `json:"NeedTransition"` // NeedRunWithTransition Indicates whether this run is a migration task
-	RestartTimes          int             `json:"restartTimes"`   // Number of restart
-	LastRun               *TaskRun        `json:"lastRun"`        // The last TaskRun, nil when Task is never run
+	Handler      string          `json:"handler"`      // Task handler name
+	TenantId     string          `json:"tenantId"`     // Task tenant id
+	Uid          string          `json:"uid"`          // Task uid, aka taskId
+	SchedulerId  string          `json:"schedulerId"`  // Scheduler id that is responsible for scheduling the task
+	Type         enum.TaskType   `json:"type"`         // TaskType
+	Config       json.RawMessage `json:"config"`       // Task configurations in JSON, might be nil
+	RestartTimes int             `json:"restartTimes"` // Number of restart
+	InTransition bool            `json:"inTransition"` // Indicates whether this task run is a migration task
+	LastRun      *TaskRun        `json:"lastRun"`      // The last TaskRun, nil when Task is never run
 }
 
 // TaskRun task last run info
@@ -109,4 +110,32 @@ type TaskStatus struct {
 		Concurrency int `json:"concurrency"`
 		Custom      int `json:"custom"`
 	} `json:"resourceUsage"`
+}
+
+// TaskMetadata metadata
+type TaskMetadata struct {
+	Handler  string        `json:"handler"`  // Task handler name
+	TenantId string        `json:"tenantId"` // Task tenant id
+	Uid      string        `json:"uid"`      // Task uid, aka taskId
+	Type     enum.TaskType `json:"type"`     // TaskType
+}
+
+func NewTaskMetadataFromUserTaskEntity(t *entity.UserTask) TaskMetadata {
+	m := TaskMetadata{
+		Handler:  t.Handler,
+		TenantId: t.TenantId,
+		Uid:      t.Uid,
+		Type:     enum.TaskTypeUserTask,
+	}
+	return m
+}
+
+func NewTaskMetadataFromTaskMessage(msg *TaskMessage) TaskMetadata {
+	m := TaskMetadata{
+		Handler:  msg.Task.Handler,
+		TenantId: msg.Task.TenantId,
+		Uid:      msg.Task.Uid,
+		Type:     msg.Task.Type,
+	}
+	return m
 }

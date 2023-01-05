@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/mykube-run/keel/pkg/config"
 	"github.com/mykube-run/keel/pkg/enum"
-	"github.com/mykube-run/keel/pkg/logger"
+	"github.com/mykube-run/keel/pkg/types"
 	"github.com/mykube-run/keel/pkg/worker"
 	"github.com/mykube-run/keel/tests/testkit/worker/workers"
 	"github.com/rs/zerolog"
@@ -18,7 +18,7 @@ type DefaultLogger struct {
 	lg zerolog.Logger
 }
 
-func (k DefaultLogger) Log(logLevel logger.Level, keyvals ...interface{}) error {
+func (k DefaultLogger) Log(logLevel types.Level, keyvals ...interface{}) error {
 	if len(keyvals)%2 != 0 {
 		return errors.New("key-value cannot be paired")
 	}

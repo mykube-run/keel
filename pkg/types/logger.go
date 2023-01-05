@@ -1,4 +1,4 @@
-package logger
+package types
 
 import "strings"
 
@@ -9,20 +9,24 @@ type Level int8
 const LevelKey = "level"
 
 const (
-	// LevelDebug is logger debug level.
-	LevelDebug Level = iota - 1
-	// LevelInfo is logger info level.
+	// LevelTrace trace level
+	LevelTrace Level = iota - 1
+	// LevelDebug debug level
+	LevelDebug
+	// LevelInfo info level
 	LevelInfo
-	// LevelWarn is logger warn level.
+	// LevelWarn warn level
 	LevelWarn
-	// LevelError is logger error level.
+	// LevelError error level
 	LevelError
-	// LevelFatal is logger fatal level
+	// LevelFatal fatal level
 	LevelFatal
 )
 
 func (l Level) String() string {
 	switch l {
+	case LevelTrace:
+		return "TRACE"
 	case LevelDebug:
 		return "DEBUG"
 	case LevelInfo:
@@ -41,6 +45,8 @@ func (l Level) String() string {
 // ParseLevel parses a level string into a logger Level value.
 func ParseLevel(s string) Level {
 	switch strings.ToUpper(s) {
+	case "TRACE":
+		return LevelTrace
 	case "DEBUG":
 		return LevelDebug
 	case "INFO":
@@ -56,5 +62,5 @@ func ParseLevel(s string) Level {
 }
 
 type Logger interface {
-	Log(level Level, keyvals ...interface{}) error
+	Log(level Level, keyvals ...interface{})
 }

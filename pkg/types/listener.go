@@ -1,30 +1,20 @@
 package types
 
-type ListenerEventMessage struct {
-	// tenant id
-	TenantUID string
-	// task id
-	TaskUID string
+type ListenerEvent struct {
+	SchedulerId string
+	WorkerId    string
+	Task        TaskMetadata
 }
 
 type Listener interface {
-	OnTaskCreated(message ListenerEventMessage)
-
-	OnTaskScheduling(message ListenerEventMessage)
-
-	OnTaskDispatching(message ListenerEventMessage)
-
-	OnTaskRunning(message ListenerEventMessage)
-
-	OnTaskNeedRetry(message ListenerEventMessage)
-
-	OnTaskFinished(message ListenerEventMessage)
-
-	OnTaskFail(message ListenerEventMessage)
-
-	OnTaskTransition(message ListenerEventMessage)
-
-	OnTaskTransitionError(message ListenerEventMessage)
-
-	OnTaskTransitionFinished(message ListenerEventMessage)
+	OnTaskCreated(e ListenerEvent)
+	OnTaskScheduling(e ListenerEvent)
+	OnTaskDispatching(e ListenerEvent)
+	OnTaskRunning(e ListenerEvent)
+	OnTaskNeedsRetry(e ListenerEvent)
+	OnTaskFinished(e ListenerEvent)
+	OnTaskFailed(e ListenerEvent)
+	OnTaskTransition(e ListenerEvent)
+	OnTaskTransitionError(e ListenerEvent)
+	OnTaskTransitionFinished(e ListenerEvent)
 }
