@@ -6,38 +6,72 @@ networks:
 
 services:
   # Zookeeper for Kafka
+  # See: https://hub.docker.com/r/bitnami/zookeeper/
   zookeeper:
-    image: bitnami/zookeeper:latest
+    image: bitnami/zookeeper:3.8.0
     environment:
       ALLOW_ANONYMOUS_LOGIN: 'yes'
-    restart: on-failure
+    restart: 'on-failure'
     networks:
       - test
 
   # Kafka
   # See: https://hub.docker.com/r/bitnami/kafka/
   kafka:
-    image: bitnami/kafka:latest
+    image: bitnami/kafka:3.3.1
     environment:
       ALLOW_PLAINTEXT_LISTENER: 'yes'
       KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: 'true'
       KAFKA_CFG_NUM_PARTITIONS: 3
       KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
-    restart: on-failure
+    restart: 'on-failure'
     networks:
       - test
     depends_on:
       - zookeeper
 
+  # MySQL database
+  # See: https://hub.docker.com/r/bitnami/mysql/
+  mysql:
+    image: bitnami/mysql:8.0.31
+    environment:
+      MYSQL_ROOT_USER: 'root'
+      MYSQL_ROOT_PASSWORD: 'pa88w0rd'
+      MYSQL_CHARACTER_SET: 'utf8mb4'
+      MYSQL_COLLATE: 'utf8mb4_unicode_ci'
+      MYSQL_DATABASE: 'keel'
+    restart: 'on-failure'
+    healthcheck:
+      test: 'mysql --host=mysql --user=root --password=pa88w0rd --database=keel'
+      interval: '10s'
+      timeout: '1s'
+      retries: 24
+    networks:
+      - test
+
+  # Initialize MySQL database
+  # See: https://hub.docker.com/r/bitnami/mysql/
+  init-mysql:
+    image: bitnami/mysql:8.0.31
+    command: 'mysql --verbose --host=mysql --user=root --password=pa88w0rd --database=keel --execute="source /tmp/schema.sql"'
+    volumes:
+      - ./docs/schema/schema.sql:/tmp/schema.sql
+    restart: 'on-failure'
+    networks:
+      - test
+    depends_on:
+      mysql:
+        condition: 'service_healthy'
+
   # Minio object storage
   # See: https://hub.docker.com/r/bitnami/minio/
   minio:
-    image: bitnami/minio:latest
+    image: bitnami/minio:2022.12.12
     environment:
       MINIO_DEFAULT_BUCKETS: snapshots
-      MINIO_ROOT_USER: 'minio-access-key'
-      MINIO_ROOT_PASSWORD: 'minio-secret-key'
-    restart: on-failure
+      MINIO_ROOT_USER: 'root'
+      MINIO_ROOT_PASSWORD: 'pa88w0rd'
+    restart: 'on-failure'
     networks:
       - test
 
@@ -48,11 +82,17 @@ services:
       dockerfile: ./Dockerfile
     env_file:
       - ./tests/test.env
-    restart: on-failure
+    restart: 'on-failure'
     networks:
       - test
     depends_on:
-      - zookeeper
-      - kafka
-      - minio
-
+      zookeeper:
+        condition: 'service_started'
+      kafka:
+        condition: 'service_started'
+      mysql:
+        condition: 'service_healthy'
+      init-mysql:
+        condition: 'service_completed_successfully'
+      minio:
+        condition: 'service_started'

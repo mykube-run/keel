@@ -14,7 +14,6 @@ import (
 var (
 	db     = database.NewMockDB()
 	tenant = &entity.Tenant{
-		Id:            "10001",
 		Uid:           "tenant-10001",
 		Zone:          "default",
 		Priority:      0,
@@ -83,10 +82,10 @@ func TestTaskQueue_EnqueueUserTask(t *testing.T) {
 	}
 
 	task := tasks[0]
-	if task.Id == "0" {
-		t.Fatalf("invalid task with id %v", task.Id)
+	if task.Uid == "0" {
+		t.Fatalf("invalid task with id %v", task.Uid)
 	}
-	id := task.Id
+	id := task.Uid
 	p := task.Priority
 	c.EnqueueUserTask(task, 999)
 
@@ -101,7 +100,7 @@ func TestTaskQueue_EnqueueUserTask(t *testing.T) {
 	if task2.Priority-p != 999 {
 		t.Fatalf("unexpected task priority: %v, expecting %v", task2.Priority, p+999)
 	}
-	if task2.Id != id {
+	if task2.Uid != id {
 		t.Fatalf("should got the same task")
 	}
 }

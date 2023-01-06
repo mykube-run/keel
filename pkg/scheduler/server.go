@@ -23,10 +23,10 @@ import (
 type Server struct {
 	pb.UnimplementedScheduleServiceServer
 	db     types.DB
-	sched  *Scheduler
-	config config.ServerConfig
 	lg     types.Logger
 	ls     types.Listener
+	sched  *Scheduler
+	config config.ServerConfig
 }
 
 func NewServer(db types.DB, sched *Scheduler, config config.ServerConfig, lg types.Logger, ls types.Listener) *Server {
@@ -51,6 +51,7 @@ func (s *Server) NewTenant(ctx context.Context, req *pb.NewTenantRequest) (*pb.R
 		UpdatedAt:  now,
 		LastActive: now,
 		ResourceQuota: entity.ResourceQuota{
+			Type: enum.ResourceTypeConcurrency,
 			Concurrency: sql.NullInt64{
 				Int64: req.Quota.Value,
 				Valid: true,
@@ -73,15 +74,15 @@ func (s *Server) NewTenant(ctx context.Context, req *pb.NewTenantRequest) (*pb.R
 func (s *Server) TenantTaskInfo(ctx context.Context, req *pb.TenantTaskRequest) (resp *pb.TenantTaskResponse, err error) {
 	s.lg.Log(types.LevelDebug, "tenantId", req.TenantID, "message", "get tenant tasks")
 	queue, ex := s.sched.cs[req.GetTenantID()]
-	pendingCount, err := s.db.CountTenantPendingTasks(ctx, types.CountTenantPendingTasksOption{TenantId: req.TenantID})
+	pending, err := s.db.CountTenantPendingTasks(ctx, types.CountTenantPendingTasksOption{TenantId: req.TenantID})
 	if err != nil {
 		s.lg.Log(types.LevelError, "error", err, "tenantId", req.TenantID, "message", "failed to count tenant pending tasks")
 		return nil, err
 	}
 	if ex {
+		var running int
 		limit := queue.Tenant.ResourceQuota.Concurrency.Int64
-		runningTasks := 0
-		runningTasks, err = s.sched.em.CountRunningTasks(req.TenantID)
+		running, err = s.sched.em.CountRunningTasks(req.TenantID)
 		if err != nil {
 			resp = &pb.TenantTaskResponse{
 				Code: pb.Code_TaskNotExist,
@@ -89,12 +90,14 @@ func (s *Server) TenantTaskInfo(ctx context.Context, req *pb.TenantTaskRequest) 
 			return
 		}
 		resp = &pb.TenantTaskResponse{
-			Code: pb.Code_Ok, Running: int64(runningTasks), Limit: limit,
-			Pending: pendingCount,
+			Code:    pb.Code_Ok,
+			Limit:   limit,
+			Running: int64(running),
+			Pending: pending,
 		}
 		return
 	} else {
-		var tenant entity.Tenant
+		var tenant *entity.Tenant
 		tenant, err = s.db.GetTenant(ctx, types.GetTenantOption{TenantId: req.TenantID})
 		if err != nil {
 			s.lg.Log(types.LevelError, "error", err, "tenantId", req.TenantID, "message", "found tenant tasks, but tenant does not exist")
@@ -104,8 +107,10 @@ func (s *Server) TenantTaskInfo(ctx context.Context, req *pb.TenantTaskRequest) 
 			return
 		}
 		resp = &pb.TenantTaskResponse{
-			Code: pb.Code_Ok, Running: 0, Pending: pendingCount,
-			Limit: tenant.ResourceQuota.Concurrency.Int64,
+			Code:    pb.Code_Ok,
+			Limit:   tenant.ResourceQuota.Concurrency.Int64,
+			Running: 0,
+			Pending: pending,
 		}
 		return resp, nil
 	}
@@ -130,11 +135,11 @@ func (s *Server) NewTask(ctx context.Context, req *pb.NewTaskRequest) (*pb.Respo
 		queue, ex := s.sched.cs[req.TenantId]
 		if ex {
 			limit := queue.Tenant.ResourceQuota.Concurrency.Int64
-			runningTasks, err := s.sched.em.CountRunningTasks(req.TenantId)
+			running, err := s.sched.em.CountRunningTasks(req.TenantId)
 			if err != nil {
 				return nil, err
 			}
-			if int64(runningTasks) > limit {
+			if int64(running) > limit {
 				resp := &pb.Response{
 					Code: pb.Code_TenantQuotaExceeded,
 				}
@@ -162,13 +167,14 @@ func (s *Server) PauseTask(ctx context.Context, req *pb.PauseTaskRequest) (*pb.R
 	if taskStatus != enum.TaskStatusRunning {
 		resp := &pb.Response{
 			Code:    pb.Code_TaskIsNotRunning,
-			Message: "The task is not running",
+			Message: "the task is not running",
 		}
 		return resp, nil
 	}
 	err = s.db.UpdateTaskStatus(ctx, types.UpdateTaskStatusOption{
-		Uids: []string{req.Uid}, TaskType: enum.TaskTypeUserTask,
-		Status: enum.TaskStatusDispatched,
+		Uids:     []string{req.Uid},
+		TaskType: enum.TaskTypeUserTask,
+		Status:   enum.TaskStatusDispatched,
 	})
 	if err != nil {
 		return nil, err
@@ -207,7 +213,7 @@ func (s *Server) StopTask(ctx context.Context, req *pb.StopTaskRequest) (*pb.Res
 	if findTask.Status == enum.TaskStatusSuccess || findTask.Status == enum.TaskStatusFailed {
 		resp := &pb.Response{
 			Code:    pb.Code_TaskExecuted,
-			Message: "The task has finished running",
+			Message: "the task has finished running",
 		}
 		return resp, nil
 	}

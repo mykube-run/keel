@@ -10,7 +10,7 @@ import (
 type DB interface {
 	CreateTenant(ctx context.Context, t entity.Tenant) error
 	ActivateTenants(ctx context.Context, opt ActivateTenantsOption) error
-	GetTenant(ctx context.Context, opt GetTenantOption) (entity.Tenant, error)
+	GetTenant(ctx context.Context, opt GetTenantOption) (*entity.Tenant, error)
 	FindActiveTenants(ctx context.Context, opt FindActiveTenantsOption) (entity.Tenants, error)
 	CountTenantPendingTasks(ctx context.Context, opt CountTenantPendingTasksOption) (int64, error)
 

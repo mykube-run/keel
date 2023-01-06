@@ -26,9 +26,8 @@ func (m *MockDB) CreateTask(ctx context.Context, t entity.UserTask) error {
 	return nil
 }
 
-func (m *MockDB) GetTenant(ctx context.Context, opt types.GetTenantOption) (entity.Tenant, error) {
-	tenant := entity.Tenant{
-		Id:         "tenant-1",
+func (m *MockDB) GetTenant(ctx context.Context, opt types.GetTenantOption) (*entity.Tenant, error) {
+	tenant := &entity.Tenant{
 		Uid:        "tenant-1",
 		Zone:       "global",
 		Priority:   0,
@@ -56,7 +55,6 @@ func (m *MockDB) CountTenantPendingTasks(ctx context.Context, opt types.CountTen
 
 func (m *MockDB) FindActiveTenants(ctx context.Context, opt types.FindActiveTenantsOption) (entity.Tenants, error) {
 	tenant := &entity.Tenant{
-		Id:         "tenant-1",
 		Uid:        "tenant-1",
 		Zone:       "global",
 		Priority:   0,
@@ -114,7 +112,6 @@ func (m *MockDB) Close() error {
 func (m *MockDB) newUserTask(i int64) *entity.UserTask {
 	now := time.Now()
 	return &entity.UserTask{
-		Id:        fmt.Sprintf("%v", now.Unix()),
 		TenantId:  "tenant-1",
 		Uid:       fmt.Sprintf("task-%v-%v", m.hdl, now.Unix()),
 		Handler:   "mock-test",

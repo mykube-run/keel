@@ -120,7 +120,7 @@ func (c *TaskQueue) populateTasks(ctx context.Context) error {
 	n := 0
 	for _, v := range tasks.UserTasks {
 		vc := v
-		c.maxUserTaskId = vc.Id
+		c.maxUserTaskId = vc.Uid
 		item := NewItem(int(vc.Priority), vc)
 		heap.Push(c.UserTasks, item)
 		n += 1

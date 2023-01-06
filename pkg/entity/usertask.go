@@ -19,9 +19,8 @@ func (ut UserTasks) TaskIds() []string {
 
 // UserTask defines the user task
 type UserTask struct {
-	Id               string
-	TenantId         string
 	Uid              string
+	TenantId         string
 	Handler          string
 	Config           interface{}
 	ScheduleStrategy string
@@ -30,4 +29,10 @@ type UserTask struct {
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 	Status           enum.TaskStatus
+}
+
+func (t *UserTask) Fields() []interface{} {
+	return []interface{}{
+		&t.Uid, &t.TenantId, &t.Handler, &t.Config, &t.ScheduleStrategy, &t.Priority, &t.Progress, &t.Status, &t.CreatedAt, &t.UpdatedAt,
+	}
 }

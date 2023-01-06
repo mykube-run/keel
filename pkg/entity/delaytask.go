@@ -10,9 +10,8 @@ type DelayTasks []*DelayTask
 
 // DelayTask defines the delay task
 type DelayTask struct {
-	Id               string
-	TenantId         string
 	Uid              string
+	TenantId         string
 	Handler          string
 	Config           interface{}
 	ScheduleStrategy string

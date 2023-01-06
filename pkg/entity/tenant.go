@@ -9,7 +9,6 @@ type Tenants []*Tenant
 
 // Tenant defines the tenant
 type Tenant struct {
-	Id         string
 	Uid        string
 	Zone       string
 	Partition  string
@@ -25,14 +24,14 @@ type Tenant struct {
 
 func (t *Tenant) Fields() []interface{} {
 	return []interface{}{
-		&t.Id, &t.Uid, &t.Zone, &t.Priority, &t.Name, &t.Status, &t.CreatedAt, &t.UpdatedAt, &t.LastActive,
+		&t.Uid, &t.Zone, &t.Priority, &t.Partition, &t.Name, &t.Status, &t.CreatedAt, &t.UpdatedAt, &t.LastActive,
 	}
 }
 
 func (t *Tenant) FieldsWithQuota() []interface{} {
 	dst := []interface{}{
-		&t.Id, &t.Uid, &t.Zone, &t.Priority, &t.Name, &t.Status, &t.CreatedAt, &t.UpdatedAt, &t.LastActive,
+		&t.Uid, &t.Zone, &t.Priority, &t.Partition, &t.Name, &t.Status, &t.CreatedAt, &t.UpdatedAt, &t.LastActive,
 	}
-	dst = append(dst, t.ResourceQuota.Fields())
+	dst = append(dst, t.ResourceQuota.Fields()...)
 	return dst
 }
