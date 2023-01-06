@@ -35,14 +35,14 @@ service ScheduleService {
     };
   };
 
-  rpc TenantTaskInfo (TenantTaskRequest) returns (TenantTaskResponse) {
+  rpc QueryTenantTaskStatus (QueryTenantTaskStatusRequest) returns (QueryTenantTaskStatusResponse) {
     option (google.api.http) = {
       post: "/v1/tenants/status",
       body: "*"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      description: "query tenant task status";
-      summary: "query tenant task status";
+      description: "Query tenant task status";
+      summary: "Query tenant task status";
       tags: "Tenant API";
     };
   };
@@ -58,6 +58,7 @@ service ScheduleService {
       tags: "Task API";
     };
   };
+
   rpc PauseTask (PauseTaskRequest) returns (Response) {
     option (google.api.http) = {
       post: "/v1/tasks/pause",
@@ -69,6 +70,7 @@ service ScheduleService {
       tags: "Task API";
     };
   };
+
   rpc RestartTask (RestartTaskRequest) returns (Response) {
     option (google.api.http) = {
       post: "/v1/tasks/restart",
@@ -93,7 +95,6 @@ service ScheduleService {
     };
   };
 
-
   rpc QueryTaskStatus (QueryTaskRequest) returns (QueryStatusResponse) {
     option (google.api.http) = {
       post: "/v1/tasks/status",
@@ -110,7 +111,7 @@ service ScheduleService {
 message NewTenantRequest {
   // Tenant uid, must be unique across different zones
   string uid = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "Tenant id, must be unique",
+    description: "Tenant uid, must be unique",
     max_length: 255,
     min_length: 1
   }];
@@ -157,15 +158,15 @@ message NewTaskRequest {
   }];
 
   // Tenant id
-  string Tenant_id = 3 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "Tenant id that this task belongs to",
+  string tenant_id = 3 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Tenant uid that this task belongs to",
     max_length: 255,
     min_length: 1
   }];
 
   // Task uid
   string uid = 4 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "Task id, must be unique",
+    description: "Task uid, must be unique",
     max_length: 255,
     min_length: 1
   }];
@@ -197,6 +198,7 @@ message NewTaskRequest {
 }
 
 message CreateTaskOptions {
+  // Whether to check tenant's resource quota while creating a new task
   bool check_resource_quota = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "Whether to check resource quota while creating a new task"
   }];
@@ -210,7 +212,7 @@ message PauseTaskRequest {
 
   // Task uid
   string uid = 2 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "Task id, must be unique",
+    description: "Task uid, must be unique",
     max_length: 255,
     min_length: 1
   }];
@@ -224,7 +226,7 @@ message RestartTaskRequest {
 
   // Task uid
   string uid = 2 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "Task id, must be unique",
+    description: "Task uid, must be unique",
     max_length: 255,
     min_length: 1
   }];
@@ -233,29 +235,32 @@ message RestartTaskRequest {
 message QueryTaskRequest {
   // Task uid
   string uid = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "Task id, must be unique",
+    description: "Task uid, must be unique",
     max_length: 255,
     min_length: 1
   }];
 }
 
-
-message TenantTaskRequest {
-  string tenantID = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "tenant id, must be unique",
+message QueryTenantTaskStatusRequest {
+  // Tenant uid
+  string tenant_id = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Tenant uid, must be unique",
     max_length: 255,
     min_length: 1
   }];
 }
 
 message StopTaskRequest {
-  string tenantID = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "tenant id, must be unique",
+  // Tenant uid
+  string tenant_id = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Tenant uid, must be unique",
     max_length: 255,
     min_length: 1
   }];
+
+  // Task uid
   string uid = 2 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "task id, must be unique",
+    description: "Task uid, must be unique",
     max_length: 255,
     min_length: 1
   }];

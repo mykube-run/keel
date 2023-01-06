@@ -10,8 +10,8 @@ enum Code {
   TenantNotExist = 4;
   TaskNotExist = 5;
   TenantQuotaExceeded = 6;
-  TaskExecuted = 7;
-  TaskIsNotRunning = 8;
+  TaskProcessed = 7;
+  TaskNotProcessing = 8;
 }
 
 message Response {
@@ -24,10 +24,9 @@ message QueryStatusResponse {
   string status = 2;
 }
 
-message TenantTaskResponse {
-  // Task uid
-  Code code =1 ;
+message QueryTenantTaskStatusResponse {
+  Code code = 1 ;
   int64 running = 2;
-  int64 pending=3;
-  int64 limit =4;
+  int64 pending = 3;
+  int64 limit = 4;
 }
