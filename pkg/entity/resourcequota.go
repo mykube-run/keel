@@ -5,7 +5,7 @@ import "database/sql"
 type ResourceQuota struct {
 	Id          string
 	TenantId    string
-	Type        int
+	Type        string
 	CPU         sql.NullInt64
 	Memory      sql.NullInt64
 	Storage     sql.NullInt64

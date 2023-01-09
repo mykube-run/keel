@@ -2,6 +2,8 @@ syntax = "proto3";
 package pb;
 option go_package = "github.com/mykube-run/keel/pkg/pb";
 
+import "protoc-gen-openapiv2/options/annotations.proto";
+
 enum Code {
   Ok = 0;
   PermissionDenied = 1;
@@ -10,23 +12,24 @@ enum Code {
   TenantNotExist = 4;
   TaskNotExist = 5;
   TenantQuotaExceeded = 6;
-  TaskProcessed = 7;
-  TaskNotProcessing = 8;
+  TaskFinished = 7;
+  TaskNotRunning = 8;
 }
 
 message Response {
-  Code code = 1;
-  string message = 2;
+  Code code = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Response code"
+  }];
+  string message = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Response message"
+  }];
 }
 
-message QueryStatusResponse {
-  Code code = 1;
-  string status = 2;
-}
-
-message QueryTenantTaskStatusResponse {
-  Code code = 1 ;
-  int64 running = 2;
-  int64 pending = 3;
-  int64 limit = 4;
+message ResourceQuota {
+  string type = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Tenant resource quota type, available options are: CPU, Memory, Storage, GPU, Concurrency, Custom, Peak"
+  }];
+  int64 value = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Tenant resource quota value"
+  }];
 }

@@ -23,6 +23,7 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
 };
 
 service ScheduleService {
+  // Tenant API
   rpc NewTenant (NewTenantRequest) returns (Response) {
     option (google.api.http) = {
       post: "/v1/tenants",
@@ -35,9 +36,9 @@ service ScheduleService {
     };
   };
 
-  rpc QueryTenantTaskStatus (QueryTenantTaskStatusRequest) returns (QueryTenantTaskStatusResponse) {
+  rpc QueryTenantTaskConcurrency (QueryTenantTaskConcurrencyRequest) returns (QueryTenantTaskConcurrencyResponse) {
     option (google.api.http) = {
-      post: "/v1/tenants/status",
+      post: "/v1/tenants/task-concurrency",
       body: "*"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -47,6 +48,7 @@ service ScheduleService {
     };
   };
 
+  // Task API
   rpc NewTask (NewTaskRequest) returns (Response) {
     option (google.api.http) = {
       post: "/v1/tasks",
@@ -95,18 +97,20 @@ service ScheduleService {
     };
   };
 
-  rpc QueryTaskStatus (QueryTaskRequest) returns (QueryStatusResponse) {
+  rpc QueryTaskStatus (QueryTaskStatusRequest) returns (QueryTaskStatusResponse) {
     option (google.api.http) = {
       post: "/v1/tasks/status",
       body: "*"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       description: "Query task status";
-      summary: "Query the specified task";
+      summary: "Query the specified task status";
       tags: "Task API";
     };
   };
 }
+
+// Tenant API request & response
 
 message NewTenantRequest {
   // Tenant uid, must be unique across different zones
@@ -137,14 +141,35 @@ message NewTenantRequest {
 
   // Tenant resource quota
   ResourceQuota quota = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "Tenant quota options"
+    description: "Tenant resource quota options"
   }];
 }
 
-message ResourceQuota {
-  int32 type = 1;
-  int64 value = 2;
+message QueryTenantTaskConcurrencyRequest {
+  // Tenant uid
+  string tenant_id = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Tenant uid, must be unique",
+    max_length: 255,
+    min_length: 1
+  }];
 }
+
+message QueryTenantTaskConcurrencyResponse {
+  Code code = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Response code"
+  }];
+  int64 running = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The number of specified tenant's running tasks"
+  }];
+  int64 pending = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The number of specified tenant's pending tasks"
+  }];
+  int64 limit = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "The number of specified tenant's concurrency limit"
+  }];
+}
+
+// Task API request & response
 
 message NewTaskRequest {
   // Create task options
@@ -232,30 +257,10 @@ message RestartTaskRequest {
   }];
 }
 
-message QueryTaskRequest {
-  // Task uid
-  string uid = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "Task uid, must be unique",
-    max_length: 255,
-    min_length: 1
-  }];
-}
-
-message QueryTenantTaskStatusRequest {
-  // Tenant uid
-  string tenant_id = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "Tenant uid, must be unique",
-    max_length: 255,
-    min_length: 1
-  }];
-}
-
-message StopTaskRequest {
-  // Tenant uid
-  string tenant_id = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "Tenant uid, must be unique",
-    max_length: 255,
-    min_length: 1
+message QueryTaskStatusRequest {
+  // Task type
+  string type = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Task type, available options are: CronTask, DelayTask, UserTask"
   }];
 
   // Task uid
@@ -266,5 +271,26 @@ message StopTaskRequest {
   }];
 }
 
+message QueryTaskStatusResponse {
+  Code code = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Response code"
+  }];
+  string status = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Task status, possible values are: Pending, Scheduling, Dispatched, Running, NeedsRetry, InTransition, Success, Failed, Canceled"
+  }];
+}
 
+message StopTaskRequest {
+  // Task type
+  string type = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Task type, available options are: CronTask, DelayTask, UserTask"
+  }];
+
+  // Task uid
+  string uid = 2 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Task uid, must be unique",
+    max_length: 255,
+    min_length: 1
+  }];
+}
 

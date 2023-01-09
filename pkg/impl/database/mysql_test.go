@@ -56,7 +56,7 @@ func TestMySQL_CreateTenant(t *testing.T) {
 	}
 	quota := entity.ResourceQuota{
 		TenantId: tenant.Uid,
-		Type:     enum.ResourceTypeConcurrency,
+		Type:     string(enum.ResourceTypeConcurrency),
 		Concurrency: sql.NullInt64{
 			Int64: 10,
 			Valid: true,

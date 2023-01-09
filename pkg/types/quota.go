@@ -31,22 +31,22 @@ type ResourceUsage struct {
 	Custom      int64
 }
 
-func (u *ResourceUsage) GetByType(typ int) int64 {
+func (u *ResourceUsage) GetByType(typ string) int64 {
 	if u == nil {
 		return 0
 	}
 	switch typ {
-	case enum.ResourceTypeCPU:
+	case string(enum.ResourceTypeCPU):
 		return u.CPU
-	case enum.ResourceTypeMemory:
+	case string(enum.ResourceTypeMemory):
 		return u.Memory
-	case enum.ResourceTypeStorage:
+	case string(enum.ResourceTypeStorage):
 		return u.Storage
-	case enum.ResourceTypeGPU:
+	case string(enum.ResourceTypeGPU):
 		return u.GPU
-	case enum.ResourceTypeConcurrency:
+	case string(enum.ResourceTypeConcurrency):
 		return u.Concurrency
-	case enum.ResourceTypeCustom:
+	case string(enum.ResourceTypeCustom):
 		return u.Custom
 	default:
 		return 0

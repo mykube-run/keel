@@ -39,7 +39,7 @@ func (m *MockDB) GetTenant(ctx context.Context, opt types.GetTenantOption) (*ent
 		ResourceQuota: entity.ResourceQuota{
 			Id:       "tenant-1",
 			TenantId: "tenant-1",
-			Type:     enum.ResourceTypeConcurrency,
+			Type:     string(enum.ResourceTypeConcurrency),
 			Concurrency: sql.NullInt64{
 				Int64: 3,
 				Valid: true,
@@ -66,7 +66,7 @@ func (m *MockDB) FindActiveTenants(ctx context.Context, opt types.FindActiveTena
 		ResourceQuota: entity.ResourceQuota{
 			Id:       "tenant-1",
 			TenantId: "tenant-1",
-			Type:     enum.ResourceTypeConcurrency,
+			Type:     string(enum.ResourceTypeConcurrency),
 			Concurrency: sql.NullInt64{
 				Int64: 3,
 				Valid: true,
