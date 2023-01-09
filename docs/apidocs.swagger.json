@@ -27,7 +27,7 @@
       "post": {
         "summary": "Create a new task",
         "description": "Create new task",
-        "operationId": "ScheduleService_NewTask",
+        "operationId": "ScheduleService_CreateTask",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -48,7 +48,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/pb.NewTaskRequest"
+              "$ref": "#/definitions/pb.CreateTaskRequest"
             }
           }
         ],
@@ -127,14 +127,14 @@
     },
     "/v1/tasks/status": {
       "post": {
-        "summary": "Query the specified task",
+        "summary": "Query the specified task status",
         "description": "Query task status",
         "operationId": "ScheduleService_QueryTaskStatus",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/pb.QueryStatusResponse"
+              "$ref": "#/definitions/pb.QueryTaskStatusResponse"
             }
           },
           "default": {
@@ -150,7 +150,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/pb.QueryTaskRequest"
+              "$ref": "#/definitions/pb.QueryTaskStatusRequest"
             }
           }
         ],
@@ -197,7 +197,7 @@
       "post": {
         "summary": "Create a new tenant",
         "description": "Create new tenant",
-        "operationId": "ScheduleService_NewTenant",
+        "operationId": "ScheduleService_CreateTenant",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -218,7 +218,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/pb.NewTenantRequest"
+              "$ref": "#/definitions/pb.CreateTenantRequest"
             }
           }
         ],
@@ -227,16 +227,16 @@
         ]
       }
     },
-    "/v1/tenants/status": {
+    "/v1/tenants/task-concurrency": {
       "post": {
-        "summary": "query tenant task status",
-        "description": "query tenant task status",
-        "operationId": "ScheduleService_TenantTaskInfo",
+        "summary": "Query tenant task status",
+        "description": "Query tenant task status",
+        "operationId": "ScheduleService_QueryTenantTaskConcurrency",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/pb.TenantTaskResponse"
+              "$ref": "#/definitions/pb.QueryTenantTaskConcurrencyResponse"
             }
           },
           "default": {
@@ -252,7 +252,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/pb.TenantTaskRequest"
+              "$ref": "#/definitions/pb.QueryTenantTaskConcurrencyRequest"
             }
           }
         ],
@@ -311,11 +311,12 @@
       "properties": {
         "checkResourceQuota": {
           "type": "boolean",
-          "description": "Whether to check resource quota while creating a new task"
+          "description": "Whether to check resource quota while creating a new task",
+          "title": "Whether to check tenant's resource quota while creating a new task"
         }
       }
     },
-    "pb.NewTaskRequest": {
+    "pb.CreateTaskRequest": {
       "type": "object",
       "properties": {
         "options": {
@@ -328,16 +329,16 @@
           "description": "Task type, available options are: CronTask, DelayTask, UserTask",
           "title": "Task type"
         },
-        "TenantId": {
+        "tenantId": {
           "type": "string",
-          "description": "Tenant id that this task belongs to",
+          "description": "Tenant uid that this task belongs to",
           "title": "Tenant id",
           "maxLength": 255,
           "minLength": 1
         },
         "uid": {
           "type": "string",
-          "description": "Task id, must be unique",
+          "description": "Task uid, must be unique",
           "title": "Task uid",
           "maxLength": 255,
           "minLength": 1
@@ -372,18 +373,18 @@
       },
       "required": [
         "type",
-        "TenantId",
+        "tenantId",
         "uid",
         "handler",
         "config"
       ]
     },
-    "pb.NewTenantRequest": {
+    "pb.CreateTenantRequest": {
       "type": "object",
       "properties": {
         "uid": {
           "type": "string",
-          "description": "Tenant id, must be unique",
+          "description": "Tenant uid, must be unique",
           "title": "Tenant uid, must be unique across different zones",
           "maxLength": 255,
           "minLength": 1
@@ -410,7 +411,7 @@
         },
         "quota": {
           "$ref": "#/definitions/pb.ResourceQuota",
-          "description": "Tenant quota options",
+          "description": "Tenant resource quota options",
           "title": "Tenant resource quota"
         }
       },
@@ -431,7 +432,7 @@
         },
         "uid": {
           "type": "string",
-          "description": "Task id, must be unique",
+          "description": "Task uid, must be unique",
           "title": "Task uid",
           "maxLength": 255,
           "minLength": 1
@@ -442,24 +443,47 @@
         "uid"
       ]
     },
-    "pb.QueryStatusResponse": {
+    "pb.QueryTaskStatusRequest": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Task type, available options are: CronTask, DelayTask, UserTask",
+          "title": "Task type"
+        },
+        "uid": {
+          "type": "string",
+          "description": "Task uid, must be unique",
+          "title": "Task uid",
+          "maxLength": 255,
+          "minLength": 1
+        }
+      },
+      "required": [
+        "type",
+        "uid"
+      ]
+    },
+    "pb.QueryTaskStatusResponse": {
       "type": "object",
       "properties": {
         "code": {
-          "$ref": "#/definitions/pb.Code"
+          "$ref": "#/definitions/pb.Code",
+          "description": "Response code"
         },
         "status": {
-          "type": "string"
+          "type": "string",
+          "description": "Task status, possible values are: Pending, Scheduling, Dispatched, Running, NeedsRetry, InTransition, Success, Failed, Canceled"
         }
       }
     },
-    "pb.QueryTaskRequest": {
+    "pb.QueryTenantTaskConcurrencyRequest": {
       "type": "object",
       "properties": {
         "uid": {
           "type": "string",
-          "description": "Task id, must be unique",
-          "title": "Task uid",
+          "description": "Tenant uid, must be unique",
+          "title": "Tenant uid",
           "maxLength": 255,
           "minLength": 1
         }
@@ -468,16 +492,41 @@
         "uid"
       ]
     },
+    "pb.QueryTenantTaskConcurrencyResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "#/definitions/pb.Code",
+          "description": "Response code"
+        },
+        "running": {
+          "type": "string",
+          "format": "int64",
+          "description": "The number of specified tenant's running tasks"
+        },
+        "pending": {
+          "type": "string",
+          "format": "int64",
+          "description": "The number of specified tenant's pending tasks"
+        },
+        "limit": {
+          "type": "string",
+          "format": "int64",
+          "description": "The number of specified tenant's concurrency limit"
+        }
+      }
+    },
     "pb.ResourceQuota": {
       "type": "object",
       "properties": {
         "type": {
-          "type": "integer",
-          "format": "int32"
+          "type": "string",
+          "description": "Tenant resource quota type, available options are: CPU, Memory, Storage, GPU, Concurrency, Custom, Peak"
         },
         "value": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "description": "Tenant resource quota value"
         }
       }
     },
@@ -485,10 +534,12 @@
       "type": "object",
       "properties": {
         "code": {
-          "$ref": "#/definitions/pb.Code"
+          "$ref": "#/definitions/pb.Code",
+          "description": "Response code"
         },
         "message": {
-          "type": "string"
+          "type": "string",
+          "description": "Response message"
         }
       }
     },
@@ -502,7 +553,7 @@
         },
         "uid": {
           "type": "string",
-          "description": "Task id, must be unique",
+          "description": "Task uid, must be unique",
           "title": "Task uid",
           "maxLength": 255,
           "minLength": 1
@@ -516,58 +567,23 @@
     "pb.StopTaskRequest": {
       "type": "object",
       "properties": {
-        "tenantID": {
+        "type": {
           "type": "string",
-          "description": "tenant id, must be unique",
-          "maxLength": 255,
-          "minLength": 1
+          "description": "Task type, available options are: CronTask, DelayTask, UserTask",
+          "title": "Task type"
         },
         "uid": {
           "type": "string",
-          "description": "task id, must be unique",
+          "description": "Task uid, must be unique",
+          "title": "Task uid",
           "maxLength": 255,
           "minLength": 1
         }
       },
       "required": [
-        "tenantID",
+        "type",
         "uid"
       ]
-    },
-    "pb.TenantTaskRequest": {
-      "type": "object",
-      "properties": {
-        "tenantID": {
-          "type": "string",
-          "description": "tenant id, must be unique",
-          "maxLength": 255,
-          "minLength": 1
-        }
-      },
-      "required": [
-        "tenantID"
-      ]
-    },
-    "pb.TenantTaskResponse": {
-      "type": "object",
-      "properties": {
-        "code": {
-          "$ref": "#/definitions/pb.Code",
-          "title": "Task uid"
-        },
-        "running": {
-          "type": "string",
-          "format": "int64"
-        },
-        "pending": {
-          "type": "string",
-          "format": "int64"
-        },
-        "limit": {
-          "type": "string",
-          "format": "int64"
-        }
-      }
     }
   }
 }

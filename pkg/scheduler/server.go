@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -33,110 +32,112 @@ func NewServer(db types.DB, sched *Scheduler, config config.ServerConfig, lg typ
 	return &Server{db: db, sched: sched, config: config, lg: lg, ls: ls}
 }
 
-func (s *Server) NewTenant(ctx context.Context, req *pb.NewTenantRequest) (*pb.Response, error) {
-	s.lg.Log(types.LevelInfo, "tenantId", req.Uid, "zone", req.Zone, "name", req.Name,
-		"message", "creating new tenant")
+// Tenant API
+
+func (s *Server) CreateTenant(ctx context.Context, req *pb.CreateTenantRequest) (*pb.Response, error) {
+	s.lg.Log(types.LevelInfo, "tenantId", req.GetUid(), "zone", req.GetZone(),
+		"name", req.GetName(), "quota", req.GetQuota(), "message", "creating new tenant")
+
+	now := time.Now()
+	t := entity.Tenant{
+		Uid:           req.GetUid(),
+		Zone:          req.GetZone(),
+		Priority:      req.GetPriority(),
+		Partition:     s.sched.SchedulerId(),
+		Name:          req.GetName(),
+		Status:        enum.TenantStatusActive,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+		LastActive:    now,
+		ResourceQuota: entity.NewResourceQuota(req.GetQuota().GetType(), req.GetQuota().GetValue()),
+	}
+	err := s.db.CreateTenant(ctx, t)
+	if err != nil {
+		if errors.Is(err, enum.ErrTenantAlreadyExists) {
+			err = status.Error(codes.AlreadyExists, enum.ErrTenantAlreadyExists.Error())
+			s.lg.Log(types.LevelInfo, "tenantId", req.GetUid(), "message", "tenant already exists")
+			return nil, err
+		}
+		s.lg.Log(types.LevelError, "error", err, "tenantId", req.GetUid(), "message", "failed to create tenant")
+		return nil, err
+	}
+
+	s.lg.Log(types.LevelInfo, "tenantId", req.GetUid(), "partition", t.Partition, "message", "created new tenant")
 	resp := &pb.Response{
 		Code: pb.Code_Ok,
 	}
-	now := time.Now()
-	t := entity.Tenant{
-		Uid:        req.Uid,
-		Zone:       req.Zone,
-		Priority:   req.Priority,
-		Partition:  s.sched.SchedulerId(),
-		Name:       req.Name,
-		Status:     enum.TenantStatusActive,
-		CreatedAt:  now,
-		UpdatedAt:  now,
-		LastActive: now,
-		ResourceQuota: entity.ResourceQuota{
-			Type: string(enum.ResourceTypeConcurrency),
-			Concurrency: sql.NullInt64{
-				Int64: req.Quota.Value,
-				Valid: true,
-			},
-		},
-	}
-	if err := s.db.CreateTenant(ctx, t); err != nil {
-		if errors.Is(err, enum.ErrTenantAlreadyExists) {
-			err = status.Error(codes.AlreadyExists, enum.ErrTenantAlreadyExists.Error())
-			s.lg.Log(types.LevelInfo, "tenantId", req.Uid, "message", "tenant already exists")
-			return nil, err
-		}
-		s.lg.Log(types.LevelError, "error", err, "tenantId", req.Uid, "message", "failed to create tenant")
-		return nil, err
-	}
-	s.lg.Log(types.LevelInfo, "tenantId", req.Uid, "message", "created new tenant")
 	return resp, nil
 }
 
-func (s *Server) TenantTaskInfo(ctx context.Context, req *pb.TenantTaskRequest) (resp *pb.TenantTaskResponse, err error) {
-	s.lg.Log(types.LevelDebug, "tenantId", req.TenantID, "message", "get tenant tasks")
-	queue, ex := s.sched.cs[req.GetTenantID()]
-	pending, err := s.db.CountTenantPendingTasks(ctx, types.CountTenantPendingTasksOption{TenantId: req.TenantID})
+func (s *Server) QueryTenantTaskConcurrency(ctx context.Context, req *pb.QueryTenantTaskConcurrencyRequest) (resp *pb.QueryTenantTaskConcurrencyResponse, err error) {
+	var (
+		running int
+		limit   int64
+	)
+	s.lg.Log(types.LevelDebug, "tenantId", req.GetUid(), "message", "querying tenant task concurrency")
+
+	// 1. Count pending tasks from database
+	pending, err := s.db.CountTenantPendingTasks(ctx, types.CountTenantPendingTasksOption{TenantId: req.GetUid()})
 	if err != nil {
-		s.lg.Log(types.LevelError, "error", err, "tenantId", req.TenantID, "message", "failed to count tenant pending tasks")
+		s.lg.Log(types.LevelError, "error", err, "tenantId", req.GetUid(), "message", "failed to count tenant pending tasks")
 		return nil, err
 	}
-	if ex {
-		var running int
-		limit := queue.Tenant.ResourceQuota.Concurrency.Int64
-		running, err = s.sched.em.CountRunningTasks(req.TenantID)
+
+	// 2. Get running and concurrency limit from queue or database
+	queue, ok := s.sched.cs[req.GetUid()]
+	if ok {
+		limit = queue.Tenant.ResourceQuota.Concurrency.Int64
+		running, err = s.sched.em.CountRunningTasks(req.GetUid())
 		if err != nil {
-			resp = &pb.TenantTaskResponse{
-				Code: pb.Code_TaskNotExist,
-			}
-			return
+			s.lg.Log(types.LevelError, "error", err, "tenantId", req.GetUid(), "message", "failed to count tenant running tasks")
+			return nil, err
 		}
-		resp = &pb.TenantTaskResponse{
-			Code:    pb.Code_Ok,
-			Limit:   limit,
-			Running: int64(running),
-			Pending: pending,
-		}
-		return
 	} else {
 		var tenant *entity.Tenant
-		tenant, err = s.db.GetTenant(ctx, types.GetTenantOption{TenantId: req.TenantID})
+		tenant, err = s.db.GetTenant(ctx, types.GetTenantOption{TenantId: req.GetUid()})
 		if err != nil {
-			s.lg.Log(types.LevelError, "error", err, "tenantId", req.TenantID, "message", "found tenant tasks, but tenant does not exist")
-			resp = &pb.TenantTaskResponse{
-				Code: pb.Code_TaskNotExist,
-			}
-			return
+			s.lg.Log(types.LevelError, "error", err, "tenantId", req.GetUid(), "message", "failed to get tenant")
+			return nil, err
 		}
-		resp = &pb.TenantTaskResponse{
-			Code:    pb.Code_Ok,
-			Limit:   tenant.ResourceQuota.Concurrency.Int64,
-			Running: 0,
-			Pending: pending,
-		}
-		return resp, nil
+		limit = tenant.ResourceQuota.Concurrency.Int64
+		// TODO: running
 	}
+
+	resp = &pb.QueryTenantTaskConcurrencyResponse{
+		Code:    pb.Code_Ok,
+		Limit:   limit,
+		Running: int64(running),
+		Pending: pending,
+	}
+	return resp, nil
 }
 
-func (s *Server) NewTask(ctx context.Context, req *pb.NewTaskRequest) (*pb.Response, error) {
-	s.lg.Log(types.LevelInfo, "tenantId", req.TenantId, "taskId", req.Uid, "message", "creating new task")
+// Task API
+
+func (s *Server) CreateTask(ctx context.Context, req *pb.CreateTaskRequest) (*pb.Response, error) {
+	s.lg.Log(types.LevelInfo, "tenantId", req.GetTenantId(), "taskId", req.GetUid(),
+		"handler", req.GetHandler(), "message", "creating new task")
+
 	now := time.Now()
 	t := entity.UserTask{
-		TenantId:         req.TenantId,
-		Uid:              req.Uid,
-		Handler:          req.Handler,
-		Config:           req.Config,
-		ScheduleStrategy: req.ScheduleStrategy,
-		Priority:         req.Priority,
+		TenantId:         req.GetTenantId(),
+		Uid:              req.GetUid(),
+		Handler:          req.GetHandler(),
+		Config:           req.GetConfig(),
+		ScheduleStrategy: req.GetScheduleStrategy(),
+		Priority:         req.GetPriority(),
 		Progress:         0,
 		CreatedAt:        now,
 		UpdatedAt:        now,
 		Status:           enum.TaskStatusPending,
 	}
 	if req.Options.GetCheckResourceQuota() {
-		queue, ex := s.sched.cs[req.TenantId]
-		if ex {
+		queue, ok := s.sched.cs[req.TenantId]
+		if ok {
 			limit := queue.Tenant.ResourceQuota.Concurrency.Int64
 			running, err := s.sched.em.CountRunningTasks(req.TenantId)
 			if err != nil {
+				s.lg.Log(types.LevelError, "error", err, "tenantId", req.GetTenantId(), "message", "failed to count running tasks while creating new task")
 				return nil, err
 			}
 			if int64(running) > limit {
@@ -148,35 +149,43 @@ func (s *Server) NewTask(ctx context.Context, req *pb.NewTaskRequest) (*pb.Respo
 		}
 	}
 	if err := s.db.CreateTask(ctx, t); err != nil {
-		s.lg.Log(types.LevelError, "error", err, "tenantId", req.TenantId, "taskId", req.Uid,
+		s.lg.Log(types.LevelError, "error", err, "tenantId", req.GetTenantId(), "taskId", req.GetUid(),
 			"message", "failed to create new task")
 		return nil, err
 	}
 	resp := &pb.Response{
 		Code: pb.Code_Ok,
 	}
-	s.lg.Log(types.LevelDebug, "tenantId", req.TenantId, "taskId", req.Uid,
-		"message", "created new task")
+	s.lg.Log(types.LevelDebug, "tenantId", req.GetTenantId(), "taskId", req.GetUid(),
+		"handler", req.GetHandler(), "message", "created new task")
 	le := types.ListenerEvent{SchedulerId: s.sched.SchedulerId(), Task: types.NewTaskMetadataFromUserTaskEntity(&t)}
 	s.ls.OnTaskCreated(le)
 	return resp, nil
 }
 
 func (s *Server) PauseTask(ctx context.Context, req *pb.PauseTaskRequest) (*pb.Response, error) {
-	taskStatus, err := s.db.GetTaskStatus(ctx, types.GetTaskStatusOption{Uid: req.Uid, TaskType: enum.TaskTypeUserTask})
-	if taskStatus != enum.TaskStatusRunning {
+	s.lg.Log(types.LevelInfo, "taskId", req.GetUid(), "taskType", req.GetType(), "message", "pausing task")
+
+	opt := types.GetTaskStatusOption{
+		TaskType: enum.TaskType(req.GetType()),
+		Uid:      req.GetUid(),
+	}
+	ts, err := s.db.GetTaskStatus(ctx, opt)
+	if ts != enum.TaskStatusRunning {
 		resp := &pb.Response{
-			Code:    pb.Code_TaskIsNotRunning,
-			Message: "the task is not running",
+			Code:    pb.Code_TaskNotRunning,
+			Message: "task is not running",
 		}
 		return resp, nil
 	}
+	// TODO: pause running task
 	err = s.db.UpdateTaskStatus(ctx, types.UpdateTaskStatusOption{
-		Uids:     []string{req.Uid},
-		TaskType: enum.TaskTypeUserTask,
-		Status:   enum.TaskStatusDispatched,
+		Uids:     []string{req.GetUid()},
+		TaskType: enum.TaskType(req.GetType()),
+		Status:   enum.TaskStatusCanceled,
 	})
 	if err != nil {
+		s.lg.Log(types.LevelError, "error", err, "taskId", req.GetUid(), "message", "failed to update task status")
 		return nil, err
 	}
 	resp := &pb.Response{
@@ -186,58 +195,61 @@ func (s *Server) PauseTask(ctx context.Context, req *pb.PauseTaskRequest) (*pb.R
 }
 
 func (s *Server) RestartTask(ctx context.Context, req *pb.RestartTaskRequest) (*pb.Response, error) {
-	s.lg.Log(types.LevelDebug, "taskId", req.Uid, "message", "restart task")
-	panic("implement me")
-}
+	s.lg.Log(types.LevelInfo, "taskId", req.GetUid(), "taskType", req.GetType(), "message", "restarting task")
 
-func (s *Server) StopTask(ctx context.Context, req *pb.StopTaskRequest) (*pb.Response, error) {
-	task, err := s.db.GetTask(ctx, types.GetTaskOption{TaskType: enum.TaskTypeUserTask, Uid: req.Uid})
+	err := s.db.UpdateTaskStatus(ctx, types.UpdateTaskStatusOption{
+		Uids:     []string{req.GetUid()},
+		TaskType: enum.TaskType(req.GetType()),
+		Status:   enum.TaskStatusPending,
+	})
 	if err != nil {
-		return nil, err
-	}
-	if len(task.UserTasks.TaskIds()) == 0 {
-		resp := &pb.Response{
-			Code:    pb.Code_TaskNotExist,
-			Message: "task not found",
-		}
-		return resp, nil
-	}
-	findTask := task.UserTasks[0]
-	if findTask.TenantId != req.TenantID {
-		resp := &pb.Response{
-			Code:    pb.Code_PermissionDenied,
-			Message: "task not found in this tenant",
-		}
-		return resp, nil
-	}
-	if findTask.Status == enum.TaskStatusSuccess || findTask.Status == enum.TaskStatusFailed {
-		resp := &pb.Response{
-			Code:    pb.Code_TaskExecuted,
-			Message: "the task has finished running",
-		}
-		return resp, nil
-	}
-
-	if err != nil {
+		s.lg.Log(types.LevelError, "error", err, "taskId", req.GetUid(), "message", "failed to update task status")
 		return nil, err
 	}
 	resp := &pb.Response{
 		Code: pb.Code_Ok,
 	}
-
 	return resp, nil
 }
 
-func (s *Server) QueryTaskStatus(ctx context.Context, req *pb.QueryTaskRequest) (*pb.QueryStatusResponse, error) {
-	options := types.GetTaskStatusOption{Uid: req.Uid}
-	taskStatus, err := s.db.GetTaskStatus(ctx, options)
+func (s *Server) StopTask(ctx context.Context, req *pb.StopTaskRequest) (*pb.Response, error) {
+	s.lg.Log(types.LevelInfo, "taskId", req.GetUid(), "taskType", req.GetType(), "message", "stopping task")
+
+	opt := types.GetTaskStatusOption{
+		TaskType: enum.TaskType(req.GetType()),
+		Uid:      req.GetUid(),
+	}
+	ts, err := s.db.GetTaskStatus(ctx, opt)
 	if err != nil {
-		s.lg.Log(types.LevelError, "error", err, "taskId", req.Uid, "message", "query task error")
+		s.lg.Log(types.LevelError, "taskId", req.GetUid(), "taskType", req.GetType(), "message", "failed to get task status while stopping task")
 		return nil, err
 	}
-	resp := &pb.QueryStatusResponse{
+	if ts == enum.TaskStatusSuccess || ts == enum.TaskStatusFailed {
+		resp := &pb.Response{
+			Code:    pb.Code_TaskFinished,
+			Message: fmt.Sprintf("task has been finished (status: %v)", ts),
+		}
+		return resp, nil
+	}
+
+	// TODO: stop task
+
+	resp := &pb.Response{
+		Code: pb.Code_Ok,
+	}
+	return resp, nil
+}
+
+func (s *Server) QueryTaskStatus(ctx context.Context, req *pb.QueryTaskStatusRequest) (*pb.QueryTaskStatusResponse, error) {
+	opt := types.GetTaskStatusOption{Uid: req.GetUid()}
+	ts, err := s.db.GetTaskStatus(ctx, opt)
+	if err != nil {
+		s.lg.Log(types.LevelError, "error", err, "taskId", req.GetUid(), "message", "query task error")
+		return nil, err
+	}
+	resp := &pb.QueryTaskStatusResponse{
 		Code:   pb.Code_Ok,
-		Status: string(taskStatus),
+		Status: string(ts),
 	}
 	return resp, nil
 }

@@ -7,7 +7,6 @@ import "google/api/field_behavior.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
 import "common.proto";
 
-
 option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
   info: {
     title: "Keel Scheduler API";
@@ -24,7 +23,7 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
 
 service ScheduleService {
   // Tenant API
-  rpc NewTenant (NewTenantRequest) returns (Response) {
+  rpc CreateTenant (CreateTenantRequest) returns (Response) {
     option (google.api.http) = {
       post: "/v1/tenants",
       body: "*"
@@ -49,7 +48,7 @@ service ScheduleService {
   };
 
   // Task API
-  rpc NewTask (NewTaskRequest) returns (Response) {
+  rpc CreateTask (CreateTaskRequest) returns (Response) {
     option (google.api.http) = {
       post: "/v1/tasks",
       body: "*"
@@ -112,7 +111,7 @@ service ScheduleService {
 
 // Tenant API request & response
 
-message NewTenantRequest {
+message CreateTenantRequest {
   // Tenant uid, must be unique across different zones
   string uid = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "Tenant uid, must be unique",
@@ -147,7 +146,7 @@ message NewTenantRequest {
 
 message QueryTenantTaskConcurrencyRequest {
   // Tenant uid
-  string tenant_id = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+  string uid = 1 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "Tenant uid, must be unique",
     max_length: 255,
     min_length: 1
@@ -171,7 +170,7 @@ message QueryTenantTaskConcurrencyResponse {
 
 // Task API request & response
 
-message NewTaskRequest {
+message CreateTaskRequest {
   // Create task options
   CreateTaskOptions options = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "Create task options, optional"

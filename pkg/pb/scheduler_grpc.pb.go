@@ -18,13 +18,15 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ScheduleServiceClient interface {
-	NewTenant(ctx context.Context, in *NewTenantRequest, opts ...grpc.CallOption) (*Response, error)
-	TenantTaskInfo(ctx context.Context, in *TenantTaskRequest, opts ...grpc.CallOption) (*TenantTaskResponse, error)
-	NewTask(ctx context.Context, in *NewTaskRequest, opts ...grpc.CallOption) (*Response, error)
+	// Tenant API
+	CreateTenant(ctx context.Context, in *CreateTenantRequest, opts ...grpc.CallOption) (*Response, error)
+	QueryTenantTaskConcurrency(ctx context.Context, in *QueryTenantTaskConcurrencyRequest, opts ...grpc.CallOption) (*QueryTenantTaskConcurrencyResponse, error)
+	// Task API
+	CreateTask(ctx context.Context, in *CreateTaskRequest, opts ...grpc.CallOption) (*Response, error)
 	PauseTask(ctx context.Context, in *PauseTaskRequest, opts ...grpc.CallOption) (*Response, error)
 	RestartTask(ctx context.Context, in *RestartTaskRequest, opts ...grpc.CallOption) (*Response, error)
 	StopTask(ctx context.Context, in *StopTaskRequest, opts ...grpc.CallOption) (*Response, error)
-	QueryTaskStatus(ctx context.Context, in *QueryTaskRequest, opts ...grpc.CallOption) (*QueryStatusResponse, error)
+	QueryTaskStatus(ctx context.Context, in *QueryTaskStatusRequest, opts ...grpc.CallOption) (*QueryTaskStatusResponse, error)
 }
 
 type scheduleServiceClient struct {
@@ -35,27 +37,27 @@ func NewScheduleServiceClient(cc grpc.ClientConnInterface) ScheduleServiceClient
 	return &scheduleServiceClient{cc}
 }
 
-func (c *scheduleServiceClient) NewTenant(ctx context.Context, in *NewTenantRequest, opts ...grpc.CallOption) (*Response, error) {
+func (c *scheduleServiceClient) CreateTenant(ctx context.Context, in *CreateTenantRequest, opts ...grpc.CallOption) (*Response, error) {
 	out := new(Response)
-	err := c.cc.Invoke(ctx, "/pb.ScheduleService/NewTenant", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pb.ScheduleService/CreateTenant", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *scheduleServiceClient) TenantTaskInfo(ctx context.Context, in *TenantTaskRequest, opts ...grpc.CallOption) (*TenantTaskResponse, error) {
-	out := new(TenantTaskResponse)
-	err := c.cc.Invoke(ctx, "/pb.ScheduleService/TenantTaskInfo", in, out, opts...)
+func (c *scheduleServiceClient) QueryTenantTaskConcurrency(ctx context.Context, in *QueryTenantTaskConcurrencyRequest, opts ...grpc.CallOption) (*QueryTenantTaskConcurrencyResponse, error) {
+	out := new(QueryTenantTaskConcurrencyResponse)
+	err := c.cc.Invoke(ctx, "/pb.ScheduleService/QueryTenantTaskConcurrency", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *scheduleServiceClient) NewTask(ctx context.Context, in *NewTaskRequest, opts ...grpc.CallOption) (*Response, error) {
+func (c *scheduleServiceClient) CreateTask(ctx context.Context, in *CreateTaskRequest, opts ...grpc.CallOption) (*Response, error) {
 	out := new(Response)
-	err := c.cc.Invoke(ctx, "/pb.ScheduleService/NewTask", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pb.ScheduleService/CreateTask", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -89,8 +91,8 @@ func (c *scheduleServiceClient) StopTask(ctx context.Context, in *StopTaskReques
 	return out, nil
 }
 
-func (c *scheduleServiceClient) QueryTaskStatus(ctx context.Context, in *QueryTaskRequest, opts ...grpc.CallOption) (*QueryStatusResponse, error) {
-	out := new(QueryStatusResponse)
+func (c *scheduleServiceClient) QueryTaskStatus(ctx context.Context, in *QueryTaskStatusRequest, opts ...grpc.CallOption) (*QueryTaskStatusResponse, error) {
+	out := new(QueryTaskStatusResponse)
 	err := c.cc.Invoke(ctx, "/pb.ScheduleService/QueryTaskStatus", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -102,13 +104,15 @@ func (c *scheduleServiceClient) QueryTaskStatus(ctx context.Context, in *QueryTa
 // All implementations must embed UnimplementedScheduleServiceServer
 // for forward compatibility
 type ScheduleServiceServer interface {
-	NewTenant(context.Context, *NewTenantRequest) (*Response, error)
-	TenantTaskInfo(context.Context, *TenantTaskRequest) (*TenantTaskResponse, error)
-	NewTask(context.Context, *NewTaskRequest) (*Response, error)
+	// Tenant API
+	CreateTenant(context.Context, *CreateTenantRequest) (*Response, error)
+	QueryTenantTaskConcurrency(context.Context, *QueryTenantTaskConcurrencyRequest) (*QueryTenantTaskConcurrencyResponse, error)
+	// Task API
+	CreateTask(context.Context, *CreateTaskRequest) (*Response, error)
 	PauseTask(context.Context, *PauseTaskRequest) (*Response, error)
 	RestartTask(context.Context, *RestartTaskRequest) (*Response, error)
 	StopTask(context.Context, *StopTaskRequest) (*Response, error)
-	QueryTaskStatus(context.Context, *QueryTaskRequest) (*QueryStatusResponse, error)
+	QueryTaskStatus(context.Context, *QueryTaskStatusRequest) (*QueryTaskStatusResponse, error)
 	mustEmbedUnimplementedScheduleServiceServer()
 }
 
@@ -116,14 +120,14 @@ type ScheduleServiceServer interface {
 type UnimplementedScheduleServiceServer struct {
 }
 
-func (UnimplementedScheduleServiceServer) NewTenant(context.Context, *NewTenantRequest) (*Response, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method NewTenant not implemented")
+func (UnimplementedScheduleServiceServer) CreateTenant(context.Context, *CreateTenantRequest) (*Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateTenant not implemented")
 }
-func (UnimplementedScheduleServiceServer) TenantTaskInfo(context.Context, *TenantTaskRequest) (*TenantTaskResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method TenantTaskInfo not implemented")
+func (UnimplementedScheduleServiceServer) QueryTenantTaskConcurrency(context.Context, *QueryTenantTaskConcurrencyRequest) (*QueryTenantTaskConcurrencyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method QueryTenantTaskConcurrency not implemented")
 }
-func (UnimplementedScheduleServiceServer) NewTask(context.Context, *NewTaskRequest) (*Response, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method NewTask not implemented")
+func (UnimplementedScheduleServiceServer) CreateTask(context.Context, *CreateTaskRequest) (*Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateTask not implemented")
 }
 func (UnimplementedScheduleServiceServer) PauseTask(context.Context, *PauseTaskRequest) (*Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PauseTask not implemented")
@@ -134,7 +138,7 @@ func (UnimplementedScheduleServiceServer) RestartTask(context.Context, *RestartT
 func (UnimplementedScheduleServiceServer) StopTask(context.Context, *StopTaskRequest) (*Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StopTask not implemented")
 }
-func (UnimplementedScheduleServiceServer) QueryTaskStatus(context.Context, *QueryTaskRequest) (*QueryStatusResponse, error) {
+func (UnimplementedScheduleServiceServer) QueryTaskStatus(context.Context, *QueryTaskStatusRequest) (*QueryTaskStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method QueryTaskStatus not implemented")
 }
 func (UnimplementedScheduleServiceServer) mustEmbedUnimplementedScheduleServiceServer() {}
@@ -150,56 +154,56 @@ func RegisterScheduleServiceServer(s grpc.ServiceRegistrar, srv ScheduleServiceS
 	s.RegisterService(&ScheduleService_ServiceDesc, srv)
 }
 
-func _ScheduleService_NewTenant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(NewTenantRequest)
+func _ScheduleService_CreateTenant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateTenantRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ScheduleServiceServer).NewTenant(ctx, in)
+		return srv.(ScheduleServiceServer).CreateTenant(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.ScheduleService/NewTenant",
+		FullMethod: "/pb.ScheduleService/CreateTenant",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ScheduleServiceServer).NewTenant(ctx, req.(*NewTenantRequest))
+		return srv.(ScheduleServiceServer).CreateTenant(ctx, req.(*CreateTenantRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ScheduleService_TenantTaskInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(TenantTaskRequest)
+func _ScheduleService_QueryTenantTaskConcurrency_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryTenantTaskConcurrencyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ScheduleServiceServer).TenantTaskInfo(ctx, in)
+		return srv.(ScheduleServiceServer).QueryTenantTaskConcurrency(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.ScheduleService/TenantTaskInfo",
+		FullMethod: "/pb.ScheduleService/QueryTenantTaskConcurrency",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ScheduleServiceServer).TenantTaskInfo(ctx, req.(*TenantTaskRequest))
+		return srv.(ScheduleServiceServer).QueryTenantTaskConcurrency(ctx, req.(*QueryTenantTaskConcurrencyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ScheduleService_NewTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(NewTaskRequest)
+func _ScheduleService_CreateTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ScheduleServiceServer).NewTask(ctx, in)
+		return srv.(ScheduleServiceServer).CreateTask(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.ScheduleService/NewTask",
+		FullMethod: "/pb.ScheduleService/CreateTask",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ScheduleServiceServer).NewTask(ctx, req.(*NewTaskRequest))
+		return srv.(ScheduleServiceServer).CreateTask(ctx, req.(*CreateTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -259,7 +263,7 @@ func _ScheduleService_StopTask_Handler(srv interface{}, ctx context.Context, dec
 }
 
 func _ScheduleService_QueryTaskStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryTaskRequest)
+	in := new(QueryTaskStatusRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -271,7 +275,7 @@ func _ScheduleService_QueryTaskStatus_Handler(srv interface{}, ctx context.Conte
 		FullMethod: "/pb.ScheduleService/QueryTaskStatus",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ScheduleServiceServer).QueryTaskStatus(ctx, req.(*QueryTaskRequest))
+		return srv.(ScheduleServiceServer).QueryTaskStatus(ctx, req.(*QueryTaskStatusRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -284,16 +288,16 @@ var ScheduleService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*ScheduleServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "NewTenant",
-			Handler:    _ScheduleService_NewTenant_Handler,
+			MethodName: "CreateTenant",
+			Handler:    _ScheduleService_CreateTenant_Handler,
 		},
 		{
-			MethodName: "TenantTaskInfo",
-			Handler:    _ScheduleService_TenantTaskInfo_Handler,
+			MethodName: "QueryTenantTaskConcurrency",
+			Handler:    _ScheduleService_QueryTenantTaskConcurrency_Handler,
 		},
 		{
-			MethodName: "NewTask",
-			Handler:    _ScheduleService_NewTask_Handler,
+			MethodName: "CreateTask",
+			Handler:    _ScheduleService_CreateTask_Handler,
 		},
 		{
 			MethodName: "PauseTask",
