@@ -100,7 +100,7 @@ func (w *Worker) Start() {
 func (w *Worker) onReceiveMessage(from string, msg []byte) (result []byte, err error) {
 	var task types.Task
 	if err = json.Unmarshal(msg, &task); err != nil {
-		w.lg.Log(types.LevelError, "error", err, "message", "failed to unmarshal task message")
+		w.lg.Log(types.LevelError, "error", err.Error(), "message", "failed to unmarshal task message")
 		return nil, err
 	}
 	if _, ok := w.factories[task.Handler]; !ok {
@@ -115,7 +115,7 @@ func (w *Worker) onReceiveMessage(from string, msg []byte) (result []byte, err e
 		Task:   task,
 	}
 	if err = w.run(tc); err != nil {
-		w.lg.Log(types.LevelError, "error", err, "message", "failed to start task")
+		w.lg.Log(types.LevelError, "error", err.Error(), "message", "failed to start task")
 		return nil, err
 	}
 	return []byte("success"), nil
@@ -222,7 +222,7 @@ func (w *Worker) report() {
 
 				tc, s, err := hdl.HeartBeat()
 				if err != nil {
-					w.lg.Log(types.LevelError, "error", err, "message", "heartbeat error")
+					w.lg.Log(types.LevelError, "error", err.Error(), "message", "heartbeat error")
 					return true
 				}
 				w.notify(tc.NewMessage(enum.ReportTaskStatus, s))
@@ -236,12 +236,12 @@ func (w *Worker) report() {
 func (w *Worker) notify(m *types.TaskMessage) {
 	byt, err := json.Marshal(m)
 	if err != nil {
-		w.lg.Log(types.LevelError, "error", err, "message", "failed to marshal message")
+		w.lg.Log(types.LevelError, "error", err.Error(), "message", "failed to marshal message")
 		return
 	}
 
 	if err = w.tran.Send(w.info.Id, m.SchedulerId, byt); err != nil {
-		w.lg.Log(types.LevelError, "error", err,
+		w.lg.Log(types.LevelError, "error", err.Error(),
 			"workerId", w.info.Id, "schedulerId", m.SchedulerId,
 			"message", "failed to send message")
 	}
@@ -257,7 +257,7 @@ func (w *Worker) transferAllTasks() {
 
 		tc, s, err := hdl.BeforeTransitionStart()
 		if err != nil {
-			w.lg.Log(types.LevelError, "error", err, "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId,
+			w.lg.Log(types.LevelError, "error", err.Error(), "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId,
 				"message", "failed to start task transition")
 			w.notify(tc.NewMessage(enum.RetryTask, nil))
 			return true

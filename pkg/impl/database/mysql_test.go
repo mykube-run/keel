@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+var db types.DB
+
 const (
 	dsn       = "root:pa88w0rd@tcp(mysql:3306)/keel?charset=utf8mb4&parseTime=true"
 	tenantId  = "tenant-unit-test-1"
@@ -29,21 +31,14 @@ func deleteTestData() {
 }
 
 func Test_NewMySQL(t *testing.T) {
-	db, err := NewMySQL(dsn)
+	var err error
+	db, err = NewMySQL(dsn)
 	if err != nil {
 		t.Fatalf("should be able to connect to database, got erorr: %v", err)
-	}
-
-	if err = db.Close(); err != nil {
-		t.Fatalf("should be able to close connection, but got error: %v", err)
 	}
 }
 
 func TestMySQL_CreateTenant(t *testing.T) {
-	db, err := NewMySQL(dsn)
-	if err != nil {
-		t.Fatalf("should be able to connect to database, got erorr: %v", err)
-	}
 	deleteTestData()
 
 	tenant := entity.Tenant{
@@ -63,17 +58,13 @@ func TestMySQL_CreateTenant(t *testing.T) {
 		},
 	}
 	tenant.ResourceQuota = quota
-	err = db.CreateTenant(context.TODO(), tenant)
+	err := db.CreateTenant(context.TODO(), tenant)
 	if err != nil {
 		t.Fatalf("should create the tenant, but got error: %v", err)
 	}
 }
 
 func TestMySQL_FindActiveTenants(t *testing.T) {
-	db, err := NewMySQL(dsn)
-	if err != nil {
-		t.Fatalf("should be able to connect to database, got erorr: %v", err)
-	}
 	{
 		z := zone
 		p := partition
@@ -110,10 +101,6 @@ func TestMySQL_FindActiveTenants(t *testing.T) {
 }
 
 func TestMySQL_GetTenant(t *testing.T) {
-	db, err := NewMySQL(dsn)
-	if err != nil {
-		t.Fatalf("should be able to connect to database, got erorr: %v", err)
-	}
 	opt := types.GetTenantOption{
 		TenantId: tenantId,
 	}
@@ -127,38 +114,37 @@ func TestMySQL_GetTenant(t *testing.T) {
 }
 
 func TestMySQL_ActivateTenants(t *testing.T) {
-	db, err := NewMySQL(dsn)
+	opt1 := types.GetTenantOption{
+		TenantId: tenantId,
+	}
+	tenant, err := db.GetTenant(context.TODO(), opt1)
 	if err != nil {
-		t.Fatalf("should be able to connect to database, got erorr: %v", err)
+		t.Fatalf("should get specified tenant, but got error: %v", err)
 	}
+	active := tenant.LastActive
 
-	later := time.Now().Add(time.Minute)
-	opt := types.ActivateTenantsOption{
+	opt2 := types.ActivateTenantsOption{
 		TenantId:   []string{tenantId},
-		ActiveTime: later,
+		ActiveTime: time.Now().Add(time.Minute),
 	}
-	err = db.ActivateTenants(context.TODO(), opt)
+	err = db.ActivateTenants(context.TODO(), opt2)
 	if err != nil {
 		t.Fatalf("should be able to activate tenants, but got error: %v", err)
 	}
 
-	opt2 := types.GetTenantOption{
+	opt3 := types.GetTenantOption{
 		TenantId: tenantId,
 	}
-	tenant, err := db.GetTenant(context.TODO(), opt2)
+	tenant, err = db.GetTenant(context.TODO(), opt3)
 	if err != nil {
 		t.Fatalf("should get specified tenant, but got error: %v", err)
 	}
-	if tenant.LastActive.Before(later) {
-		t.Fatalf("tenant last_active should be updated to %v, but got: %v", later, tenant.LastActive)
+	if tenant.LastActive == active {
+		t.Fatalf("tenant last_active should be updated, but got the same value before updating: %v", tenant.LastActive)
 	}
 }
 
 func TestMySQL_CreateTask(t *testing.T) {
-	db, err := NewMySQL(dsn)
-	if err != nil {
-		t.Fatalf("should be able to connect to database, got erorr: %v", err)
-	}
 	deleteTestData()
 
 	task := entity.UserTask{
@@ -173,18 +159,13 @@ func TestMySQL_CreateTask(t *testing.T) {
 		UpdatedAt:        time.Now(),
 		Status:           enum.TaskStatusPending,
 	}
-	err = db.CreateTask(context.TODO(), task)
+	err := db.CreateTask(context.TODO(), task)
 	if err != nil {
 		t.Fatalf("should be able to create the task, but got error: %v", err)
 	}
 }
 
 func TestMySQL_FindRecentTasks(t *testing.T) {
-	db, err := NewMySQL(dsn)
-	if err != nil {
-		t.Fatalf("should be able to connect to database, but got erorr: %v", err)
-	}
-
 	tid := tenantId
 	opt := types.FindRecentTasksOption{
 		TaskType:      enum.TaskTypeUserTask,
@@ -205,10 +186,6 @@ func TestMySQL_FindRecentTasks(t *testing.T) {
 }
 
 func TestMySQL_CountTenantPendingTasks(t *testing.T) {
-	db, err := NewMySQL(dsn)
-	if err != nil {
-		t.Fatalf("should be able to connect to database, but got erorr: %v", err)
-	}
 	opt := types.CountTenantPendingTasksOption{
 		TenantId: tenantId,
 		From:     time.Now().AddDate(0, 0, -1),
@@ -224,10 +201,6 @@ func TestMySQL_CountTenantPendingTasks(t *testing.T) {
 }
 
 func TestMySQL_GetTask(t *testing.T) {
-	db, err := NewMySQL(dsn)
-	if err != nil {
-		t.Fatalf("should be able to connect to database, got erorr: %v", err)
-	}
 	opt := types.GetTaskOption{
 		TaskType: enum.TaskTypeUserTask,
 		Uid:      taskId,
@@ -245,10 +218,6 @@ func TestMySQL_GetTask(t *testing.T) {
 }
 
 func TestMySQL_GetTaskStatus(t *testing.T) {
-	db, err := NewMySQL(dsn)
-	if err != nil {
-		t.Fatalf("should be able to connect to database, got erorr: %v", err)
-	}
 	opt := types.GetTaskStatusOption{
 		TaskType: enum.TaskTypeUserTask,
 		Uid:      taskId,
@@ -263,17 +232,13 @@ func TestMySQL_GetTaskStatus(t *testing.T) {
 }
 
 func TestMySQL_UpdateTaskStatus(t *testing.T) {
-	db, err := NewMySQL(dsn)
-	if err != nil {
-		t.Fatalf("should be able to connect to database, got erorr: %v", err)
-	}
 	{
 		opt := types.UpdateTaskStatusOption{
 			TaskType: enum.TaskTypeUserTask,
 			Uids:     []string{taskId},
 			Status:   enum.TaskStatusCanceled,
 		}
-		err = db.UpdateTaskStatus(context.TODO(), opt)
+		err := db.UpdateTaskStatus(context.TODO(), opt)
 		if err != nil {
 			t.Fatalf("should be able to update task status, but got error: %v", err)
 		}

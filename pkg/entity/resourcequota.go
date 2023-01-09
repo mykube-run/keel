@@ -20,12 +20,15 @@ type ResourceQuota struct {
 
 func (q *ResourceQuota) Fields() []interface{} {
 	return []interface{}{
-		&q.Id, &q.TenantId, &q.Type, &q.CPU, &q.Memory, &q.Storage, &q.GPU, &q.Concurrency, &q.Custom, &q.Peak,
+		&q.TenantId, &q.Type, &q.CPU, &q.Memory, &q.Storage, &q.GPU, &q.Concurrency, &q.Custom, &q.Peak,
 	}
 }
 
-func NewResourceQuota(typ string, val int64) ResourceQuota {
-	q := ResourceQuota{Type: typ}
+func NewResourceQuota(tid, typ string, val int64) ResourceQuota {
+	q := ResourceQuota{
+		Type:     typ,
+		TenantId: tid,
+	}
 	switch typ {
 	case string(enum.ResourceTypeCPU):
 		q.CPU = sql.NullInt64{

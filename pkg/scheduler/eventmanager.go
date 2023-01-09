@@ -313,7 +313,7 @@ func (m *EventManager) loadSnapshot() error {
 		tmp := m.snapshotKey(i)
 		info, err := m.s3.StatObject(m.sc.Bucket, tmp, minio.StatObjectOptions{})
 		if err != nil {
-			m.lg.Log(types.LevelError, "error", err, "message", "stat object error")
+			m.lg.Log(types.LevelError, "error", err.Error(), "message", "stat object error")
 			continue
 		}
 		if info.LastModified.After(newest) {
@@ -388,7 +388,7 @@ func (m *EventManager) maybeCompactEvents(bucket *bbolt.Bucket, key []byte, ev *
 		if ev.Timestamp.After(latest.Timestamp) &&
 			ev.Timestamp.Sub(latest.Timestamp).Seconds() >= float64(DefaultEventCompactDuration) {
 			if err := bucket.Delete(ev.Key()); err != nil {
-				m.lg.Log(types.LevelError, "error", err, "key", key, "message", "error performing db compaction (while removing outdated task status report event)")
+				m.lg.Log(types.LevelError, "error", err.Error(), "key", key, "message", "error performing db compaction (while removing outdated task status report event)")
 			}
 		}
 	}
@@ -405,7 +405,7 @@ func (m *EventManager) backgroundBackup() {
 		select {
 		case <-tick.C:
 			if key, err := m.Backup(); err != nil {
-				m.lg.Log(types.LevelError, "error", err, "message", "error saving events db snapshot")
+				m.lg.Log(types.LevelError, "error", err.Error(), "message", "error saving events db snapshot")
 			} else {
 				m.lg.Log(types.LevelInfo, "key", key, "message", "saved events db snapshot")
 			}
