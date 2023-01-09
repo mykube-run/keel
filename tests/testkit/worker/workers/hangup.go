@@ -29,7 +29,7 @@ func (s *HangUpTaskHandler) Start() (bool, error) {
 }
 
 func (s *HangUpTaskHandler) HeartBeat() (*types.TaskContext, *types.TaskStatus, error) {
-	return nil, nil, nil
+	return s.ctx, nil, nil
 }
 
 func (s *HangUpTaskHandler) StartTransitionTask(chan struct{}) (bool, error) {

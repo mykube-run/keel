@@ -8,14 +8,11 @@ import (
 	"github.com/mykube-run/keel/pkg/impl/listener"
 	"github.com/mykube-run/keel/pkg/impl/logging"
 	"github.com/mykube-run/keel/pkg/scheduler"
-	"github.com/mykube-run/keel/tests/testkit/worker"
 	"github.com/rs/zerolog"
-	"testing"
+	"github.com/rs/zerolog/log"
 )
 
-func Test_Main(t *testing.T) {
-	go worker.StartTestWorkers()
-
+func StartScheduler() {
 	cfg := config.DefaultFromEnv()
 	cfg.Transport.Role = string(enum.TransportRoleScheduler)
 	opt := &scheduler.Options{
@@ -30,11 +27,14 @@ func Test_Main(t *testing.T) {
 			GrpcAddress: fmt.Sprintf("%v:%v", cfg.Scheduler.Address, cfg.Scheduler.Port+1000),
 		},
 	}
-	db := database.NewMockDB()
+	db, err := database.New(cfg.Database)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error creating database")
+	}
 	zerolog.SetGlobalLevel(zerolog.TraceLevel)
 	s, err := scheduler.New(opt, db, logging.NewDefaultLogger(nil), listener.Default)
 	if err != nil {
-		t.Fatalf("error creating scheduler: %v", err)
+		log.Fatal().Err(err).Msg("error creating scheduler")
 	}
 	s.Start()
 }

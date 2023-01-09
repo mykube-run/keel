@@ -29,24 +29,8 @@ func (s *OrdinaryTaskHandler) Start() (bool, error) {
 }
 
 func (s *OrdinaryTaskHandler) HeartBeat() (*types.TaskContext, *types.TaskStatus, error) {
-	return nil, nil, nil
-}
-
-func (s *OrdinaryTaskHandler) StartTransitionTask(chan struct{}) (bool, error) {
-	s.started = time.Now()
-	log.Info().Str("taskId", s.ctx.Task.Uid).
-		Msgf("start to process task, will hang up for %v seconds and return error on HeartBeat call", HangUpDuration)
-	time.Sleep(time.Second * HangUpDuration)
-	return false, nil
-}
-
-func (s *OrdinaryTaskHandler) Stop() error {
-	return nil
-}
-
-func (s *OrdinaryTaskHandler) BeforeTransitionStart() (*types.TaskContext, *types.TaskStatus, error) {
 	status := &types.TaskStatus{
-		State:     enum.TaskStatusNeedsRetry,
+		State:     enum.TaskStatusRunning,
 		Progress:  s.progress(),
 		Error:     nil,
 		Timestamp: time.Now(),
@@ -54,9 +38,23 @@ func (s *OrdinaryTaskHandler) BeforeTransitionStart() (*types.TaskContext, *type
 	return s.ctx, status, nil
 }
 
+func (s *OrdinaryTaskHandler) BeforeTransitionStart() (*types.TaskContext, *types.TaskStatus, error) {
+	status := &types.TaskStatus{
+		State:     enum.TaskStatusInTransition,
+		Progress:  s.progress(),
+		Error:     nil,
+		Timestamp: time.Now(),
+	}
+	return s.ctx, status, nil
+}
+
+func (s *OrdinaryTaskHandler) StartTransitionTask(chan struct{}) (bool, error) {
+	return false, nil
+}
+
 func (s *OrdinaryTaskHandler) TransitionFinish() (*types.TaskContext, *types.TaskStatus, error) {
 	status := &types.TaskStatus{
-		State:     enum.TaskStatusNeedsRetry,
+		State:     enum.TaskStatusInTransition,
 		Progress:  s.progress(),
 		Error:     nil,
 		Timestamp: time.Now(),
@@ -74,6 +72,10 @@ func (s *OrdinaryTaskHandler) TransitionError() (*types.TaskContext, *types.Task
 	return s.ctx, status, nil
 }
 
+func (s *OrdinaryTaskHandler) Stop() error {
+	return nil
+}
+
 func (s *OrdinaryTaskHandler) progress() int {
 	dur := time.Now().Sub(s.started).Seconds()
 	p := int(dur / float64(OrdinaryTaskDuration) * 100)
@@ -81,8 +83,4 @@ func (s *OrdinaryTaskHandler) progress() int {
 		p = 100
 	}
 	return p
-}
-
-func (s *OrdinaryTaskHandler) NotifyTransitionFinish(signalChan chan struct{}) {
-	signalChan <- struct{}{}
 }

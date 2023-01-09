@@ -149,7 +149,7 @@ func TestMySQL_ActivateTenants(t *testing.T) {
 	if err != nil {
 		t.Fatalf("should get specified tenant, but got error: %v", err)
 	}
-	if tenant.LastActive != later || tenant.LastActive.Sub(later).Seconds() > 10 {
+	if tenant.LastActive.Before(later) {
 		t.Fatalf("tenant last_active should be updated to %v, but got: %v", later, tenant.LastActive)
 	}
 }

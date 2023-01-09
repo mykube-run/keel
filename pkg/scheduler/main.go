@@ -13,6 +13,7 @@ import (
 	"github.com/mykube-run/keel/pkg/types"
 	"os"
 	"os/signal"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -74,6 +75,12 @@ func New(opt *Options, db types.DB, lg types.Logger, ls types.Listener) (s *Sche
 
 func (s *Scheduler) Start() {
 	s.lg.Log(types.LevelInfo, "schedulerId", s.SchedulerId(), "transport", s.opt.Transport.Type, "message", "starting scheduler")
+
+	defer func() {
+		if r := recover(); r != nil {
+			s.printStack(r)
+		}
+	}()
 	_, _ = s.updateActiveTenants()
 	go s.schedule()
 	go s.checkStaleTasks()
@@ -523,4 +530,12 @@ func (s *Scheduler) RecoverSchedulingTask() {
 		s.lg.Log(types.LevelInfo, "taskIds", allSchedulingTask,
 			"message", "reset task status to pending before shutting down")
 	}
+}
+
+// printStack logs exception stack
+func (s *Scheduler) printStack(err interface{}) {
+	var buf [4096]byte
+	n := runtime.Stack(buf[:], false)
+	s.lg.Log(types.LevelError, "schedulerId", s.SchedulerId(), "error", err,
+		"stack", string(buf[:n]), "message", "scheduler panicked")
 }
