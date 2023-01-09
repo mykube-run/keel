@@ -18,7 +18,7 @@ import (
 func start() {
 	once := sync.Once{}
 	once.Do(func() {
-		log.Info().Msgf("starting test workers and scheduler")
+		log.Info().Msgf("starting integration test workers and scheduler")
 		go worker.StartTestWorkers()
 		go scheduler.StartScheduler()
 	})

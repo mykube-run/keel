@@ -11,7 +11,7 @@ func New(conf config.DatabaseConfig) (types.DB, error) {
 	case "mock":
 		return NewMockDB(), nil
 	case "mysql":
-		return nil, nil
+		return NewMySQL(conf.DSN)
 	default:
 		return nil, fmt.Errorf("unsupported database type: %v", conf.Type)
 	}
