@@ -6,11 +6,11 @@ import (
 	"github.com/mykube-run/keel/pkg/impl/logging"
 	"github.com/mykube-run/keel/pkg/worker"
 	"github.com/mykube-run/keel/tests/testkit/worker/workers"
-	"github.com/rs/zerolog/log"
+	"testing"
 	"time"
 )
 
-func StartTestWorkers() {
+func StartTestWorkers(t *testing.T) {
 	cfg := config.DefaultFromEnv()
 	if cfg.Transport.Type == "kafka" {
 		cfg.Transport.Role = string(enum.TransportRoleWorker)
@@ -24,7 +24,7 @@ func StartTestWorkers() {
 	}
 	w, err := worker.New(opt, logging.NewDefaultLogger(nil))
 	if err != nil {
-		log.Fatal().Err(err).Msg("error creating worker")
+		t.Fatalf("error creating worker: %v", err)
 	}
 
 	w.RegisterHandler("ordinary", workers.OrdinaryTaskHandlerFactory)

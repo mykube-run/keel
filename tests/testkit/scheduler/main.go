@@ -8,11 +8,10 @@ import (
 	"github.com/mykube-run/keel/pkg/impl/listener"
 	"github.com/mykube-run/keel/pkg/impl/logging"
 	"github.com/mykube-run/keel/pkg/scheduler"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
+	"testing"
 )
 
-func StartScheduler() {
+func StartScheduler(t *testing.T) {
 	cfg := config.DefaultFromEnv()
 	cfg.Transport.Role = string(enum.TransportRoleScheduler)
 	opt := &scheduler.Options{
@@ -30,12 +29,11 @@ func StartScheduler() {
 	}
 	db, err := database.New(cfg.Database)
 	if err != nil {
-		log.Fatal().Err(err).Msg("error creating database")
+		t.Fatalf("error creating database: %v", err)
 	}
-	zerolog.SetGlobalLevel(zerolog.TraceLevel)
 	s, err := scheduler.New(opt, db, logging.NewDefaultLogger(nil), listener.Default)
 	if err != nil {
-		log.Fatal().Err(err).Msg("error creating scheduler")
+		t.Fatalf("error creating scheduler: %v", err)
 	}
 	s.Start()
 }

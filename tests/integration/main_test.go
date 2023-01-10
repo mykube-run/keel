@@ -8,30 +8,29 @@ import (
 	"github.com/mykube-run/keel/pkg/pb"
 	"github.com/mykube-run/keel/tests/testkit/scheduler"
 	"github.com/mykube-run/keel/tests/testkit/worker"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"sync"
 	"testing"
 	"time"
 )
 
 func prepare(t *testing.T) {
-	once := sync.Once{}
-	once.Do(func() {
-		log.Info().Msg("starting integration test workers and scheduler")
-		go worker.StartTestWorkers()
-		go scheduler.StartScheduler()
+	zerolog.SetGlobalLevel(zerolog.TraceLevel)
 
-		time.Sleep(time.Second * 2)
-		cfg := config.DefaultFromEnv()
-		addr := fmt.Sprintf("%v:%v", cfg.Scheduler.Address, cfg.Scheduler.Port+1000)
-		conn, err := grpc.DialContext(context.TODO(), addr, grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			t.Fatalf("unable to connect to scheduler grpc api: %v", err)
-		}
-		client = pb.NewScheduleServiceClient(conn)
-	})
+	log.Info().Msg("starting integration test workers and scheduler")
+	go worker.StartTestWorkers(t)
+	go scheduler.StartScheduler(t)
+
+	time.Sleep(time.Second * 2)
+	cfg := config.DefaultFromEnv()
+	addr := fmt.Sprintf("%v:%v", cfg.Scheduler.Address, cfg.Scheduler.Port+1000)
+	conn, err := grpc.DialContext(context.TODO(), addr, grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatalf("unable to connect to scheduler grpc api: %v", err)
+	}
+	client = pb.NewScheduleServiceClient(conn)
 }
 
 var (

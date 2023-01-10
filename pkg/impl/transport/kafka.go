@@ -50,7 +50,8 @@ func NewKafkaTransport(cfg *config.TransportConfig) (*KafkaTransport, error) {
 	if err = c.SubscribeTopics(topics, nil); err != nil {
 		return nil, fmt.Errorf("error subscribing topics %v: %v", topics, err)
 	}
-	log.Info().Strs("topics", topics).Str("groupId", cfg.Kafka.GroupId).Msg("added subscription to topics")
+	log.Info().Strs("topics", topics).Str("role", cfg.Role).
+		Str("groupId", cfg.Kafka.GroupId).Msg("added subscription to topics")
 
 	t := &KafkaTransport{
 		c:              c,
@@ -96,6 +97,8 @@ func (t *KafkaTransport) Send(from, to string, msg []byte) error {
 		Timestamp:     time.Now(),
 		TimestampType: kafka.TimestampCreateTime,
 	}
+	log.Trace().Str("from", from).Str("to", to).Str("topic", topic).
+		Bytes("value", msg).Msg("sending message")
 	return t.p.Produce(kmsg, nil)
 }
 

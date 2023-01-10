@@ -19,7 +19,8 @@ func (c *TaskContext) NewMessage(typ enum.TaskMessageType, val interface{}) *Tas
 	case enum.ReportTaskStatus, enum.StartTransition:
 		byt, err := json.Marshal(val)
 		if err != nil {
-			log.Err(err).Msg("failed to marshal message value")
+			log.Err(err).Str("taskId", c.Task.Uid).Interface("value", val).
+				Msg("failed to marshal task message value")
 		}
 		return &TaskMessage{
 			Type:        typ,

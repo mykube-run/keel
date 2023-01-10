@@ -43,7 +43,7 @@ func DefaultFromEnv() Config {
 		Worker: WorkerConfig{
 			Name:           envstr("WORKER_NAME"),
 			PoolSize:       num("WORKER_POOL_SIZE"),
-			Generation:     num("WORKER_POOL_GENERATION"),
+			Generation:     num("WORKER_GENERATION"),
 			ReportInterval: num("WORKER_REPORT_INTERVAL"),
 		},
 		Transport: TransportConfig{
