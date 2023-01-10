@@ -16,12 +16,13 @@ func StartScheduler() {
 	cfg := config.DefaultFromEnv()
 	cfg.Transport.Role = string(enum.TransportRoleScheduler)
 	opt := &scheduler.Options{
-		Name:             cfg.Scheduler.Id,
-		Zone:             cfg.Scheduler.Zone,
-		ScheduleInterval: int64(cfg.Scheduler.ScheduleInterval),
-		StaleCheckDelay:  int64(cfg.Scheduler.StaleCheckDelay),
-		Snapshot:         cfg.Snapshot,
-		Transport:        cfg.Transport,
+		Name:                    cfg.Scheduler.Id,
+		Zone:                    cfg.Scheduler.Zone,
+		ScheduleInterval:        int64(cfg.Scheduler.ScheduleInterval),
+		StaleCheckDelay:         int64(cfg.Scheduler.StaleCheckDelay),
+		TaskEventUpdateDeadline: int64(cfg.Scheduler.TaskEventUpdateDeadline),
+		Snapshot:                cfg.Snapshot,
+		Transport:               cfg.Transport,
 		ServerConfig: config.ServerConfig{
 			HttpAddress: fmt.Sprintf("%v:%v", cfg.Scheduler.Address, cfg.Scheduler.Port),
 			GrpcAddress: fmt.Sprintf("%v:%v", cfg.Scheduler.Address, cfg.Scheduler.Port+1000),

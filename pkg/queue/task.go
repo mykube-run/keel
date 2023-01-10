@@ -125,7 +125,7 @@ func (c *TaskQueue) populateTasks(ctx context.Context) error {
 		heap.Push(c.UserTasks, item)
 		n += 1
 	}
-	c.lg.Log(types.LevelDebug, "populated", n, "message", "fetched user tasks from database")
+	c.lg.Log(types.LevelTrace, "populated", n, "message", "fetched user tasks from database")
 	return nil
 }
 

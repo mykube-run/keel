@@ -32,14 +32,15 @@ type DatabaseConfig struct {
 }
 
 type SchedulerConfig struct {
-	Id                string // Scheduler id, also used to identify partition
-	Zone              string // The zone to which schedule belongs to
-	Port              int
-	Numbers           int // Number of schedulers within the same zone
-	Address           string
-	AdvertisedAddress string
-	ScheduleInterval  int // Schedule interval in seconds
-	StaleCheckDelay   int // Stale tasks check delay after start up in seconds
+	Id                      string // Scheduler id, also used to identify partition
+	Zone                    string // The zone to which schedule belongs to
+	Port                    int
+	Numbers                 int // Number of schedulers within the same zone
+	Address                 string
+	AdvertisedAddress       string
+	ScheduleInterval        int // Schedule interval in seconds
+	StaleCheckDelay         int // Stale tasks check delay after start up in seconds
+	TaskEventUpdateDeadline int // Deadline in seconds for the scheduler to receive task update events
 }
 
 type WorkerConfig struct {

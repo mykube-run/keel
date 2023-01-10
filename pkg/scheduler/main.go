@@ -21,14 +21,14 @@ import (
 )
 
 type Options struct {
-	Name             string                 // Scheduler name, also used as partition name
-	Zone             string                 // Zone name
-	ScheduleInterval int64                  // Interval in seconds for checking active tenants & new tasks
-	StaleCheckDelay  int64                  // Time in seconds for checking stale tasks
-	TaskTimeoutTime  int64                  // Specifies the timeout period for the scheduler to receive messages Unit：seconds // TODO: rename to TaskStaleDeadline
-	Snapshot         config.SnapshotConfig  // Scheduler state snapshot configurations
-	Transport        config.TransportConfig // Transport config
-	ServerConfig     config.ServerConfig    // http and grpc config
+	Name                    string                 // Scheduler name, also used as partition name
+	Zone                    string                 // Zone name
+	ScheduleInterval        int64                  // Interval in seconds for checking active tenants & new tasks
+	StaleCheckDelay         int64                  // Time in seconds for checking stale tasks
+	TaskEventUpdateDeadline int64                  // Deadline in seconds for the scheduler to receive task update events
+	Snapshot                config.SnapshotConfig  // Scheduler state snapshot configurations
+	Transport               config.TransportConfig // Transport config
+	ServerConfig            config.ServerConfig    // http and grpc config
 }
 
 type Scheduler struct {
@@ -122,7 +122,7 @@ func (s *Scheduler) schedule() {
 					s.lg.Log(types.LevelWarn, "message", "tenant resource quota concurrency was invalid")
 					continue
 				}
-				s.lg.Log(types.LevelDebug, "tenantId", k, "quota", c.Tenant.ResourceQuota.Concurrency.Int64,
+				s.lg.Log(types.LevelTrace, "tenantId", k, "quota", c.Tenant.ResourceQuota.Concurrency.Int64,
 					"running", running, "message", "tenant concurrency state")
 				n := int(c.Tenant.ResourceQuota.Concurrency.Int64) - running
 				if n <= 0 {
@@ -440,7 +440,7 @@ func (s *Scheduler) checkStaleTasks() {
 						continue
 					}
 					s.lg.Log(types.LevelInfo, "tenantId", tenant, "taskId", task,
-						"cause", fmt.Sprintf("task event %s has not been updated over %ds", ev.EventType, s.opt.TaskTimeoutTime),
+						"cause", fmt.Sprintf("task event %s has not been updated over %ds", ev.EventType, s.opt.TaskEventUpdateDeadline),
 						"message", "found stale task")
 
 					err = s.em.Delete(ev.TenantId, ev.TaskId)
@@ -484,17 +484,17 @@ func (s *Scheduler) IsTaskTimeout(ev *TaskEvent) bool {
 
 	switch ev.EventType {
 	case TaskDispatched:
-		return sec > s.opt.TaskTimeoutTime
+		return sec > s.opt.TaskEventUpdateDeadline
 	case string(enum.TaskStarted):
-		return sec > s.opt.TaskTimeoutTime
+		return sec > s.opt.TaskEventUpdateDeadline
 	case string(enum.TaskStatusRunning):
-		return sec > s.opt.TaskTimeoutTime
+		return sec > s.opt.TaskEventUpdateDeadline
 	case string(enum.ReportTaskStatus):
-		return sec > s.opt.TaskTimeoutTime
+		return sec > s.opt.TaskEventUpdateDeadline
 	case string(enum.RetryTask):
-		return sec > s.opt.TaskTimeoutTime
+		return sec > s.opt.TaskEventUpdateDeadline
 	case string(enum.FinishTransition):
-		return sec > s.opt.TaskTimeoutTime
+		return sec > s.opt.TaskEventUpdateDeadline
 	case string(enum.TaskFinished):
 		return true
 	default:

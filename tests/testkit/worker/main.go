@@ -12,7 +12,9 @@ import (
 
 func StartTestWorkers() {
 	cfg := config.DefaultFromEnv()
-	cfg.Transport.Role = string(enum.TransportRoleWorker)
+	if cfg.Transport.Type == "kafka" {
+		cfg.Transport.Role = string(enum.TransportRoleWorker)
+	}
 	opt := &worker.Options{
 		PoolSize:       cfg.Worker.PoolSize,
 		Name:           cfg.Worker.Name,

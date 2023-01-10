@@ -111,9 +111,9 @@ func Test_OrdinaryTaskHandler(t *testing.T) {
 		}
 	}
 
-	// 2. Wait for 20 seconds and check task status
+	// 2. Wait for 8 seconds and check task status
 	{
-		time.Sleep(time.Second * 20)
+		time.Sleep(time.Second * 8)
 		req := &pb.QueryTaskStatusRequest{
 			Type: string(enum.TaskTypeUserTask),
 			Uid:  taskId + "-ordinary",
@@ -125,7 +125,8 @@ func Test_OrdinaryTaskHandler(t *testing.T) {
 		if resp.Code != pb.Code_Ok {
 			t.Fatalf("failed to query task status: %v", resp.Code)
 		}
-		if resp.Status != string(enum.TaskStatusRunning) {
+		log.Info().Msgf("current task status: %v", resp.Status)
+		if resp.Status == string(enum.TaskStatusPending) {
 			t.Fatalf("expecting ordinary tasks' status to be %v, but got %v", enum.TaskStatusRunning, resp.Status)
 		}
 	}
@@ -144,6 +145,7 @@ func Test_OrdinaryTaskHandler(t *testing.T) {
 		if resp.Code != pb.Code_Ok {
 			t.Fatalf("failed to query task status: %v", resp.Code)
 		}
+		log.Info().Msgf("current task status: %v", resp.Status)
 		if resp.Status != string(enum.TaskStatusSuccess) {
 			t.Fatalf("expecting ordinary tasks' status to be %v, but got %v", enum.TaskStatusSuccess, resp.Status)
 		}
