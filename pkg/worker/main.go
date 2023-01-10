@@ -92,7 +92,6 @@ func (w *Worker) Start() {
 		time.Sleep(500 * time.Millisecond)
 		w.transferAllTasks()
 		_ = w.tran.CloseSend()
-		// TODO: send out retry message
 	}
 }
 

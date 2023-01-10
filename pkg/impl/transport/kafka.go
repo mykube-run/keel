@@ -124,6 +124,12 @@ func (t *KafkaTransport) consume() {
 		msg *kafka.Message
 	)
 
+	defer func() {
+		if r := recover(); r != nil {
+			t.lg.Error().Msgf("kafka transport consumer panicked: %v", r)
+		}
+	}()
+
 	for {
 		if t.closeReceiving {
 			return

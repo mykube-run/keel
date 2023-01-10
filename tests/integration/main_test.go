@@ -46,6 +46,7 @@ const (
 
 func Test_Prepare(t *testing.T) {
 	prepare(t)
+	t.Parallel()
 }
 
 func Test_CreateTenant(t *testing.T) {
@@ -89,6 +90,9 @@ func Test_CreateTask(t *testing.T) {
 }
 
 func Test_OrdinaryTaskHandler(t *testing.T) {
+	failC := make(chan error)
+	finishC := time.NewTimer(time.Second * 200).C
+
 	// 1. Create task
 	{
 		req := &pb.CreateTaskRequest{
@@ -110,8 +114,8 @@ func Test_OrdinaryTaskHandler(t *testing.T) {
 		}
 	}
 
-	// 2. Wait for 8 seconds and check task status
-	{
+	go func() {
+		// 2. Wait for 8 seconds and check task status
 		time.Sleep(time.Second * 8)
 		req := &pb.QueryTaskStatusRequest{
 			Type: string(enum.TaskTypeUserTask),
@@ -119,19 +123,19 @@ func Test_OrdinaryTaskHandler(t *testing.T) {
 		}
 		resp, err := client.QueryTaskStatus(context.TODO(), req)
 		if err != nil {
-			t.Fatalf("failed to query task status: %v", err)
+			failC <- fmt.Errorf("failed to query task status: %v", err)
 		}
 		if resp.Code != pb.Code_Ok {
-			t.Fatalf("failed to query task status: %v", resp.Code)
+			failC <- fmt.Errorf("failed to query task status: %v", resp.Code)
 		}
 		log.Info().Msgf("current task status: %v", resp.Status)
 		if resp.Status == string(enum.TaskStatusPending) {
-			t.Fatalf("expecting ordinary tasks' status to be %v, but got %v", enum.TaskStatusRunning, resp.Status)
+			failC <- fmt.Errorf("expecting ordinary tasks' status to be %v, but got %v", enum.TaskStatusRunning, resp.Status)
 		}
-	}
+	}()
 
-	// 3. Wait for 120 seconds and check task status
-	{
+	go func() {
+		// 3. Wait for 120 seconds and check task status
 		time.Sleep(time.Second * 120)
 		req := &pb.QueryTaskStatusRequest{
 			Type: string(enum.TaskTypeUserTask),
@@ -139,14 +143,23 @@ func Test_OrdinaryTaskHandler(t *testing.T) {
 		}
 		resp, err := client.QueryTaskStatus(context.TODO(), req)
 		if err != nil {
-			t.Fatalf("failed to query task status: %v", err)
+			failC <- fmt.Errorf("failed to query task status: %v", err)
 		}
 		if resp.Code != pb.Code_Ok {
-			t.Fatalf("failed to query task status: %v", resp.Code)
+			failC <- fmt.Errorf("failed to query task status: %v", resp.Code)
 		}
 		log.Info().Msgf("current task status: %v", resp.Status)
 		if resp.Status != string(enum.TaskStatusSuccess) {
-			t.Fatalf("expecting ordinary tasks' status to be %v, but got %v", enum.TaskStatusSuccess, resp.Status)
+			failC <- fmt.Errorf("expecting ordinary tasks' status to be %v, but got %v", enum.TaskStatusSuccess, resp.Status)
 		}
+	}()
+
+	select {
+	case err := <-failC:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-finishC:
+		return
 	}
 }
