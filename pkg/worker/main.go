@@ -80,6 +80,12 @@ func (w *Worker) RegisterHandler(name string, f types.TaskHandlerFactory) {
 func (w *Worker) Start() {
 	w.lg.Log(types.LevelInfo, "handlers", w.handlers(),
 		"workerId", w.opt.Name, "poolSize", w.opt.PoolSize, "message", "starting worker")
+
+	if err := w.tran.Start(); err != nil {
+		w.lg.Log(types.LevelFatal, "error", err.Error(), "message", "failed to start transport")
+	}
+
+	// Start background goroutines
 	go w.report()
 
 	stopC := make(chan os.Signal)
@@ -246,7 +252,7 @@ func (w *Worker) notify(m *types.TaskMessage) {
 	}
 }
 
-// transferAllTasks transfers all tasks to other workers
+// transferAllTasks transfers all tasks to other handlers
 func (w *Worker) transferAllTasks() {
 	w.running.Range(func(k, v interface{}) bool {
 		hdl, ok := v.(types.TaskHandler)

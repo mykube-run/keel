@@ -1,16 +1,18 @@
-package worker
+package main
 
 import (
 	"github.com/mykube-run/keel/pkg/config"
 	"github.com/mykube-run/keel/pkg/enum"
 	"github.com/mykube-run/keel/pkg/impl/logging"
 	"github.com/mykube-run/keel/pkg/worker"
-	"github.com/mykube-run/keel/tests/testkit/worker/workers"
-	"testing"
+	"github.com/mykube-run/keel/tests/integration/worker/handlers"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"time"
 )
 
-func StartTestWorkers(t *testing.T) {
+func main() {
+	zerolog.SetGlobalLevel(zerolog.TraceLevel)
 	cfg := config.DefaultFromEnv()
 	if cfg.Transport.Type == "kafka" {
 		cfg.Transport.Role = string(enum.TransportRoleWorker)
@@ -24,11 +26,11 @@ func StartTestWorkers(t *testing.T) {
 	}
 	w, err := worker.New(opt, logging.NewDefaultLogger(nil))
 	if err != nil {
-		t.Fatalf("error creating worker: %v", err)
+		log.Fatal().Msgf("error creating worker: %v", err)
 	}
 
-	w.RegisterHandler("ordinary", workers.OrdinaryTaskHandlerFactory)
-	w.RegisterHandler("retry", workers.RetryTaskHandlerFactory)
-	w.RegisterHandler("hangup", workers.HangUpTaskHandlerFactory)
+	w.RegisterHandler("ordinary", handlers.OrdinaryTaskHandlerFactory)
+	w.RegisterHandler("retry", handlers.RetryTaskHandlerFactory)
+	w.RegisterHandler("hangup", handlers.HangUpTaskHandlerFactory)
 	w.Start()
 }

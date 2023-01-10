@@ -1,13 +1,10 @@
-package integration
+package scheduler
 
 import (
 	"context"
 	"fmt"
-	"github.com/mykube-run/keel/pkg/config"
 	"github.com/mykube-run/keel/pkg/enum"
 	"github.com/mykube-run/keel/pkg/pb"
-	"github.com/mykube-run/keel/tests/testkit/scheduler"
-	"github.com/mykube-run/keel/tests/testkit/worker"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
@@ -16,37 +13,26 @@ import (
 	"time"
 )
 
-func prepare(t *testing.T) {
-	zerolog.SetGlobalLevel(zerolog.TraceLevel)
-
-	log.Info().Msg("starting integration test workers and scheduler")
-	go worker.StartTestWorkers(t)
-	go scheduler.StartScheduler(t)
-
-	time.Sleep(time.Second * 2)
-	cfg := config.DefaultFromEnv()
-	addr := fmt.Sprintf("%v:%v", cfg.Scheduler.Address, cfg.Scheduler.Port+1000)
-	conn, err := grpc.DialContext(context.TODO(), addr, grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		t.Fatalf("unable to connect to scheduler grpc api: %v", err)
-	}
-	client = pb.NewScheduleServiceClient(conn)
-}
-
 var (
 	client pb.ScheduleServiceClient
 )
 
 const (
+	addr      = "scheduler:9000"
 	tenantId  = "tenant-integration-test-1"
 	zone      = "global"
 	partition = "global-scheduler-1"
 	taskId    = "task-integration-test-1"
 )
 
-func Test_Prepare(t *testing.T) {
-	prepare(t)
-	t.Parallel()
+func init() {
+	zerolog.SetGlobalLevel(zerolog.TraceLevel)
+	conn, err := grpc.DialContext(context.TODO(), addr, grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatal().Msgf("unable to connect to scheduler grpc api: %v", err)
+	}
+	client = pb.NewScheduleServiceClient(conn)
+	log.Info().Msgf("initialized integration tests")
 }
 
 func Test_CreateTenant(t *testing.T) {

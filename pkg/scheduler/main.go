@@ -74,14 +74,20 @@ func New(opt *Options, db types.DB, lg types.Logger, ls types.Listener) (s *Sche
 }
 
 func (s *Scheduler) Start() {
-	s.lg.Log(types.LevelInfo, "schedulerId", s.SchedulerId(), "transport", s.opt.Transport.Type, "message", "starting scheduler")
-
 	defer func() {
 		if r := recover(); r != nil {
 			s.printStack(r)
 		}
 	}()
+
+	s.lg.Log(types.LevelInfo, "schedulerId", s.SchedulerId(), "transport", s.opt.Transport.Type, "message", "starting scheduler")
+
+	if err := s.tran.Start(); err != nil {
+		s.lg.Log(types.LevelFatal, "error", err.Error(), "message", "failed to start transport")
+	}
 	_, _ = s.updateActiveTenants()
+
+	// Start background goroutines
 	go s.schedule()
 	go s.checkStaleTasks()
 	go s.srv.Start()

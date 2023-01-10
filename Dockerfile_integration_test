@@ -8,10 +8,4 @@ COPY . .
 
 RUN go mod download && ls -alh
 
-ARG BUILD_TARGET
-
-RUN mkdir -p bin/ && \
-    go build -o ./bin/app $BUILD_TARGET && \
-    chmod +x ./bin/app
-
-CMD ./bin/app
+CMD sh ./tests/test.sh

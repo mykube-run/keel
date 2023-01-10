@@ -92,11 +92,59 @@ services:
     networks:
       - test
 
-  # Keel
-  keel:
+  # Keel scheduler
+  scheduler:
     build:
       context: .
       dockerfile: ./Dockerfile
+      args:
+        BUILD_TARGET: './tests/integration/scheduler'
+    env_file:
+      - ./tests/test.env
+    restart: 'on-failure'
+    networks:
+      - test
+    depends_on:
+      zookeeper:
+        condition: 'service_started'
+      kafka:
+        condition: 'service_started'
+      mysql:
+        condition: 'service_healthy'
+      init-mysql:
+        condition: 'service_completed_successfully'
+      minio:
+        condition: 'service_started'
+
+  # Keel worker
+  worker:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      args:
+        BUILD_TARGET: './tests/integration/worker'
+    env_file:
+      - ./tests/test.env
+    restart: 'on-failure'
+    networks:
+      - test
+    depends_on:
+      zookeeper:
+        condition: 'service_started'
+      kafka:
+        condition: 'service_started'
+      mysql:
+        condition: 'service_healthy'
+      init-mysql:
+        condition: 'service_completed_successfully'
+      minio:
+        condition: 'service_started'
+
+  # Test
+  test:
+    build:
+      context: .
+      dockerfile: ./Dockerfile_integration_test
     env_file:
       - ./tests/test.env
     restart: 'no'
@@ -112,4 +160,8 @@ services:
       init-mysql:
         condition: 'service_completed_successfully'
       minio:
+        condition: 'service_started'
+      scheduler:
+        condition: 'service_started'
+      worker:
         condition: 'service_started'

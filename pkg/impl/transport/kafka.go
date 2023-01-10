@@ -67,7 +67,6 @@ func NewKafkaTransport(cfg *config.TransportConfig) (*KafkaTransport, error) {
 		t.ttl = cfg.Kafka.MessageTTL
 	}
 
-	t.start()
 	return t, nil
 }
 
@@ -102,6 +101,12 @@ func (t *KafkaTransport) Send(from, to string, msg []byte) error {
 	return t.p.Produce(kmsg, nil)
 }
 
+func (t *KafkaTransport) Start() error {
+	go t.handleProducerEvents()
+	go t.consume()
+	return nil
+}
+
 func (t *KafkaTransport) CloseSend() error {
 	t.closeSend = true
 	return nil
@@ -110,11 +115,6 @@ func (t *KafkaTransport) CloseSend() error {
 func (t *KafkaTransport) CloseReceiving() error {
 	t.closeReceiving = true
 	return nil
-}
-
-func (t *KafkaTransport) start() {
-	go t.handleProducerEvents()
-	go t.consume()
 }
 
 func (t *KafkaTransport) consume() {
@@ -134,7 +134,7 @@ func (t *KafkaTransport) consume() {
 		if t.closeReceiving {
 			return
 		}
-		if msg, err = t.c.ReadMessage(60); err != nil {
+		if msg, err = t.c.ReadMessage(time.Second); err != nil {
 			t.lg.Err(err).Msg("error reading message from brokers")
 			continue
 		}
@@ -144,6 +144,7 @@ func (t *KafkaTransport) consume() {
 			continue
 		}
 
+		t.lg.Trace().Bytes("value", msg.Value).Msgf("handling message")
 		if res, err = t.omr(from(msg.Headers), msg.Value); err != nil {
 			t.lg.Err(err).Bytes("result", res).Msg("error handling message")
 		}

@@ -1,4 +1,4 @@
-package workers
+package handlers
 
 import (
 	"github.com/mykube-run/keel/pkg/enum"
