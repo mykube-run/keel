@@ -1,3 +1,5 @@
+# Docker compose specification:
+# https://docs.docker.com/compose/compose-file/#services-top-level-element
 version: '3'
 
 networks:
@@ -29,6 +31,21 @@ services:
       - test
     depends_on:
       - zookeeper
+
+  # Kafka UI
+  # See: https://hub.docker.com/r/rsmnarts/kowl
+  kafka-ui:
+    image: rsmnarts/kowl:latest
+    environment:
+      KAFKA_BROKERS: 'kafka:9092'
+    restart: 'on-failure'
+    ports:
+      - '8080:8080'
+    networks:
+      - test
+    depends_on:
+      - zookeeper
+      - kafka
 
   # MySQL database
   # See: https://hub.docker.com/r/bitnami/mysql/
@@ -65,15 +82,15 @@ services:
 
   # Minio object storage
   # See: https://hub.docker.com/r/bitnami/minio/
-#  minio:
-#    image: bitnami/minio:2022.12.12
-#    environment:
-#      MINIO_DEFAULT_BUCKETS: snapshots
-#      MINIO_ROOT_USER: 'root'
-#      MINIO_ROOT_PASSWORD: 'pa88w0rd'
-#    restart: 'on-failure'
-#    networks:
-#      - test
+  minio:
+    image: bitnami/minio:2022.12.12
+    environment:
+      MINIO_DEFAULT_BUCKETS: snapshots
+      MINIO_ROOT_USER: 'root'
+      MINIO_ROOT_PASSWORD: 'pa88w0rd'
+    restart: 'on-failure'
+    networks:
+      - test
 
   # Keel
   keel:
@@ -94,5 +111,5 @@ services:
         condition: 'service_healthy'
       init-mysql:
         condition: 'service_completed_successfully'
-      # minio:
-      #   condition: 'service_started'
+      minio:
+        condition: 'service_started'

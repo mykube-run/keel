@@ -104,7 +104,7 @@ func (w *Worker) onReceiveMessage(from string, msg []byte) (result []byte, err e
 		return nil, err
 	}
 	if _, ok := w.factories[task.Handler]; !ok {
-		return []byte("unsupported handler"), nil
+		return []byte(task.Handler), fmt.Errorf("unsupported handler")
 	}
 
 	w.lg.Log(types.LevelDebug, "running", w.pool.Running(), "capacity", w.pool.Cap(), "taskId", task.Uid,

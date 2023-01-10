@@ -245,9 +245,9 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 
 func (s *Scheduler) taskHistory(tenantId, taskId string) (*types.TaskRun, int, bool, error) {
 	var (
-		retried        = 0
-		start          time.Time
-		needTransition = false
+		retried      = 0
+		start        time.Time
+		inTransition = false
 	)
 
 	err := s.em.Iterate(tenantId, taskId, func(e *TaskEvent) bool {
@@ -266,20 +266,20 @@ func (s *Scheduler) taskHistory(tenantId, taskId string) (*types.TaskRun, int, b
 		return nil, 0, false, nil
 	}
 	if latest.EventType == string(enum.StartTransition) {
-		needTransition = true
+		inTransition = true
 	}
 	last := &types.TaskRun{
 		Result: latest.EventType, Status: enum.TaskRunStatusFailed,
 		Error: latest.EventType, Start: start, End: latest.Timestamp,
 	}
-	return last, retried, needTransition, nil
+	return last, retried, inTransition, nil
 }
 
 // dispatch dispatches user tasks
 func (s *Scheduler) dispatch(tasks entity.UserTasks) {
 	ctx := context.Background()
 
-	activeTenants := make([]string, 0)
+	active := make([]string, 0)
 	if len(tasks) > 0 {
 		s.lg.Log(types.LevelInfo, "schedulerId", s.SchedulerId(), "taskIds", tasks.TaskIds(),
 			"message", "dispatching tasks")
@@ -296,6 +296,8 @@ func (s *Scheduler) dispatch(tasks entity.UserTasks) {
 			continue
 		}
 		// 2. Dispatch the task
+
+		// 2.1 Construct the task message, including task info, config, history
 		v := types.Task{
 			Handler:     task.Handler,
 			TenantId:    task.TenantId,
@@ -303,8 +305,7 @@ func (s *Scheduler) dispatch(tasks entity.UserTasks) {
 			SchedulerId: s.SchedulerId(),
 			Type:        enum.TaskTypeUserTask,
 		}
-		// if dispatch this task need active tenant
-		activeTenants = append(activeTenants, task.TenantId)
+		active = append(active, task.TenantId)
 
 		cfg, err := json.Marshal(task.Config)
 		if err != nil {
@@ -324,6 +325,7 @@ func (s *Scheduler) dispatch(tasks entity.UserTasks) {
 			continue
 		}
 
+		// 2.2 Send task message through transport
 		err = s.tran.Send(s.SchedulerId(), "", byt)
 		if err != nil {
 			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", task.TenantId, "taskId", task.Uid, "message", "failed to dispatch task")
@@ -333,21 +335,21 @@ func (s *Scheduler) dispatch(tasks entity.UserTasks) {
 		// 3. Record the dispatch event and update task status accordingly
 		ev := NewEventFromUserTask(TaskDispatched, task)
 		if err = s.em.Insert(ev); err != nil {
-			s.lg.Log(types.LevelInfo, "error", err.Error(), "tenantId", task.TenantId, "taskId", task.Uid, "message", "failed to record task dispatch event")
+			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", task.TenantId, "taskId", task.Uid, "message", "failed to record task dispatch event")
 		}
 		if err = s.updateTaskStatus(ev); err != nil {
-			s.lg.Log(types.LevelInfo, "error", err.Error(), "tenantId", task.TenantId, "taskId", task.Uid, "message", "failed to update task status")
+			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", task.TenantId, "taskId", task.Uid, "message", "failed to update task status")
 		}
 		le := types.ListenerEvent{SchedulerId: s.SchedulerId(), Task: types.NewTaskMetadataFromUserTaskEntity(task)}
 		s.ls.OnTaskDispatching(le)
 	}
 	// 4. Update tenants' active state after dispatching
-	if len(activeTenants) > 0 {
-		err := s.db.ActivateTenants(context.Background(), types.ActivateTenantsOption{TenantId: activeTenants, ActiveTime: time.Now()})
+	if len(active) > 0 {
+		err := s.db.ActivateTenants(context.Background(), types.ActivateTenantsOption{TenantId: active, ActiveTime: time.Now()})
 		if err != nil {
 			s.lg.Log(types.LevelError, "error", err.Error(), "message", "failed to activate tenants")
 		}
-		s.lg.Log(types.LevelDebug, "tenantIds", activeTenants, "message", "activated tenants")
+		s.lg.Log(types.LevelDebug, "tenantIds", active, "message", "activated tenants")
 	}
 }
 
@@ -435,10 +437,10 @@ func (s *Scheduler) checkStaleTasks() {
 						s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", tenant, "message", "error finding the latest event")
 						continue
 					}
-					ok := s.IsTaskTimeout(ev)
-					if !ok {
+					if !s.IsTaskTimeout(ev) {
 						continue
 					}
+
 					s.lg.Log(types.LevelInfo, "tenantId", tenant, "taskId", task,
 						"cause", fmt.Sprintf("task event %s has not been updated over %ds", ev.EventType, s.opt.TaskEventUpdateDeadline),
 						"message", "found stale task")
