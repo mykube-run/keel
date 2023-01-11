@@ -32,16 +32,16 @@ type Options struct {
 }
 
 type Scheduler struct {
-	opt       *Options
-	mu        sync.Mutex
-	cs        map[string]*queue.TaskQueue
-	em        *EventManager
-	db        types.DB
-	lg        types.Logger
-	ls        types.Listener
-	tran      types.Transport
-	srv       *Server
-	closeChan chan struct{}
+	opt    *Options
+	mu     sync.Mutex
+	cs     map[string]*queue.TaskQueue
+	em     *EventManager
+	db     types.DB
+	lg     types.Logger
+	ls     types.Listener
+	tran   types.Transport
+	srv    *Server
+	closeC chan struct{}
 }
 
 func New(opt *Options, db types.DB, lg types.Logger, ls types.Listener) (s *Scheduler, err error) {
@@ -49,12 +49,12 @@ func New(opt *Options, db types.DB, lg types.Logger, ls types.Listener) (s *Sche
 		ls = listener.Default
 	}
 	s = &Scheduler{
-		opt:       opt,
-		cs:        make(map[string]*queue.TaskQueue),
-		db:        db,
-		lg:        lg,
-		ls:        ls,
-		closeChan: make(chan struct{}),
+		opt:    opt,
+		cs:     make(map[string]*queue.TaskQueue),
+		db:     db,
+		lg:     lg,
+		ls:     ls,
+		closeC: make(chan struct{}),
 	}
 	s.srv = NewServer(db, s, opt.ServerConfig, lg, ls)
 	s.em, err = NewEventManager(opt.Snapshot, s.SchedulerId(), lg)
@@ -99,8 +99,8 @@ func (s *Scheduler) Start() {
 	case <-stopC:
 		s.lg.Log(types.LevelInfo, "message", "received stop signal")
 		// close scheduler
-		s.closeChan <- struct{}{}
-		s.RecoverSchedulingTask()
+		s.closeC <- struct{}{}
+		s.resetSchedulingTask()
 		key, err := s.em.Backup()
 		if err != nil {
 			s.lg.Log(types.LevelError, "key", key, "error", err.Error(), "message", "error saving events db snapshot")
@@ -112,7 +112,7 @@ func (s *Scheduler) schedule() {
 	tick := time.NewTicker(time.Duration(s.opt.ScheduleInterval) * time.Second)
 	for {
 		select {
-		case <-s.closeChan:
+		case <-s.closeC:
 			return
 		case <-tick.C:
 			if _, err := s.updateActiveTenants(); err != nil {
@@ -515,28 +515,28 @@ func (s *Scheduler) SchedulerId() string {
 }
 
 // TODO: ?
-func (s *Scheduler) RecoverSchedulingTask() {
-	allSchedulingTask := make([]string, 0)
-	for _, taskQueue := range s.cs {
-		tasks, err := taskQueue.PopAllUserTasks()
+func (s *Scheduler) resetSchedulingTask() {
+	ids := make([]string, 0)
+	for _, q := range s.cs {
+		tasks, err := q.PopAllUserTasks()
 		if err != nil {
 			continue
 		}
 		for _, task := range tasks {
-			allSchedulingTask = append(allSchedulingTask, task.Uid)
+			ids = append(ids, task.Uid)
 		}
 	}
 	err := s.db.UpdateTaskStatus(context.Background(), types.UpdateTaskStatusOption{
 		TaskType: enum.TaskTypeUserTask,
-		Uids:     allSchedulingTask,
+		Uids:     ids,
 		Status:   enum.TaskStatusPending,
 	})
 	if err != nil {
-		s.lg.Log(types.LevelError, "error", err.Error(), "taskIds", allSchedulingTask,
-			"message", "failed to reset task status to pending before shutting down")
+		s.lg.Log(types.LevelError, "error", err.Error(), "taskIds", ids,
+			"message", "failed to reset task status to Pending before shutting down")
 	} else {
-		s.lg.Log(types.LevelInfo, "taskIds", allSchedulingTask,
-			"message", "reset task status to pending before shutting down")
+		s.lg.Log(types.LevelInfo, "taskIds", ids,
+			"message", "reset task status to Pending before shutting down")
 	}
 }
 

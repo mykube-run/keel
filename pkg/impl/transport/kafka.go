@@ -263,8 +263,8 @@ func isTimeout(err error) bool {
 func sampling(msg []byte) string {
 	tmp := string(msg)
 	l := len(tmp)
-	if l > 50 {
-		l = 50
+	if l > 100 {
+		l = 100
 	}
 	return tmp[:l]
 }

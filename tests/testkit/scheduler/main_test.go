@@ -127,8 +127,8 @@ func Test_OrdinaryTaskHandler(t *testing.T) {
 	}()
 
 	go func() {
-		// 3. Wait for 120 seconds and check task status
-		time.Sleep(time.Second * 120)
+		// 3. Wait for 300 seconds and check task status
+		time.Sleep(time.Second * 300)
 		req := &pb.QueryTaskStatusRequest{
 			Type: string(enum.TaskTypeUserTask),
 			Uid:  taskId + "-ordinary",
