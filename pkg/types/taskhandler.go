@@ -8,9 +8,10 @@ type TaskHandler interface {
 	// StartTransitionTask starts a transition task， If the migration ends
 	// need send message to finished chan send a finished signal
 	StartTransitionTask(finishSig chan struct{}) (bool, error)
-	// Start starts a new task, returns the error occurred during processing, and whether the task can be retried
+	// Start starts processing the task, returns the error occurred during processing and whether the task should be retried
+	// NOTE: This method implementation should be blocking, pooling will be handled by worker
 	Start() (bool, error)
-	// Stop forces a task to stop, mostly called when a task is manually stopped
+	// Stop forces the task to stop, mostly called when a task is manually stopped
 	Stop() error
 	// BeforeTransitionStart notifies task handler to pause the processing of tasks, but keep some essential state alive.
 	// The task will be started on a new worker after that, so task handler has to take care of this situation.

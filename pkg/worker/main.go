@@ -94,7 +94,7 @@ func (w *Worker) Start() {
 	select {
 	case <-stopC:
 		w.lg.Log(types.LevelInfo, "message", "received stop signal")
-		_ = w.tran.CloseReceiving()
+		_ = w.tran.CloseReceive()
 		time.Sleep(500 * time.Millisecond)
 		w.transferAllTasks()
 		_ = w.tran.CloseSend()

@@ -23,21 +23,21 @@ type TaskQueue struct {
 	// User task id is incremental, hence maxUserTaskId is used to
 	// avoid populating tasks that already exist in queue
 	maxUserTaskId string
-	listener      types.Listener
 	db            types.DB
-	mu            sync.RWMutex
 	lg            types.Logger
+	ls            types.Listener
+	mu            sync.RWMutex
 }
 
-func NewTaskQueue(db types.DB, lg types.Logger, t *entity.Tenant, listener types.Listener) *TaskQueue {
+func NewTaskQueue(db types.DB, lg types.Logger, t *entity.Tenant, ls types.Listener) *TaskQueue {
 	pq := make(PriorityQueue, 0)
 	heap.Init(&pq)
 	c := &TaskQueue{
 		Tenant:    t,
 		UserTasks: &pq,
 		db:        db,
-		listener:  listener,
 		lg:        lg,
+		ls:        ls,
 	}
 	return c
 }
@@ -111,11 +111,10 @@ func (c *TaskQueue) populateTasks(ctx context.Context) error {
 		return err
 	}
 
-	// TODO: incorrect
-	//for _, t := range tasks.UserTasks {
-	//	msg := types.ListenerEvent{Task: types.NewTaskMetadataFromUserTaskEntity(t)}
-	//	c.listener.OnTaskScheduling(msg)
-	//}
+	for _, t := range tasks.UserTasks {
+		le := types.ListenerEvent{Task: types.NewTaskMetadataFromUserTaskEntity(t)}
+		c.ls.OnTaskScheduling(le)
+	}
 
 	n := 0
 	for _, v := range tasks.UserTasks {
@@ -125,7 +124,9 @@ func (c *TaskQueue) populateTasks(ctx context.Context) error {
 		heap.Push(c.UserTasks, item)
 		n += 1
 	}
-	c.lg.Log(types.LevelTrace, "populated", n, "message", "fetched user tasks from database")
+	if n > 0 {
+		c.lg.Log(types.LevelTrace, "tasks", n, "message", "populating task queue from database")
+	}
 	return nil
 }
 

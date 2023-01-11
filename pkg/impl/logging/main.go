@@ -14,7 +14,7 @@ type defaultLogger struct {
 
 func NewDefaultLogger(lg *zerolog.Logger) types.Logger {
 	if lg == nil {
-		tmp := zerolog.New(os.Stderr).With().Timestamp().Logger()
+		tmp := zerolog.New(os.Stdout).With().Timestamp().Logger()
 		return &defaultLogger{lg: &tmp}
 	}
 	return &defaultLogger{lg: lg}

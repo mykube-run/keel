@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/satori/uuid"
 	"math/rand"
+	"os"
 	"strings"
 	"time"
 )
@@ -53,10 +54,11 @@ func NewKafkaTransport(cfg *config.TransportConfig) (*KafkaTransport, error) {
 	log.Info().Strs("topics", topics).Str("role", cfg.Role).
 		Str("groupId", cfg.Kafka.GroupId).Msg("added subscription to topics")
 
+	lg := zerolog.New(os.Stdout).With().Timestamp().Str("tran", "kafka").Logger()
 	t := &KafkaTransport{
 		c:              c,
 		p:              p,
-		lg:             new(zerolog.Logger),
+		lg:             &lg,
 		cfg:            cfg,
 		closeReceiving: false,
 		closeSend:      false,
@@ -68,6 +70,12 @@ func NewKafkaTransport(cfg *config.TransportConfig) (*KafkaTransport, error) {
 	}
 
 	return t, nil
+}
+
+func (t *KafkaTransport) Start() error {
+	go t.handleProducerEvents()
+	go t.consume()
+	return nil
 }
 
 func (t *KafkaTransport) OnReceive(omr types.OnMessageReceived) {
@@ -96,15 +104,10 @@ func (t *KafkaTransport) Send(from, to string, msg []byte) error {
 		Timestamp:     time.Now(),
 		TimestampType: kafka.TimestampCreateTime,
 	}
-	log.Trace().Str("from", from).Str("to", to).Str("topic", topic).
-		Bytes("value", msg).Msg("sending message")
-	return t.p.Produce(kmsg, nil)
-}
 
-func (t *KafkaTransport) Start() error {
-	go t.handleProducerEvents()
-	go t.consume()
-	return nil
+	log.Trace().Str("from", from).Str("to", to).Str("topic", topic).
+		Str("sample", sampling(msg)).Msg("sending message")
+	return t.p.Produce(kmsg, nil)
 }
 
 func (t *KafkaTransport) CloseSend() error {
@@ -112,7 +115,7 @@ func (t *KafkaTransport) CloseSend() error {
 	return nil
 }
 
-func (t *KafkaTransport) CloseReceiving() error {
+func (t *KafkaTransport) CloseReceive() error {
 	t.closeReceiving = true
 	return nil
 }
@@ -135,7 +138,9 @@ func (t *KafkaTransport) consume() {
 			return
 		}
 		if msg, err = t.c.ReadMessage(time.Second); err != nil {
-			t.lg.Err(err).Msg("error reading message from brokers")
+			if !isTimeout(err) {
+				t.lg.Err(err).Msg("error reading message from brokers")
+			}
 			continue
 		}
 
@@ -144,7 +149,7 @@ func (t *KafkaTransport) consume() {
 			continue
 		}
 
-		t.lg.Trace().Bytes("value", msg.Value).Msgf("handling message")
+		t.lg.Trace().Str("sample", sampling(msg.Value)).Msgf("handling message")
 		if res, err = t.omr(from(msg.Headers), msg.Value); err != nil {
 			t.lg.Err(err).Bytes("result", res).Msg("error handling message")
 		}
@@ -243,4 +248,23 @@ func validateConfig(cfg *config.TransportConfig) error {
 		return fmt.Errorf("TransportConfig.Kafka.Topics was not specified or missing value")
 	}
 	return nil
+}
+
+// Kafka Timeout is not considered an error because it is raised by
+// ReadMessage in absence of messages.
+func isTimeout(err error) bool {
+	kerr, ok := err.(kafka.Error)
+	if !ok {
+		return false
+	}
+	return kerr.Code() == kafka.ErrTimedOut || kerr.Code() == kafka.ErrTimedOutQueue
+}
+
+func sampling(msg []byte) string {
+	tmp := string(msg)
+	l := len(tmp)
+	if l > 50 {
+		l = 50
+	}
+	return tmp[:l]
 }
