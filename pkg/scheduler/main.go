@@ -145,7 +145,11 @@ func (s *Scheduler) schedule() {
 	}
 }
 
-func (s *Scheduler) onReceiveMessage(from string, msg []byte) ([]byte, error) {
+func (s *Scheduler) onReceiveMessage(from, to string, msg []byte) ([]byte, error) {
+	if to != s.SchedulerId() {
+		return nil, nil
+	}
+
 	var m types.TaskMessage
 	if err := json.Unmarshal(msg, &m); err != nil {
 		s.lg.Log(types.LevelError, "error", err.Error(), "raw", msg, "message", "failed to unmarshal task message")

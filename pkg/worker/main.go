@@ -102,7 +102,7 @@ func (w *Worker) Start() {
 }
 
 // onReceiveMessage on receiving messages
-func (w *Worker) onReceiveMessage(from string, msg []byte) (result []byte, err error) {
+func (w *Worker) onReceiveMessage(from, to string, msg []byte) (result []byte, err error) {
 	var task types.Task
 	if err = json.Unmarshal(msg, &task); err != nil {
 		w.lg.Log(types.LevelError, "error", err.Error(), "message", "failed to unmarshal task message")

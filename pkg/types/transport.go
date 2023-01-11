@@ -1,6 +1,6 @@
 package types
 
-type OnMessageReceived func(from string, msg []byte) (result []byte, err error)
+type OnMessageReceived func(from, to string, msg []byte) (result []byte, err error)
 
 type Transport interface {
 	// Start starts the transport
