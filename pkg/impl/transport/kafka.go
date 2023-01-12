@@ -37,11 +37,19 @@ type KafkaTransport struct {
 }
 
 func NewKafkaTransport(cfg *config.TransportConfig) (*KafkaTransport, error) {
+	// Validate config
 	if err := validateConfig(cfg); err != nil {
 		return nil, fmt.Errorf("invalid config: %v", err)
 	}
-	createTopics(cfg.Kafka)
 
+	// Initialize topics
+	topics := cfg.Kafka.Topics.Messages
+	if cfg.Role == string(enum.TransportRoleWorker) {
+		topics = cfg.Kafka.Topics.Tasks
+	}
+	createTopics(cfg.Kafka.Brokers, topics)
+
+	// Create producer and consumer
 	p, err := kafka.NewProducer(newProducerConfig(cfg.Kafka))
 	if err != nil {
 		return nil, fmt.Errorf("error intializing kafka producer: %v", err)
@@ -49,10 +57,6 @@ func NewKafkaTransport(cfg *config.TransportConfig) (*KafkaTransport, error) {
 	c, err := kafka.NewConsumer(newConsumerConfig(cfg.Kafka))
 	if err != nil {
 		return nil, fmt.Errorf("error intializing kafka consumer: %v", err)
-	}
-	topics := cfg.Kafka.Topics.Messages
-	if cfg.Role == string(enum.TransportRoleWorker) {
-		topics = cfg.Kafka.Topics.Tasks
 	}
 	if err = c.SubscribeTopics(topics, nil); err != nil {
 		return nil, fmt.Errorf("error subscribing topics %v: %v", topics, err)
@@ -195,9 +199,9 @@ func (t *KafkaTransport) selectTopic() string {
 }
 
 // createTopics creates specified topics silently
-func createTopics(conf config.KafkaConfig) {
+func createTopics(brokers, topics []string) {
 	cfg := &kafka.ConfigMap{
-		"bootstrap.servers": strings.Join(conf.Brokers, ","),
+		"bootstrap.servers": strings.Join(brokers, ","),
 	}
 	client, err := kafka.NewAdminClient(cfg)
 	if err != nil {
@@ -206,7 +210,7 @@ func createTopics(conf config.KafkaConfig) {
 	}
 
 	opt := kafka.SetAdminOperationTimeout(time.Second * 60)
-	res, err := client.CreateTopics(context.Background(), topicSpecs(conf.Topics), opt)
+	res, err := client.CreateTopics(context.Background(), topicSpecs(topics), opt)
 	if err != nil {
 		log.Err(err).Msg("failed to create kafka topics")
 		return
@@ -255,18 +259,11 @@ func newProducerConfig(conf config.KafkaConfig) *kafka.ConfigMap {
 	}
 }
 
-func topicSpecs(topics config.KafkaTopics) []kafka.TopicSpecification {
+func topicSpecs(topics []string) []kafka.TopicSpecification {
 	specs := make([]kafka.TopicSpecification, 0)
-	for i, _ := range topics.Tasks {
+	for i, _ := range topics {
 		specs = append(specs, kafka.TopicSpecification{
-			Topic:             topics.Tasks[i],
-			NumPartitions:     DefaultNumPartitions,
-			ReplicationFactor: DefaultReplicationFactor,
-		})
-	}
-	for i, _ := range topics.Messages {
-		specs = append(specs, kafka.TopicSpecification{
-			Topic:             topics.Messages[i],
+			Topic:             topics[i],
 			NumPartitions:     DefaultNumPartitions,
 			ReplicationFactor: DefaultReplicationFactor,
 		})
