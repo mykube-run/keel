@@ -42,8 +42,7 @@ func Test_CreateTenant(t *testing.T) {
 		Priority: 0,
 		Name:     "Integration Test Tenant",
 		Quota: &pb.ResourceQuota{
-			Type:  string(enum.ResourceTypeConcurrency),
-			Value: 10,
+			Concurrency: 10,
 		},
 	}
 	resp, err := client.CreateTenant(context.TODO(), req)
