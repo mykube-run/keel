@@ -266,7 +266,9 @@ func topicSpecs(topics config.KafkaTopics) []kafka.TopicSpecification {
 	}
 	for i, _ := range topics.Messages {
 		specs = append(specs, kafka.TopicSpecification{
-			Topic: topics.Messages[i],
+			Topic:             topics.Messages[i],
+			NumPartitions:     DefaultNumPartitions,
+			ReplicationFactor: DefaultReplicationFactor,
 		})
 	}
 	return specs
