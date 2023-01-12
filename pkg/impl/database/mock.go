@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
@@ -37,13 +36,8 @@ func (m *MockDB) GetTenant(ctx context.Context, opt types.GetTenantOption) (*ent
 		UpdatedAt:  time.Now(),
 		LastActive: time.Now(),
 		ResourceQuota: entity.ResourceQuota{
-			Id:       "tenant-1",
-			TenantId: "tenant-1",
-			Type:     string(enum.ResourceTypeConcurrency),
-			Concurrency: sql.NullInt64{
-				Int64: 3,
-				Valid: true,
-			},
+			TenantId:    "tenant-1",
+			Concurrency: 3,
 		},
 	}
 	return tenant, nil
@@ -64,13 +58,8 @@ func (m *MockDB) FindActiveTenants(ctx context.Context, opt types.FindActiveTena
 		UpdatedAt:  time.Now(),
 		LastActive: time.Now(),
 		ResourceQuota: entity.ResourceQuota{
-			Id:       "tenant-1",
-			TenantId: "tenant-1",
-			Type:     string(enum.ResourceTypeConcurrency),
-			Concurrency: sql.NullInt64{
-				Int64: 3,
-				Valid: true,
-			},
+			TenantId:    "tenant-1",
+			Concurrency: 3,
 		},
 	}
 	return []*entity.Tenant{tenant}, nil

@@ -140,7 +140,7 @@ message CreateTenantRequest {
 
   // Tenant resource quota
   ResourceQuota quota = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "Tenant resource quota options"
+    description: "Tenant resource quota options. Resource quotas are optional, 0 means there is no limit for specified resource type"
   }];
 }
 

@@ -32,9 +32,16 @@ func New(dsn string) (*MongoDB, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = client.Ping(context.Background(), nil); err != nil {
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+	if err = client.Connect(ctx); err != nil {
+		return nil, fmt.Errorf("failed to connect monogdb: %v", err)
+	}
+	if err = client.Ping(ctx, nil); err != nil {
 		return nil, fmt.Errorf("failed to ping mongodb: %w", err)
 	}
+
 	db := client.Database(DatabaseName)
 	m := &MongoDB{
 		db:       db,
@@ -48,8 +55,19 @@ func New(dsn string) (*MongoDB, error) {
 
 func (m *MongoDB) CreateTenant(ctx context.Context, t entity.Tenant) error {
 	_, err := m.getTenant(ctx, types.GetTenantOption{TenantId: t.Uid})
-	if err != nil && err != mongo.ErrNoDocuments {
+	if err != mongo.ErrNoDocuments {
 		return enum.ErrTenantAlreadyExists
+	}
+
+	now := time.Now()
+	if t.CreatedAt.IsZero() {
+		t.CreatedAt = now
+	}
+	if t.UpdatedAt.IsZero() {
+		t.UpdatedAt = now
+	}
+	if t.LastActive.IsZero() {
+		t.LastActive = now
 	}
 	_, err = m.tenant.InsertOne(ctx, t)
 	if err != nil {
@@ -100,7 +118,7 @@ func (m *MongoDB) FindActiveTenants(ctx context.Context, opt types.FindActiveTen
 
 func (m *MongoDB) CountTenantPendingTasks(ctx context.Context, opt types.CountTenantPendingTasksOption) (int64, error) {
 	q := bson.M{
-		"uid":       opt.TenantId,
+		"tenantId":  opt.TenantId,
 		"createdAt": bson.M{"$gt": opt.From, "$lt": opt.To},
 	}
 	cnt, err := m.userTask.CountDocuments(ctx, q)
@@ -256,11 +274,10 @@ func (m *MongoDB) createIndices() {
 	}
 
 	// resourcequota indices
-	// tenantId_1_type_1
+	// tenantId_1
 	{
 		keys := primitive.D{}
 		keys = append(keys, primitive.E{Key: "tenantId", Value: 1})
-		keys = append(keys, primitive.E{Key: "type", Value: 1})
 		opt := new(options.IndexOptions).SetUnique(true)
 		idx := mongo.IndexModel{
 			Keys:    keys,

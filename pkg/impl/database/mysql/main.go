@@ -33,16 +33,16 @@ func New(dsn string) (*MySQL, error) {
 
 func (m *MySQL) CreateTenant(ctx context.Context, t entity.Tenant) error {
 	_, err := m.getTenant(ctx, types.GetTenantOption{TenantId: t.Uid})
-	if err != nil && err != sql.ErrNoRows {
+	if err != sql.ErrNoRows {
 		return enum.ErrTenantAlreadyExists
 	}
 	_, err = m.db.ExecContext(ctx, StmtInsertTenant, t.Uid, t.Zone, t.Priority, t.Partition, t.Name, t.Status)
 	if err != nil {
 		return err
 	}
-	_, err = m.db.ExecContext(ctx, StmtInsertResourceQuota, t.ResourceQuota.TenantId, t.ResourceQuota.Type,
-		t.ResourceQuota.CPU, t.ResourceQuota.Memory, t.ResourceQuota.Storage, t.ResourceQuota.GPU,
-		t.ResourceQuota.Concurrency, t.ResourceQuota.Custom, t.ResourceQuota.Peak)
+	_, err = m.db.ExecContext(ctx, StmtInsertResourceQuota,
+		t.ResourceQuota.TenantId, t.ResourceQuota.Concurrency, t.ResourceQuota.CPU, t.ResourceQuota.Custom,
+		t.ResourceQuota.GPU, t.ResourceQuota.Memory, t.ResourceQuota.Storage, t.ResourceQuota.Peak)
 	return err
 }
 

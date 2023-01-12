@@ -1,70 +1,49 @@
 package entity
 
-import (
-	"database/sql"
-	"github.com/mykube-run/keel/pkg/enum"
-)
-
+// ResourceQuota tenant resource quota options. Resource quotas are optional, 0 means there is no limit for specified resource type
 type ResourceQuota struct {
-	Id          string          `json:"id" bson:"_id"`
-	TenantId    string          `json:"tenantId" bson:"tenantId"`
-	Type        string          `json:"type" bson:"type"`
-	CPU         sql.NullInt64   `json:"cpu" bson:"cpu"`
-	Memory      sql.NullInt64   `json:"memory" bson:"memory"`
-	Storage     sql.NullInt64   `json:"storage" bson:"storage"`
-	GPU         sql.NullInt64   `json:"gpu" bson:"gpu"`
-	Concurrency sql.NullInt64   `json:"concurrency" bson:"concurrency"`
-	Custom      sql.NullInt64   `json:"custom" bson:"custom"`
-	Peak        sql.NullFloat64 `json:"peak" bson:"peak"`
+	TenantId string `json:"tenantId" bson:"tenantId"`
+
+	Concurrency int64 `json:"concurrency" bson:"concurrency"` // Task concurrency quota
+	CPU         int64 `json:"cpu" bson:"cpu"`                 // CPU quota in cores
+	Custom      int64 `json:"custom" bson:"custom"`           // Custom resource quota
+	GPU         int64 `json:"gpu" bson:"gpu"`                 // GPU quota in cores
+	Memory      int64 `json:"memory" bson:"memory"`           // Memory quota in MB
+	Storage     int64 `json:"storage" bson:"storage"`         // Storage quota in MB
+
+	Peak float32 `json:"peak" bson:"peak"` // Actual or realtime resource usage can exceed quota in percent. Ranged from 0 to 1.0 (or higher)
 }
 
 func (q *ResourceQuota) Fields() []interface{} {
 	return []interface{}{
-		&q.TenantId, &q.Type, &q.CPU, &q.Memory, &q.Storage, &q.GPU, &q.Concurrency, &q.Custom, &q.Peak,
+		&q.TenantId, &q.CPU, &q.Memory, &q.Storage, &q.GPU, &q.Concurrency, &q.Custom, &q.Peak,
 	}
 }
 
-func NewResourceQuota(tid, typ string, val int64) ResourceQuota {
-	q := ResourceQuota{
-		Type:     typ,
-		TenantId: tid,
-	}
-	switch typ {
-	case string(enum.ResourceTypeCPU):
-		q.CPU = sql.NullInt64{
-			Int64: val,
-			Valid: true,
-		}
-	case string(enum.ResourceTypeMemory):
-		q.Memory = sql.NullInt64{
-			Int64: val,
-			Valid: true,
-		}
-	case string(enum.ResourceTypeStorage):
-		q.Storage = sql.NullInt64{
-			Int64: val,
-			Valid: true,
-		}
-	case string(enum.ResourceTypeGPU):
-		q.GPU = sql.NullInt64{
-			Int64: val,
-			Valid: true,
-		}
-	case string(enum.ResourceTypeConcurrency):
-		q.Concurrency = sql.NullInt64{
-			Int64: val,
-			Valid: true,
-		}
-	case string(enum.ResourceTypeCustom):
-		q.Custom = sql.NullInt64{
-			Int64: val,
-			Valid: true,
-		}
-	case string(enum.ResourceTypePeak):
-		q.Peak = sql.NullFloat64{
-			Float64: float64(val),
-			Valid:   true,
-		}
-	}
-	return q
+func (q *ResourceQuota) ConcurrencyEnabled() bool {
+	return q.Concurrency > 0
+}
+
+func (q *ResourceQuota) CPUEnabled() bool {
+	return q.CPU > 0
+}
+
+func (q *ResourceQuota) CustomEnabled() bool {
+	return q.Custom > 0
+}
+
+func (q *ResourceQuota) GPUEnabled() bool {
+	return q.GPU > 0
+}
+
+func (q *ResourceQuota) MemoryEnabled() bool {
+	return q.Memory > 0
+}
+
+func (q *ResourceQuota) StorageEnabled() bool {
+	return q.Storage > 0
+}
+
+func (q *ResourceQuota) PeakEnabled() bool {
+	return q.Peak > 0
 }

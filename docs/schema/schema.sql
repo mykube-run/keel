@@ -14,18 +14,16 @@ CREATE TABLE IF NOT EXISTS tenant
 
 CREATE TABLE IF NOT EXISTS resourcequota
 (
-    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id   VARCHAR(255) NOT NULL COMMENT 'Tenant uid',
-    type        VARCHAR(20)  NOT NULL COMMENT 'Tenant resource quota type, available options are: CPU, Memory, Storage, GPU, Concurrency, Custom, Peak',
-    cpu         INT          NULL COMMENT 'CPU quota in millisecond',
-    memory      INT          NULL COMMENT 'Memory quota in MB',
-    storage     INT          NULL COMMENT 'Storage quota in MB',
-    gpu         INT          NULL COMMENT 'GPU quota',
-    concurrency INT          NULL COMMENT 'Concurrency quota',
-    custom      INT          NULL COMMENT 'Custom workload figure',
-    peak        FLOAT        NULL COMMENT 'Number of percent that actual or realtime resource usage can exceed quota',
-    UNIQUE idx_tenant_id_type (tenant_id, type)
-) ENGINE = InnoDB COMMENT 'Tenant resource quotas';
+    tenant_id   VARCHAR(255) NOT NULL PRIMARY KEY COMMENT 'Tenant uid',
+    concurrency INT   DEFAULT 0 COMMENT 'Task concurrency quota',
+    cpu         INT   DEFAULT 0 COMMENT 'CPU quota in cores',
+    custom      INT   DEFAULT 0 COMMENT 'Custom resource quota',
+    gpu         INT   DEFAULT 0 COMMENT 'GPU quota in cores',
+    memory      INT   DEFAULT 0 COMMENT 'Memory quota in MB',
+    storage     INT   DEFAULT 0 COMMENT 'Storage quota in MB',
+    peak        FLOAT DEFAULT 0 COMMENT 'Actual or realtime resource usage can exceed quota in percent. Ranged from 0 to 1.0 (or higher)'
+)
+    ENGINE = InnoDB COMMENT 'Tenant resource quota options. Resource quotas are optional, 0 means there is no limit for specified resource type';
 
 CREATE TABLE IF NOT EXISTS usertask
 (

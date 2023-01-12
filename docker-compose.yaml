@@ -61,15 +61,31 @@ services:
 
   # MongoDB
   # See: https://hub.docker.com/r/bitnami/mongodb
+  # Bitnami mongodb may not be working on M1 chips, so we use official image
+  #
+  # mongodb:
+  #   image: bitnami/mongodb:5.0
+  #   environment:
+  #     MONGODB_DATABASE: 'keel'
+  #     MONGODB_ROOT_USER: 'root'
+  #     MONGODB_ROOT_PASSWORD: 'pa88w0rd'
+  #     MONGODB_REPLICA_SET_MODE: 'primary'
+  #     MONGODB_REPLICA_SET_KEY: 'random-key'
+  #   restart: 'on-failure'
+  #   networks:
+  #     - test
   mongodb:
-    image: bitnami/mongodb:5.0
+    image: mongo:5.0.14
     environment:
-      MONGODB_DATABASE: 'keel'
-      MONGODB_ROOT_USER: 'root'
-      MONGODB_ROOT_PASSWORD: 'pa88w0rd'
-      MONGODB_REPLICA_SET_MODE: 'primary'
-      MONGODB_REPLICA_SET_KEY: 'random-key'
+      MONGO_INITDB_DATABASE: 'keel'
+      MONGO_INITDB_ROOT_USERNAME: 'root'
+      MONGO_INITDB_ROOT_PASSWORD: 'pa88w0rd'
     restart: 'on-failure'
+    healthcheck:
+      test: 'mongo mongodb://root:pa88w0rd@monogdb:27017'
+      interval: '10s'
+      timeout: '1s'
+      retries: 24
     networks:
       - test
 

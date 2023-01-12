@@ -411,7 +411,7 @@
         },
         "quota": {
           "$ref": "#/definitions/pb.ResourceQuota",
-          "description": "Tenant resource quota options",
+          "description": "Tenant resource quota options. Resource quotas are optional, 0 means there is no limit for specified resource type",
           "title": "Tenant resource quota"
         }
       },
@@ -519,14 +519,40 @@
     "pb.ResourceQuota": {
       "type": "object",
       "properties": {
-        "type": {
-          "type": "string",
-          "description": "Tenant resource quota type, available options are: CPU, Memory, Storage, GPU, Concurrency, Custom, Peak"
-        },
-        "value": {
+        "concurrency": {
           "type": "string",
           "format": "int64",
-          "description": "Tenant resource quota value"
+          "description": "Task concurrency quota"
+        },
+        "cpu": {
+          "type": "string",
+          "format": "int64",
+          "description": "CPU cores"
+        },
+        "custom": {
+          "type": "string",
+          "format": "int64",
+          "description": "Custom resource quota"
+        },
+        "gpu": {
+          "type": "string",
+          "format": "int64",
+          "description": "GPU cores"
+        },
+        "memory": {
+          "type": "string",
+          "format": "int64",
+          "description": "Memory quota in MB"
+        },
+        "storage": {
+          "type": "string",
+          "format": "int64",
+          "description": "Storage quota in MB"
+        },
+        "peak": {
+          "type": "number",
+          "format": "float",
+          "description": "Maximum ratio of these quotas, ranged from 0 to 1.0 (or higher)"
         }
       }
     },

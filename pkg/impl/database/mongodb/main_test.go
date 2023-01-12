@@ -2,7 +2,6 @@ package mongodb
 
 import (
 	"context"
-	"database/sql"
 	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
 	"github.com/mykube-run/keel/pkg/types"
@@ -14,7 +13,7 @@ import (
 var db *MongoDB
 
 const (
-	dsn       = "mongodb://root:pa88w0rd@mongodb:27017/"
+	dsn       = "mongodb://root:pa88w0rd@mongodb:27017"
 	tenantId  = "tenant-unit-test-1"
 	zone      = "global"
 	partition = "global-scheduler-1"
@@ -25,6 +24,7 @@ func deleteTestData() {
 	ctx := context.Background()
 	_, _ = db.tenant.DeleteOne(ctx, bson.M{"uid": tenantId})
 	_, _ = db.userTask.DeleteOne(ctx, bson.M{"uid": taskId})
+	_, _ = db.quota.DeleteOne(ctx, bson.M{"tenantId": tenantId})
 }
 
 func Test_New(t *testing.T) {
@@ -47,12 +47,8 @@ func TestMongoDB_CreateTenant(t *testing.T) {
 		Status:    enum.TenantStatusActive,
 	}
 	quota := entity.ResourceQuota{
-		TenantId: tenant.Uid,
-		Type:     string(enum.ResourceTypeConcurrency),
-		Concurrency: sql.NullInt64{
-			Int64: 10,
-			Valid: true,
-		},
+		TenantId:    tenant.Uid,
+		Concurrency: 10,
 	}
 	tenant.ResourceQuota = quota
 	err := db.CreateTenant(context.TODO(), tenant)
@@ -113,6 +109,9 @@ func TestMongoDB_GetTenant(t *testing.T) {
 	if tenant.Zone != zone || tenant.Partition != partition {
 		t.Fatalf("unexpected tenant zone or partition")
 	}
+	if !tenant.ResourceQuota.ConcurrencyEnabled() || tenant.ResourceQuota.Concurrency == 0 {
+		t.Fatalf("unexpected tenant resource quota value: %+v", tenant.ResourceQuota.Concurrency)
+	}
 }
 
 func TestMongoDB_ActivateTenants(t *testing.T) {
@@ -147,7 +146,7 @@ func TestMongoDB_ActivateTenants(t *testing.T) {
 }
 
 func TestMongoDB_CreateTask(t *testing.T) {
-	deleteTestData()
+	// deleteTestData()
 
 	task := entity.UserTask{
 		Uid:              taskId,

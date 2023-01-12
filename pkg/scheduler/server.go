@@ -49,7 +49,7 @@ func (s *Server) CreateTenant(ctx context.Context, req *pb.CreateTenantRequest) 
 		CreatedAt:     now,
 		UpdatedAt:     now,
 		LastActive:    now,
-		ResourceQuota: entity.NewResourceQuota(req.GetUid(), req.GetQuota().GetType(), req.GetQuota().GetValue()),
+		ResourceQuota: newResourceQuota(req.GetUid(), req.GetQuota()),
 	}
 	err := s.db.CreateTenant(ctx, t)
 	if err != nil {
@@ -86,7 +86,7 @@ func (s *Server) QueryTenantTaskConcurrency(ctx context.Context, req *pb.QueryTe
 	// 2. Get running and concurrency limit from queue or database
 	queue, ok := s.sched.cs[req.GetUid()]
 	if ok {
-		limit = queue.Tenant.ResourceQuota.Concurrency.Int64
+		limit = queue.Tenant.ResourceQuota.Concurrency
 		running, err = s.sched.em.CountRunningTasks(req.GetUid())
 		if err != nil {
 			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", req.GetUid(), "message", "failed to count tenant running tasks")
@@ -99,7 +99,7 @@ func (s *Server) QueryTenantTaskConcurrency(ctx context.Context, req *pb.QueryTe
 			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", req.GetUid(), "message", "failed to get tenant")
 			return nil, err
 		}
-		limit = tenant.ResourceQuota.Concurrency.Int64
+		limit = tenant.ResourceQuota.Concurrency
 		// TODO: running
 	}
 
@@ -134,7 +134,7 @@ func (s *Server) CreateTask(ctx context.Context, req *pb.CreateTaskRequest) (*pb
 	if req.Options.GetCheckResourceQuota() {
 		queue, ok := s.sched.cs[req.TenantId]
 		if ok {
-			limit := queue.Tenant.ResourceQuota.Concurrency.Int64
+			limit := queue.Tenant.ResourceQuota.Concurrency
 			running, err := s.sched.em.CountRunningTasks(req.TenantId)
 			if err != nil {
 				s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", req.GetTenantId(), "message", "failed to count running tasks while creating new task")
@@ -299,4 +299,18 @@ func (s *Server) Start() {
 	}
 	s.lg.Log(types.LevelInfo, "message", fmt.Sprintf("serving gRPC-Gateway on http://%s", s.config.HttpAddress))
 	s.lg.Log(types.LevelFatal, "error", gwServer.ListenAndServe())
+}
+
+func newResourceQuota(tid string, q *pb.ResourceQuota) entity.ResourceQuota {
+	quota := entity.ResourceQuota{
+		TenantId:    tid,
+		Concurrency: q.GetConcurrency(),
+		CPU:         q.GetCpu(),
+		Custom:      q.GetCustom(),
+		GPU:         q.GetGpu(),
+		Memory:      q.GetMemory(),
+		Storage:     q.GetStorage(),
+		Peak:        q.GetPeak(),
+	}
+	return quota
 }

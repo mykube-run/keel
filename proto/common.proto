@@ -26,10 +26,25 @@ message Response {
 }
 
 message ResourceQuota {
-  string type = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "Tenant resource quota type, available options are: CPU, Memory, Storage, GPU, Concurrency, Custom, Peak"
+  int64 concurrency = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Task concurrency quota"
   }];
-  int64 value = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    description: "Tenant resource quota value"
+  int64 cpu = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "CPU quota in cores"
+  }];
+  int64 custom = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Custom resource quota"
+  }];
+  int64 gpu = 4 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "GPU quota in cores"
+  }];
+  int64 memory = 5 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Memory quota in MB"
+  }];
+  int64 storage = 6 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Storage quota in MB"
+  }];
+  float peak = 7 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Maximum ratio of these quotas, ranged from 0 to 1.0 (or higher)"
   }];
 }

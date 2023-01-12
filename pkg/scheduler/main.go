@@ -124,13 +124,13 @@ func (s *Scheduler) schedule() {
 					s.lg.Log(types.LevelError, "error", err.Error(), "message", "failed to count running tasks")
 					continue
 				}
-				if !c.Tenant.ResourceQuota.Concurrency.Valid {
-					s.lg.Log(types.LevelWarn, "message", "tenant resource quota concurrency was invalid")
+				if !c.Tenant.ResourceQuota.ConcurrencyEnabled() {
+					s.lg.Log(types.LevelWarn, "message", "tenant resource quota concurrency was disabled")
 					continue
 				}
-				s.lg.Log(types.LevelTrace, "tenantId", k, "quota", c.Tenant.ResourceQuota.Concurrency.Int64,
+				s.lg.Log(types.LevelTrace, "tenantId", k, "quota", c.Tenant.ResourceQuota.Concurrency,
 					"running", running, "message", "tenant concurrency state")
-				n := int(c.Tenant.ResourceQuota.Concurrency.Int64) - running
+				n := int(c.Tenant.ResourceQuota.Concurrency) - running
 				if n <= 0 {
 					continue
 				}

@@ -2,7 +2,6 @@ package mysql
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
@@ -46,12 +45,8 @@ func TestMySQL_CreateTenant(t *testing.T) {
 		Status:    enum.TenantStatusActive,
 	}
 	quota := entity.ResourceQuota{
-		TenantId: tenant.Uid,
-		Type:     string(enum.ResourceTypeConcurrency),
-		Concurrency: sql.NullInt64{
-			Int64: 10,
-			Valid: true,
-		},
+		TenantId:    tenant.Uid,
+		Concurrency: 10,
 	}
 	tenant.ResourceQuota = quota
 	err := db.CreateTenant(context.TODO(), tenant)
@@ -111,6 +106,9 @@ func TestMySQL_GetTenant(t *testing.T) {
 	}
 	if tenant.Zone != zone || tenant.Partition != partition {
 		t.Fatalf("unexpected tenant zone or partition")
+	}
+	if !tenant.ResourceQuota.ConcurrencyEnabled() || tenant.ResourceQuota.Concurrency == 0 {
+		t.Fatalf("unexpected tenant resource quota value: %+v", tenant.ResourceQuota.Concurrency)
 	}
 }
 
