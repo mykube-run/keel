@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"context"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/mykube-run/keel/pkg/config"
@@ -16,9 +17,13 @@ import (
 )
 
 var (
-	DefaultMessageTTL = 10 // 10 seconds
-	HeaderFrom        = "From"
+	// DefaultMessageTTL and other options, can be modified accordingly
+	DefaultMessageTTL        = 10 // message TTL default to 10 seconds
+	DefaultNumPartitions     = 3  // topic partitions default to 3
+	DefaultReplicationFactor = 1  // topic replication factor default to 1
 )
+
+const HeaderFrom = "From"
 
 type KafkaTransport struct {
 	c              *kafka.Consumer
@@ -35,6 +40,7 @@ func NewKafkaTransport(cfg *config.TransportConfig) (*KafkaTransport, error) {
 	if err := validateConfig(cfg); err != nil {
 		return nil, fmt.Errorf("invalid config: %v", err)
 	}
+	createTopics(cfg.Kafka)
 
 	p, err := kafka.NewProducer(newProducerConfig(cfg.Kafka))
 	if err != nil {
@@ -188,6 +194,30 @@ func (t *KafkaTransport) selectTopic() string {
 	return topics[rand.Intn(len(topics))]
 }
 
+// createTopics creates specified topics silently
+func createTopics(conf config.KafkaConfig) {
+	cfg := &kafka.ConfigMap{
+		"bootstrap.servers": strings.Join(conf.Brokers, ","),
+	}
+	client, err := kafka.NewAdminClient(cfg)
+	if err != nil {
+		log.Err(err).Msg("failed to create kafka admin client")
+		return
+	}
+
+	opt := kafka.SetAdminOperationTimeout(time.Second * 60)
+	res, err := client.CreateTopics(context.Background(), topicSpecs(conf.Topics), opt)
+	if err != nil {
+		log.Err(err).Msg("failed to create kafka topics")
+		return
+	}
+	for _, r := range res {
+		if r.Error.Code() != kafka.ErrNoError {
+			log.Err(r.Error).Str("topic", r.Topic).Msg("error creating specified topic")
+		}
+	}
+}
+
 func newConsumerConfig(conf config.KafkaConfig) *kafka.ConfigMap {
 	return &kafka.ConfigMap{
 		"bootstrap.servers":         strings.Join(conf.Brokers, ","),
@@ -223,6 +253,23 @@ func newProducerConfig(conf config.KafkaConfig) *kafka.ConfigMap {
 		"retry.backoff.ms":    100,
 		"linger.ms":           200,
 	}
+}
+
+func topicSpecs(topics config.KafkaTopics) []kafka.TopicSpecification {
+	specs := make([]kafka.TopicSpecification, 0)
+	for i, _ := range topics.Tasks {
+		specs = append(specs, kafka.TopicSpecification{
+			Topic:             topics.Tasks[i],
+			NumPartitions:     DefaultNumPartitions,
+			ReplicationFactor: DefaultReplicationFactor,
+		})
+	}
+	for i, _ := range topics.Messages {
+		specs = append(specs, kafka.TopicSpecification{
+			Topic: topics.Messages[i],
+		})
+	}
+	return specs
 }
 
 func from(headers []kafka.Header) string {
