@@ -3,15 +3,20 @@ package database
 import (
 	"fmt"
 	"github.com/mykube-run/keel/pkg/config"
+	"github.com/mykube-run/keel/pkg/impl/database/mongodb"
+	"github.com/mykube-run/keel/pkg/impl/database/mysql"
 	"github.com/mykube-run/keel/pkg/types"
+	"strings"
 )
 
 func New(conf config.DatabaseConfig) (types.DB, error) {
-	switch conf.Type {
+	switch strings.ToLower(conf.Type) {
 	case "mock":
 		return NewMockDB(), nil
 	case "mysql":
-		return NewMySQL(conf.DSN)
+		return mysql.New(conf.DSN)
+	case "mongodb":
+		return mongodb.New(conf.DSN)
 	default:
 		return nil, fmt.Errorf("unsupported database type: %v", conf.Type)
 	}

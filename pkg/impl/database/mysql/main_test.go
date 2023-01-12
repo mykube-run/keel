@@ -1,4 +1,4 @@
-package database
+package mysql
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var db types.DB
+var db *MySQL
 
 const (
 	dsn       = "root:pa88w0rd@tcp(mysql:3306)/keel?charset=utf8mb4&parseTime=true"
@@ -22,17 +22,13 @@ const (
 )
 
 func deleteTestData() {
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		return
-	}
-	_, _ = db.Exec(fmt.Sprintf(`DELETE FROM tenant WHERE uid = '%v'`, tenantId))
-	_, _ = db.Exec(fmt.Sprintf(`DELETE FROM usertask WHERE uid = '%v'`, taskId))
+	_, _ = db.db.Exec(fmt.Sprintf(`DELETE FROM tenant WHERE uid = '%v'`, tenantId))
+	_, _ = db.db.Exec(fmt.Sprintf(`DELETE FROM usertask WHERE uid = '%v'`, taskId))
 }
 
-func Test_NewMySQL(t *testing.T) {
+func Test_New(t *testing.T) {
 	var err error
-	db, err = NewMySQL(dsn)
+	db, err = New(dsn)
 	if err != nil {
 		t.Fatalf("should be able to connect to database, got erorr: %v", err)
 	}
@@ -61,6 +57,11 @@ func TestMySQL_CreateTenant(t *testing.T) {
 	err := db.CreateTenant(context.TODO(), tenant)
 	if err != nil {
 		t.Fatalf("should create the tenant, but got error: %v", err)
+	}
+
+	err = db.CreateTenant(context.TODO(), tenant)
+	if err != enum.ErrTenantAlreadyExists {
+		t.Fatalf("should get ErrTenantAlreadyExists, but got error: %v", err)
 	}
 }
 

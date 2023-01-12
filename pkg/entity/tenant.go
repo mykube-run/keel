@@ -9,17 +9,17 @@ type Tenants []*Tenant
 
 // Tenant defines the tenant
 type Tenant struct {
-	Uid        string
-	Zone       string
-	Partition  string
-	Priority   int32
-	Name       string
-	Status     string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	LastActive time.Time
+	Uid        string    `json:"uid" bson:"uid"`
+	Zone       string    `json:"zone" bson:"zone"`
+	Partition  string    `json:"partition" bson:"partition"`
+	Priority   int32     `json:"priority" bson:"priority"`
+	Name       string    `json:"name" bson:"name"`
+	Status     string    `json:"status" bson:"status"`
+	CreatedAt  time.Time `json:"createdAt" bson:"createdAt"`
+	UpdatedAt  time.Time `json:"updatedAt" bson:"updatedAt"`
+	LastActive time.Time `json:"lastActive" bson:"lastActive"`
 
-	ResourceQuota ResourceQuota
+	ResourceQuota ResourceQuota `bson:"-" json:"resourceQuota"`
 }
 
 func (t *Tenant) Fields() []interface{} {

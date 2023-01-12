@@ -1,4 +1,4 @@
-package database
+package mysql
 
 import (
 	"context"
@@ -16,7 +16,7 @@ type MySQL struct {
 	db *sql.DB
 }
 
-func NewMySQL(dsn string) (types.DB, error) {
+func New(dsn string) (*MySQL, error) {
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, err
@@ -32,11 +32,14 @@ func NewMySQL(dsn string) (types.DB, error) {
 }
 
 func (m *MySQL) CreateTenant(ctx context.Context, t entity.Tenant) error {
-	_, err := m.db.ExecContext(ctx, StmtInsertTenant, t.Uid, t.Zone, t.Priority, t.Partition, t.Name, t.Status)
+	_, err := m.getTenant(ctx, types.GetTenantOption{TenantId: t.Uid})
+	if err != nil && err != sql.ErrNoRows {
+		return enum.ErrTenantAlreadyExists
+	}
+	_, err = m.db.ExecContext(ctx, StmtInsertTenant, t.Uid, t.Zone, t.Priority, t.Partition, t.Name, t.Status)
 	if err != nil {
 		return err
 	}
-
 	_, err = m.db.ExecContext(ctx, StmtInsertResourceQuota, t.ResourceQuota.TenantId, t.ResourceQuota.Type,
 		t.ResourceQuota.CPU, t.ResourceQuota.Memory, t.ResourceQuota.Storage, t.ResourceQuota.GPU,
 		t.ResourceQuota.Concurrency, t.ResourceQuota.Custom, t.ResourceQuota.Peak)
@@ -57,13 +60,7 @@ func (m *MySQL) ActivateTenants(ctx context.Context, opt types.ActivateTenantsOp
 }
 
 func (m *MySQL) GetTenant(ctx context.Context, opt types.GetTenantOption) (*entity.Tenant, error) {
-	row := m.db.QueryRowContext(ctx, StmtGetTenant, opt.TenantId)
-	t := new(entity.Tenant)
-	err := row.Scan(t.FieldsWithQuota()...)
-	if err != nil {
-		return nil, err
-	}
-	return t, nil
+	return m.getTenant(ctx, opt)
 }
 
 func (m *MySQL) FindActiveTenants(ctx context.Context, opt types.FindActiveTenantsOption) (ts entity.Tenants, err error) {
@@ -204,6 +201,16 @@ func (m *MySQL) UpdateTaskStatus(ctx context.Context, opt types.UpdateTaskStatus
 
 func (m *MySQL) Close() error {
 	return m.db.Close()
+}
+
+func (m *MySQL) getTenant(ctx context.Context, opt types.GetTenantOption) (*entity.Tenant, error) {
+	row := m.db.QueryRowContext(ctx, StmtGetTenant, opt.TenantId)
+	t := new(entity.Tenant)
+	err := row.Scan(t.FieldsWithQuota()...)
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
 }
 
 func noRowsAsNil(err error) error {

@@ -6,16 +6,16 @@ import (
 )
 
 type ResourceQuota struct {
-	Id          string
-	TenantId    string
-	Type        string
-	CPU         sql.NullInt64
-	Memory      sql.NullInt64
-	Storage     sql.NullInt64
-	GPU         sql.NullInt64
-	Concurrency sql.NullInt64
-	Custom      sql.NullInt64
-	Peak        sql.NullFloat64
+	Id          string          `json:"id" bson:"_id"`
+	TenantId    string          `json:"tenantId" bson:"tenantId"`
+	Type        string          `json:"type" bson:"type"`
+	CPU         sql.NullInt64   `json:"cpu" bson:"cpu"`
+	Memory      sql.NullInt64   `json:"memory" bson:"memory"`
+	Storage     sql.NullInt64   `json:"storage" bson:"storage"`
+	GPU         sql.NullInt64   `json:"gpu" bson:"gpu"`
+	Concurrency sql.NullInt64   `json:"concurrency" bson:"concurrency"`
+	Custom      sql.NullInt64   `json:"custom" bson:"custom"`
+	Peak        sql.NullFloat64 `json:"peak" bson:"peak"`
 }
 
 func (q *ResourceQuota) Fields() []interface{} {

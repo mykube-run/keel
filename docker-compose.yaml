@@ -47,6 +47,32 @@ services:
       - zookeeper
       - kafka
 
+  # Minio object storage
+  # See: https://hub.docker.com/r/bitnami/minio/
+  minio:
+    image: bitnami/minio:2022.12.12
+    environment:
+      MINIO_DEFAULT_BUCKETS: snapshots
+      MINIO_ROOT_USER: 'root'
+      MINIO_ROOT_PASSWORD: 'pa88w0rd'
+    restart: 'on-failure'
+    networks:
+      - test
+
+  # MongoDB
+  # See: https://hub.docker.com/r/bitnami/mongodb
+  mongodb:
+    image: bitnami/mongodb:5.0
+    environment:
+      MONGODB_DATABASE: 'keel'
+      MONGODB_ROOT_USER: 'root'
+      MONGODB_ROOT_PASSWORD: 'pa88w0rd'
+      MONGODB_REPLICA_SET_MODE: 'primary'
+      MONGODB_REPLICA_SET_KEY: 'random-key'
+    restart: 'on-failure'
+    networks:
+      - test
+
   # MySQL database
   # See: https://hub.docker.com/r/bitnami/mysql/
   mysql:
@@ -79,18 +105,6 @@ services:
     depends_on:
       mysql:
         condition: 'service_healthy'
-
-  # Minio object storage
-  # See: https://hub.docker.com/r/bitnami/minio/
-  minio:
-    image: bitnami/minio:2022.12.12
-    environment:
-      MINIO_DEFAULT_BUCKETS: snapshots
-      MINIO_ROOT_USER: 'root'
-      MINIO_ROOT_PASSWORD: 'pa88w0rd'
-    restart: 'on-failure'
-    networks:
-      - test
 
   # Keel scheduler
   scheduler:
@@ -133,12 +147,12 @@ services:
         condition: 'service_started'
       kafka:
         condition: 'service_started'
+      minio:
+        condition: 'service_started'
       mysql:
         condition: 'service_healthy'
       init-mysql:
         condition: 'service_completed_successfully'
-      minio:
-        condition: 'service_started'
 
   # Test
   test:
@@ -155,12 +169,14 @@ services:
         condition: 'service_started'
       kafka:
         condition: 'service_started'
+      minio:
+        condition: 'service_started'
+      mongodb:
+        condition: 'service_started'
       mysql:
         condition: 'service_healthy'
       init-mysql:
         condition: 'service_completed_successfully'
-      minio:
-        condition: 'service_started'
       scheduler:
         condition: 'service_started'
       worker:

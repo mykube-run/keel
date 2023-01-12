@@ -15,7 +15,6 @@ import (
 func main() {
 	zerolog.SetGlobalLevel(zerolog.TraceLevel)
 	cfg := config.DefaultFromEnv()
-	cfg.Transport.Role = string(enum.TransportRoleScheduler)
 	opt := &scheduler.Options{
 		Name:                    cfg.Scheduler.Id,
 		Zone:                    cfg.Scheduler.Zone,
@@ -29,6 +28,8 @@ func main() {
 			GrpcAddress: fmt.Sprintf("%v:%v", cfg.Scheduler.Address, cfg.Scheduler.Port+1000),
 		},
 	}
+	opt.Transport.Role = string(enum.TransportRoleScheduler)
+
 	db, err := database.New(cfg.Database)
 	if err != nil {
 		log.Fatal().Msgf("error creating database: %v", err)

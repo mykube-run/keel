@@ -39,9 +39,9 @@ CREATE TABLE IF NOT EXISTS usertask
     status            VARCHAR(20)  NOT NULL COMMENT 'Task status, possible values are: Pending, Scheduling, Dispatched, Running, NeedsRetry, InTransition, Success, Failed, Canceled',
     created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'UTC time the task was created at',
     updated_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'UTC time the task was updated at',
-    UNIQUE idx_tenant_id_uid (tenant_id, uid),
     INDEX idx_handler (handler)
 ) ENGINE = InnoDB COMMENT 'User tasks';
+# UNIQUE idx_tenant_id_uid (tenant_id, uid),
 
 CREATE TABLE IF NOT EXISTS crontask
 (

@@ -1,4 +1,4 @@
-package database
+package mysql
 
 // Statements
 const (
@@ -21,6 +21,6 @@ const (
 	TemplateActivateTenants   = `UPDATE tenant SET last_active = ? WHERE uid IN (%v)`
 	TemplateFindActiveTenants = `SELECT t.uid, t.zone, t.priority, t.partition_name, t.name, t.status, t.created_at, t.updated_at, t.last_active, q.tenant_id, q.type, q.cpu, q.memory, q.storage, q.gpu, q.concurrency, q.custom, q.peak FROM tenant t LEFT JOIN resourcequota q ON t.uid = q.tenant_id %v`
 
-	TemplateFindRecentTasks  = `SELECT uid, tenant_id, handler, config, schedule_strategy, priority, progress, status, created_at, updated_at FROM usertask %v LIMIT 500`
+	TemplateFindRecentTasks  = `SELECT uid, tenant_id, handler, config, schedule_strategy, priority, progress, status, created_at, updated_at FROM usertask %v ORDER BY created_at ASC LIMIT 500`
 	TemplateUpdateTaskStatus = `UPDATE usertask SET status = ? WHERE uid IN (%v)`
 )
