@@ -61,6 +61,16 @@ func DefaultFromEnv() Config {
 	}
 }
 
+func ReplaceEnvironment(val string) string {
+	hostname, _ := os.Hostname()
+	podname := os.Getenv("POD_NAME")
+	pid := strconv.Itoa(os.Getpid())
+	val = strings.ReplaceAll(val, "{hostname}", hostname)
+	val = strings.ReplaceAll(val, "{podname}", podname)
+	val = strings.ReplaceAll(val, "{pid}", pid)
+	return val
+}
+
 func str(key string) string {
 	return strings.TrimSpace(os.Getenv(EnvPrefix + key))
 }
@@ -84,12 +94,5 @@ func num(key string) int {
 }
 
 func envstr(key string) string {
-	val := str(key)
-	hostname, _ := os.Hostname()
-	podname := os.Getenv("POD_NAME")
-	pid := strconv.Itoa(os.Getpid())
-	val = strings.ReplaceAll(val, "{hostname}", hostname)
-	val = strings.ReplaceAll(val, "{podname}", podname)
-	val = strings.ReplaceAll(val, "{pid}", pid)
-	return val
+	return ReplaceEnvironment(str(key))
 }
