@@ -45,8 +45,7 @@ func NewTaskQueue(db types.DB, lg types.Logger, t *entity.Tenant, ls types.Liste
 // PopUserTasks pops at most n entity.UserTasks from cache, returns tasks and the actual number successfully popped.
 // When the number of cached entity.UserTasks is zero or less than FetchFromDBWatermarkRatio * n, it will populate tasks in background.
 func (c *TaskQueue) PopUserTasks(n int) (tasks entity.UserTasks, popped int, err error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.mu.Lock()
 
 	for c.UserTasks.Len() > 0 {
 		item := heap.Pop(c.UserTasks).(*Item)
@@ -56,6 +55,9 @@ func (c *TaskQueue) PopUserTasks(n int) (tasks entity.UserTasks, popped int, err
 			break
 		}
 	}
+
+	// Do not forget to unlock
+	c.mu.Unlock()
 
 	if c.UserTasks.Len() < FetchFromDBWatermarkRatio*n || c.UserTasks.Len() == 0 {
 		go c.FetchTasks()
@@ -94,8 +96,9 @@ func (c *TaskQueue) populateTasks(ctx context.Context) error {
 		status = []enum.TaskStatus{enum.TaskStatusPending}
 	}
 	opt := types.FindRecentTasksOption{
-		TenantId:      &c.Tenant.Uid,
-		MinUserTaskId: &c.maxUserTaskId,
+		TenantId: &c.Tenant.Uid,
+		// MinUserTaskId: &c.maxUserTaskId,
+		MinUserTaskId: nil,
 		TaskType:      enum.TaskTypeUserTask,
 		Status:        status,
 	}
@@ -131,8 +134,8 @@ func (c *TaskQueue) populateTasks(ctx context.Context) error {
 }
 
 func (c *TaskQueue) PopAllUserTasks() (tasks entity.UserTasks, err error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	for c.UserTasks.Len() > 0 {
 		item := heap.Pop(c.UserTasks).(*Item)
