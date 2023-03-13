@@ -38,7 +38,7 @@ func (s *OrdinaryTaskHandler) HeartBeat() (*types.TaskContext, *types.TaskStatus
 	return s.ctx, status, nil
 }
 
-func (s *OrdinaryTaskHandler) BeforeTransitionStart() (*types.TaskContext, *types.TaskStatus, error) {
+func (s *OrdinaryTaskHandler) PrepareMigration() (*types.TaskContext, *types.TaskStatus, error) {
 	status := &types.TaskStatus{
 		State:     enum.TaskStatusInTransition,
 		Progress:  s.progress(),
@@ -48,7 +48,7 @@ func (s *OrdinaryTaskHandler) BeforeTransitionStart() (*types.TaskContext, *type
 	return s.ctx, status, nil
 }
 
-func (s *OrdinaryTaskHandler) StartTransitionTask(chan struct{}) (bool, error) {
+func (s *OrdinaryTaskHandler) StartMigratedTask(chan struct{}) (bool, error) {
 	return false, nil
 }
 
@@ -62,7 +62,7 @@ func (s *OrdinaryTaskHandler) TransitionFinish() (*types.TaskContext, *types.Tas
 	return s.ctx, status, nil
 }
 
-func (s *OrdinaryTaskHandler) TransitionError() (*types.TaskContext, *types.TaskStatus, error) {
+func (s *OrdinaryTaskHandler) MigrateError() (*types.TaskContext, *types.TaskStatus, error) {
 	status := &types.TaskStatus{
 		State:     enum.TaskStatusFailed,
 		Progress:  s.progress(),
