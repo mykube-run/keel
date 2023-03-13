@@ -44,10 +44,11 @@ type SchedulerConfig struct {
 }
 
 type WorkerConfig struct {
-	Name           string // Worker name used to identify the worker
-	PoolSize       int    // Worker executor pool size
-	Generation     int    // Worker generation
-	ReportInterval int    // Interval in seconds that the worker reports events to scheduler
+	Name             string   // Worker name used to identify the worker
+	PoolSize         int      // Worker executor pool size
+	Generation       int      // Worker generation
+	ReportInterval   int      // Interval in seconds that the worker reports events to scheduler
+	HandlerWhiteList []string // Handler white list, when specified only listed handlers are allowed to be registered. Default to '*' which means all handlers can be registered
 }
 
 type TransportConfig struct {

@@ -18,17 +18,23 @@ import (
 
 // TODO: Trigger task transition on exit signal
 
+const asterisk = "*"
+
 type Options struct {
-	PoolSize       int                    // Worker pool size
-	Name           string                 // Worker name, normally pod name
-	Generation     int64                  // Worker generation
-	ReportInterval time.Duration          // Interval for worker to report tasks status to scheduler, default to 5 seconds
-	Transport      config.TransportConfig // Worker transport config
+	PoolSize         int                    // Worker pool size
+	Name             string                 // Worker name, normally pod name
+	Generation       int64                  // Worker generation
+	ReportInterval   time.Duration          // Interval for worker to report tasks status to scheduler, default to 5 seconds
+	Transport        config.TransportConfig // Worker transport config
+	HandlerWhiteList []string               // Handler white list, when specified only listed handlers are allowed to be registered. Default to '*' which means all handlers can be registered
 }
 
 func (o *Options) validate() {
 	if o.ReportInterval.Seconds() <= 0 {
 		o.ReportInterval = time.Second * 5
+	}
+	if len(o.HandlerWhiteList) == 0 {
+		o.HandlerWhiteList = append(o.HandlerWhiteList, asterisk)
 	}
 }
 
@@ -73,7 +79,12 @@ func New(opt *Options, lg types.Logger) (*Worker, error) {
 
 // RegisterHandler registers a TaskHandlerFactory for specified handler name
 func (w *Worker) RegisterHandler(name string, f types.TaskHandlerFactory) {
-	w.factories[name] = f
+	if w.isAllowed(name) {
+		w.factories[name] = f
+	} else {
+		w.lg.Log(types.LevelWarn, "handler", name, "whiteList", w.opt.HandlerWhiteList,
+			"message", "handler was not registered, not configured in white list")
+	}
 }
 
 // Start starts the worker
@@ -272,6 +283,16 @@ func (w *Worker) transferAllTasks() {
 			"message", "succeeded starting task transition")
 		return true
 	})
+}
+
+// isAllowed returns whether given handler is allowed to be registered (listed in white list)
+func (w *Worker) isAllowed(name string) bool {
+	for _, v := range w.opt.HandlerWhiteList {
+		if v == asterisk || v == name {
+			return true
+		}
+	}
+	return false
 }
 
 // handlers returns supported handler names
