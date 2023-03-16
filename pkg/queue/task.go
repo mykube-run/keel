@@ -95,8 +95,9 @@ func (c *TaskQueue) populateTasks(ctx context.Context) error {
 		status = []enum.TaskStatus{enum.TaskStatusPending}
 	}
 	opt := types.FindRecentTasksOption{
-		TenantId:      &c.Tenant.Uid,
-		MinUserTaskId: &c.maxUserTaskId,
+		TenantId: &c.Tenant.Uid,
+		// MinUserTaskId: &c.maxUserTaskId,
+		MinUserTaskId: nil,
 		TaskType:      enum.TaskTypeUserTask,
 		Status:        status,
 	}
