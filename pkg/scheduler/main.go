@@ -477,7 +477,7 @@ func (s *Scheduler) IsTaskTimeout(ev *TaskEvent) bool {
 
 	switch ev.EventType {
 	case TaskDispatched:
-		return sec > s.opt.TaskTimeoutTime
+		return false
 	case string(enum.TaskStarted):
 		return sec > s.opt.TaskTimeoutTime
 	case string(enum.TaskStatusRunning):
