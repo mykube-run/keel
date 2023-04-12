@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS taskrun
     id            BIGINT AUTO_INCREMENT PRIMARY KEY,
     tenant_id     VARCHAR(255) NOT NULL COMMENT 'Tenant uid',
     task_id       VARCHAR(255) NOT NULL COMMENT 'Task uid',
-    task_type     VARCHAR(20)  NOT NULL COMMENT 'Task type, available options are: CronTask, DelayTask, UserTask',
+    task_type     VARCHAR(20)  NOT NULL COMMENT 'Task type, deprecated',
     schedule_type VARCHAR(20)  NOT NULL COMMENT 'Task schedule type, maybe firstrun, retry or continue',
     status        VARCHAR(20)  NOT NULL COMMENT 'Task run status',
     result        VARCHAR(255) NULL COMMENT 'Task run result',
