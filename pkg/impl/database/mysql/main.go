@@ -108,43 +108,30 @@ func (m *MySQL) CountTenantPendingTasks(ctx context.Context, opt types.CountTena
 	return n, err
 }
 
-func (m *MySQL) GetTask(ctx context.Context, opt types.GetTaskOption) (entity.Tasks, error) {
-	tasks := entity.Tasks{}
-	if opt.TaskType != enum.TaskTypeUserTask {
-		return tasks, fmt.Errorf("unsupported task type: %v", opt.TaskType)
-	}
-
+func (m *MySQL) GetTask(ctx context.Context, opt types.GetTaskOption) (*entity.Task, error) {
 	row := m.db.QueryRowContext(ctx, StmtGetTask, opt.Uid)
-	t := new(entity.UserTask)
-	err := row.Scan(t.Fields()...)
+	task := new(entity.Task)
+	err := row.Scan(task.Fields()...)
 	if err != nil {
-		return tasks, err
+		return nil, err
 	}
-	tasks.UserTasks = []*entity.UserTask{t}
-	return tasks, nil
+	return task, nil
 }
 
 func (m *MySQL) GetTaskStatus(ctx context.Context, opt types.GetTaskStatusOption) (enum.TaskStatus, error) {
-	if opt.TaskType != enum.TaskTypeUserTask {
-		return "", fmt.Errorf("unsupported task type: %v", opt.TaskType)
-	}
 	row := m.db.QueryRowContext(ctx, StmtGetTaskStatus, opt.Uid)
 	var s enum.TaskStatus
 	err := row.Scan(&s)
 	return s, err
 }
 
-func (m *MySQL) CreateTask(ctx context.Context, t entity.UserTask) error {
+func (m *MySQL) CreateTask(ctx context.Context, t entity.Task) error {
 	_, err := m.db.ExecContext(ctx, StmtInsertTask, t.Uid, t.TenantId, t.Handler, t.Config, t.ScheduleStrategy, t.Priority, t.Progress, t.Status)
 	return err
 }
 
-func (m *MySQL) FindRecentTasks(ctx context.Context, opt types.FindRecentTasksOption) (entity.Tasks, error) {
-	tasks := entity.Tasks{}
-	if opt.TaskType != enum.TaskTypeUserTask {
-		return tasks, fmt.Errorf("unsupported task type: %v", opt.TaskType)
-	}
-
+func (m *MySQL) FindPendingTasks(ctx context.Context, opt types.FindPendingTasksOption) (entity.Tasks, error) {
+	tasks := make(entity.Tasks, 0)
 	q := make([]string, 0)
 	args := make([]interface{}, 0)
 	where := ""
@@ -159,9 +146,9 @@ func (m *MySQL) FindRecentTasks(ctx context.Context, opt types.FindRecentTasksOp
 		q = append(q, "tenant_id = ?")
 		args = append(args, *opt.TenantId)
 	}
-	if opt.MinUserTaskId != nil {
+	if opt.MinUid != nil {
 		q = append(q, "uid >= ?")
-		args = append(args, *opt.MinUserTaskId)
+		args = append(args, *opt.MinUid)
 	}
 	if len(q) > 0 {
 		where = "WHERE " + strings.Join(q, " AND ")
@@ -170,22 +157,19 @@ func (m *MySQL) FindRecentTasks(ctx context.Context, opt types.FindRecentTasksOp
 
 	rows, err := m.db.QueryContext(ctx, stmt, args...)
 	if err != nil {
-		return tasks, noRowsAsNil(err)
+		return nil, noRowsAsNil(err)
 	}
 	for rows.Next() {
-		t := new(entity.UserTask)
+		t := new(entity.Task)
 		if err = rows.Scan(t.Fields()...); err != nil {
-			return tasks, err
+			return nil, err
 		}
-		tasks.UserTasks = append(tasks.UserTasks, t)
+		tasks = append(tasks, *t)
 	}
 	return tasks, nil
 }
 
 func (m *MySQL) UpdateTaskStatus(ctx context.Context, opt types.UpdateTaskStatusOption) error {
-	if opt.TaskType != enum.TaskTypeUserTask {
-		return fmt.Errorf("unsupported task type: %v", opt.TaskType)
-	}
 	if len(opt.Uids) == 0 {
 		return nil
 	}

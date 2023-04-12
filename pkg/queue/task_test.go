@@ -3,7 +3,7 @@ package queue
 import (
 	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
-	"github.com/mykube-run/keel/pkg/impl/database"
+	"github.com/mykube-run/keel/pkg/impl/database/mock"
 	"github.com/mykube-run/keel/pkg/impl/listener"
 	"github.com/mykube-run/keel/pkg/impl/logging"
 	"github.com/mykube-run/keel/pkg/types"
@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	db     = database.NewMockDB()
+	db     = mock.NewMockDB()
 	tenant = &entity.Tenant{
 		Uid:           "tenant-10001",
 		Zone:          "default",
@@ -36,7 +36,7 @@ func TestTaskQueue_PopUserTasks(t *testing.T) {
 
 	// No user tasks for the first time
 	{
-		tasks, popped, err := c.PopUserTasks(n)
+		tasks, popped, err := c.PopTasks(n)
 		if err != nil {
 			t.Fatalf("error popping user tasks: %v", err)
 		}
@@ -52,7 +52,7 @@ func TestTaskQueue_PopUserTasks(t *testing.T) {
 	// User tasks should be populated
 	time.Sleep(time.Millisecond * 100)
 	{
-		tasks, popped, err := c.PopUserTasks(n)
+		tasks, popped, err := c.PopTasks(n)
 		if err != nil {
 			t.Fatalf("error popping user tasks: %v", err)
 		}
@@ -73,7 +73,7 @@ func TestTaskQueue_EnqueueUserTask(t *testing.T) {
 
 	// No user tasks for the first time
 	time.Sleep(time.Millisecond * 100)
-	tasks, _, err := c.PopUserTasks(1)
+	tasks, _, err := c.PopTasks(1)
 	if err != nil {
 		t.Fatalf("error popping user tasks: %v", err)
 	}
@@ -87,9 +87,9 @@ func TestTaskQueue_EnqueueUserTask(t *testing.T) {
 	}
 	id := task.Uid
 	p := task.Priority
-	c.EnqueueUserTask(task, 999)
+	c.EnqueueTask(&task, 999)
 
-	tasks2, _, err := c.PopUserTasks(1)
+	tasks2, _, err := c.PopTasks(1)
 	if err != nil {
 		t.Fatalf("error popping user tasks: %v", err)
 	}

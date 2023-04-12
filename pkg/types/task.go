@@ -121,7 +121,7 @@ type TaskMetadata struct {
 	Type     enum.TaskType `json:"type"`     // TaskType
 }
 
-func NewTaskMetadataFromUserTaskEntity(t *entity.UserTask) TaskMetadata {
+func NewTaskMetadataFromTaskEntity(t *entity.Task) TaskMetadata {
 	m := TaskMetadata{
 		Handler:  t.Handler,
 		TenantId: t.TenantId,

@@ -3,6 +3,7 @@ package database
 import (
 	"fmt"
 	"github.com/mykube-run/keel/pkg/config"
+	"github.com/mykube-run/keel/pkg/impl/database/mock"
 	"github.com/mykube-run/keel/pkg/impl/database/mongodb"
 	"github.com/mykube-run/keel/pkg/impl/database/mysql"
 	"github.com/mykube-run/keel/pkg/types"
@@ -12,7 +13,7 @@ import (
 func New(conf config.DatabaseConfig) (types.DB, error) {
 	switch strings.ToLower(conf.Type) {
 	case "mock":
-		return NewMockDB(), nil
+		return mock.NewMockDB(), nil
 	case "mysql":
 		return mysql.New(conf.DSN)
 	case "mongodb":

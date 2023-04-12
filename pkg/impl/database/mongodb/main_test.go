@@ -23,7 +23,7 @@ const (
 func deleteTestData() {
 	ctx := context.Background()
 	_, _ = db.tenant.DeleteOne(ctx, bson.M{"uid": tenantId})
-	_, _ = db.userTask.DeleteOne(ctx, bson.M{"uid": taskId})
+	_, _ = db.task.DeleteOne(ctx, bson.M{"uid": taskId})
 	_, _ = db.quota.DeleteOne(ctx, bson.M{"tenantId": tenantId})
 }
 
@@ -148,7 +148,7 @@ func TestMongoDB_ActivateTenants(t *testing.T) {
 func TestMongoDB_CreateTask(t *testing.T) {
 	// deleteTestData()
 
-	task := entity.UserTask{
+	task := entity.Task{
 		Uid:              taskId,
 		TenantId:         tenantId,
 		Handler:          "unit-test",
@@ -168,21 +168,20 @@ func TestMongoDB_CreateTask(t *testing.T) {
 
 func TestMongoDB_FindRecentTasks(t *testing.T) {
 	tid := tenantId
-	opt := types.FindRecentTasksOption{
-		TaskType:      enum.TaskTypeUserTask,
-		TenantId:      &tid,
-		MinUserTaskId: nil,
-		Status:        nil,
+	opt := types.FindPendingTasksOption{
+		TenantId: &tid,
+		MinUid:   nil,
+		Status:   nil,
 	}
-	tasks, err := db.FindRecentTasks(context.TODO(), opt)
+	tasks, err := db.FindPendingTasks(context.TODO(), opt)
 	if err != nil {
 		t.Fatalf("should find recent tasks, but got error: %v", err)
 	}
-	if len(tasks.UserTasks) == 0 {
+	if len(tasks) == 0 {
 		t.Fatalf("should find at least one task, but got 0")
 	}
-	if tasks.UserTasks[0].Uid != taskId {
-		t.Fatalf("should find specified task %v, but got %v", taskId, tasks.UserTasks[0].Uid)
+	if tasks[0].Uid != taskId {
+		t.Fatalf("should find specified task %v, but got %v", taskId, tasks[0].Uid)
 	}
 }
 
@@ -203,25 +202,23 @@ func TestMongoDB_CountTenantPendingTasks(t *testing.T) {
 
 func TestMongoDB_GetTask(t *testing.T) {
 	opt := types.GetTaskOption{
-		TaskType: enum.TaskTypeUserTask,
-		Uid:      taskId,
+		Uid: taskId,
 	}
-	tasks, err := db.GetTask(context.TODO(), opt)
+	task, err := db.GetTask(context.TODO(), opt)
 	if err != nil {
 		t.Fatalf("should be able to get task, but got error: %v", err)
 	}
-	if len(tasks.UserTasks) != 1 {
-		t.Fatalf("should find exactlly one task, but got %v", len(tasks.UserTasks))
+	if task == nil {
+		t.Fatalf("should find exactlly one task, but got %v", task)
 	}
-	if tasks.UserTasks[0].Uid != taskId {
-		t.Fatalf("should find specified task %v, but got %v", taskId, tasks.UserTasks[0].Uid)
+	if task.Uid != taskId {
+		t.Fatalf("should find specified task %v, but got %v", taskId, task.Uid)
 	}
 }
 
 func TestMongoDB_GetTaskStatus(t *testing.T) {
 	opt := types.GetTaskStatusOption{
-		TaskType: enum.TaskTypeUserTask,
-		Uid:      taskId,
+		Uid: taskId,
 	}
 	status, err := db.GetTaskStatus(context.TODO(), opt)
 	if err != nil {
@@ -235,9 +232,8 @@ func TestMongoDB_GetTaskStatus(t *testing.T) {
 func TestMongoDB_UpdateTaskStatus(t *testing.T) {
 	{
 		opt := types.UpdateTaskStatusOption{
-			TaskType: enum.TaskTypeUserTask,
-			Uids:     []string{taskId},
-			Status:   enum.TaskStatusCanceled,
+			Uids:   []string{taskId},
+			Status: enum.TaskStatusCanceled,
 		}
 		err := db.UpdateTaskStatus(context.TODO(), opt)
 		if err != nil {
@@ -246,8 +242,7 @@ func TestMongoDB_UpdateTaskStatus(t *testing.T) {
 	}
 	{
 		opt := types.GetTaskStatusOption{
-			TaskType: enum.TaskTypeUserTask,
-			Uid:      taskId,
+			Uid: taskId,
 		}
 		status, err := db.GetTaskStatus(context.TODO(), opt)
 		if err != nil {

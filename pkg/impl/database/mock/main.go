@@ -1,4 +1,4 @@
-package database
+package mock
 
 import (
 	"context"
@@ -21,7 +21,7 @@ func (m *MockDB) CreateTenant(ctx context.Context, t entity.Tenant) error {
 	return nil
 }
 
-func (m *MockDB) CreateTask(ctx context.Context, t entity.UserTask) error {
+func (m *MockDB) CreateTask(ctx context.Context, t entity.Task) error {
 	return nil
 }
 
@@ -69,21 +69,19 @@ func (m *MockDB) ActivateTenants(ctx context.Context, opt types.ActivateTenantsO
 	return nil
 }
 
-func (m *MockDB) FindRecentTasks(ctx context.Context, opt types.FindRecentTasksOption) (entity.Tasks, error) {
-	tasks := entity.Tasks{
-		CronTasks:  nil,
-		UserTasks:  nil,
-		DelayTasks: nil,
-	}
-	var i int64 = 0
+func (m *MockDB) FindPendingTasks(ctx context.Context, opt types.FindPendingTasksOption) (entity.Tasks, error) {
+	var (
+		i     int64 = 0
+		tasks       = make(entity.Tasks, 0)
+	)
 	for i = 1; i <= 4; i++ {
-		tasks.UserTasks = append(tasks.UserTasks, m.newUserTask(i))
+		tasks = append(tasks, m.newTask(i))
 	}
 	return tasks, nil
 }
 
-func (m *MockDB) GetTask(ctx context.Context, opt types.GetTaskOption) (entity.Tasks, error) {
-	return entity.Tasks{}, fmt.Errorf("task not found")
+func (m *MockDB) GetTask(ctx context.Context, opt types.GetTaskOption) (*entity.Task, error) {
+	return nil, fmt.Errorf("task not found")
 }
 
 func (m *MockDB) UpdateTaskStatus(ctx context.Context, opt types.UpdateTaskStatusOption) error {
@@ -98,9 +96,9 @@ func (m *MockDB) Close() error {
 	return nil
 }
 
-func (m *MockDB) newUserTask(i int64) *entity.UserTask {
+func (m *MockDB) newTask(i int64) entity.Task {
 	now := time.Now()
-	return &entity.UserTask{
+	return entity.Task{
 		TenantId:  "tenant-1",
 		Uid:       fmt.Sprintf("task-%v-%v", m.hdl, now.Unix()),
 		Handler:   "mock-test",

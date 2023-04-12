@@ -18,9 +18,9 @@ type MongoDB struct {
 	db *mongo.Database
 
 	// Collections
-	tenant   *mongo.Collection
-	quota    *mongo.Collection
-	userTask *mongo.Collection
+	tenant *mongo.Collection
+	quota  *mongo.Collection
+	task   *mongo.Collection
 }
 
 // DatabaseName is the database name in MongoDB, modify this variable to change database
@@ -44,10 +44,10 @@ func New(dsn string) (*MongoDB, error) {
 
 	db := client.Database(DatabaseName)
 	m := &MongoDB{
-		db:       db,
-		tenant:   db.Collection("tenant"),
-		quota:    db.Collection("resourcequota"),
-		userTask: db.Collection("usertask"),
+		db:     db,
+		tenant: db.Collection("tenant"),
+		quota:  db.Collection("resourcequota"),
+		task:   db.Collection("task"),
 	}
 	m.createIndices()
 	return m, nil
@@ -121,39 +121,30 @@ func (m *MongoDB) CountTenantPendingTasks(ctx context.Context, opt types.CountTe
 		"tenantId":  opt.TenantId,
 		"createdAt": bson.M{"$gt": opt.From, "$lt": opt.To},
 	}
-	cnt, err := m.userTask.CountDocuments(ctx, q)
+	cnt, err := m.task.CountDocuments(ctx, q)
 	return cnt, err
 }
 
-func (m *MongoDB) GetTask(ctx context.Context, opt types.GetTaskOption) (tasks entity.Tasks, err error) {
-	tasks = entity.Tasks{}
-	if opt.TaskType != enum.TaskTypeUserTask {
-		return tasks, fmt.Errorf("unsupported task type: %v", opt.TaskType)
-	}
-
-	t := new(entity.UserTask)
+func (m *MongoDB) GetTask(ctx context.Context, opt types.GetTaskOption) (*entity.Task, error) {
+	task := new(entity.Task)
 	q := bson.M{"uid": opt.Uid}
-	res := m.userTask.FindOne(ctx, q)
+	res := m.task.FindOne(ctx, q)
 	if res.Err() != nil {
-		return tasks, res.Err()
+		return nil, res.Err()
 	}
-	if err = res.Decode(t); err != nil {
-		return
+	if err := res.Decode(task); err != nil {
+		return nil, err
 	}
-	tasks.UserTasks = []*entity.UserTask{t}
-	return
+	return task, nil
 }
 
 func (m *MongoDB) GetTaskStatus(ctx context.Context, opt types.GetTaskStatusOption) (enum.TaskStatus, error) {
-	if opt.TaskType != enum.TaskTypeUserTask {
-		return "", fmt.Errorf("unsupported task type: %v", opt.TaskType)
-	}
 	q := bson.M{"uid": opt.Uid}
-	res := m.userTask.FindOne(ctx, q)
+	res := m.task.FindOne(ctx, q)
 	if res.Err() != nil {
 		return "", res.Err()
 	}
-	t := new(entity.UserTask)
+	t := new(entity.Task)
 	err := res.Decode(t)
 	if err != nil {
 		return "", err
@@ -161,17 +152,12 @@ func (m *MongoDB) GetTaskStatus(ctx context.Context, opt types.GetTaskStatusOpti
 	return t.Status, nil
 }
 
-func (m *MongoDB) CreateTask(ctx context.Context, t entity.UserTask) error {
-	_, err := m.userTask.InsertOne(ctx, t)
+func (m *MongoDB) CreateTask(ctx context.Context, t entity.Task) error {
+	_, err := m.task.InsertOne(ctx, t)
 	return err
 }
 
-func (m *MongoDB) FindRecentTasks(ctx context.Context, opt types.FindRecentTasksOption) (entity.Tasks, error) {
-	tasks := entity.Tasks{}
-	if opt.TaskType != enum.TaskTypeUserTask {
-		return tasks, fmt.Errorf("unsupported task type: %v", opt.TaskType)
-	}
-
+func (m *MongoDB) FindPendingTasks(ctx context.Context, opt types.FindPendingTasksOption) (entity.Tasks, error) {
 	q := bson.M{}
 	if len(opt.Status) > 0 {
 		q["status"] = bson.M{"$in": opt.Status}
@@ -179,34 +165,26 @@ func (m *MongoDB) FindRecentTasks(ctx context.Context, opt types.FindRecentTasks
 	if opt.TenantId != nil {
 		q["tenantId"] = *opt.TenantId
 	}
-	if opt.MinUserTaskId != nil {
-		q["uid"] = bson.M{"$gte": *opt.MinUserTaskId}
+	if opt.MinUid != nil {
+		q["uid"] = bson.M{"$gte": *opt.MinUid}
 	}
 
-	uts := make([]*entity.UserTask, 0)
+	tasks := make(entity.Tasks, 0)
 	limit := int64(500)
-	cur, err := m.userTask.Find(ctx, q, &options.FindOptions{Sort: bson.M{"createdAt": 1}, Limit: &limit})
+	cur, err := m.task.Find(ctx, q, &options.FindOptions{Sort: bson.M{"createdAt": 1}, Limit: &limit})
 	if err != nil {
-		return tasks, err
+		return nil, err
 	}
-	if err = cur.All(ctx, &uts); err != nil {
-		return tasks, err
+	if err = cur.All(ctx, &tasks); err != nil {
+		return nil, err
 	}
-	tasks.UserTasks = uts
 	return tasks, nil
 }
 
 func (m *MongoDB) UpdateTaskStatus(ctx context.Context, opt types.UpdateTaskStatusOption) error {
-	if opt.TaskType != enum.TaskTypeUserTask {
-		return fmt.Errorf("unsupported task type: %v", opt.TaskType)
-	}
-	if len(opt.Uids) == 0 {
-		return nil
-	}
-
 	q := bson.M{"uid": bson.M{"$in": opt.Uids}}
 	u := bson.D{{"$set", bson.D{{"status", opt.Status}, {"updatedAt", time.Now()}}}}
-	_, err := m.userTask.UpdateMany(ctx, q, u)
+	_, err := m.task.UpdateMany(ctx, q, u)
 	return err
 }
 
@@ -255,7 +233,7 @@ func (m *MongoDB) createIndices() {
 			Keys:    keys,
 			Options: opt,
 		}
-		_, err := m.userTask.Indexes().CreateOne(ctx, idx)
+		_, err := m.task.Indexes().CreateOne(ctx, idx)
 		if err != nil {
 			log.Err(err).Msg("error creating index")
 		}
@@ -267,7 +245,7 @@ func (m *MongoDB) createIndices() {
 		idx := mongo.IndexModel{
 			Keys: keys,
 		}
-		_, err := m.userTask.Indexes().CreateOne(ctx, idx)
+		_, err := m.task.Indexes().CreateOne(ctx, idx)
 		if err != nil {
 			log.Err(err).Msg("error creating index")
 		}

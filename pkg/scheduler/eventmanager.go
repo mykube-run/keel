@@ -66,7 +66,7 @@ func NewEventFromMessage(m *types.TaskMessage) *TaskEvent {
 	}
 }
 
-func NewEventFromUserTask(typ string, t *entity.UserTask) *TaskEvent {
+func NewEventFromTask(typ string, t *entity.Task) *TaskEvent {
 	return &TaskEvent{
 		EventType: typ,
 		WorkerId:  "",

@@ -119,7 +119,7 @@ func (s *Server) CreateTask(ctx context.Context, req *pb.CreateTaskRequest) (*pb
 		"handler", req.GetHandler(), "message", "creating new task")
 
 	now := time.Now()
-	t := entity.UserTask{
+	t := entity.Task{
 		TenantId:         req.GetTenantId(),
 		Uid:              req.GetUid(),
 		Handler:          req.GetHandler(),
@@ -158,7 +158,7 @@ func (s *Server) CreateTask(ctx context.Context, req *pb.CreateTaskRequest) (*pb
 	}
 	s.lg.Log(types.LevelDebug, "tenantId", req.GetTenantId(), "taskId", req.GetUid(),
 		"handler", req.GetHandler(), "message", "created new task")
-	le := types.ListenerEvent{SchedulerId: s.sched.SchedulerId(), Task: types.NewTaskMetadataFromUserTaskEntity(&t)}
+	le := types.ListenerEvent{SchedulerId: s.sched.SchedulerId(), Task: types.NewTaskMetadataFromTaskEntity(&t)}
 	s.ls.OnTaskCreated(le)
 	return resp, nil
 }
