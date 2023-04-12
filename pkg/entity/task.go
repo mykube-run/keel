@@ -6,7 +6,7 @@ import (
 )
 
 // Tasks is an array of Task
-type Tasks []Task
+type Tasks []*Task
 
 // TaskIds returns task ids
 func (ut Tasks) TaskIds() []string {

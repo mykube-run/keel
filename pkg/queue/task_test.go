@@ -87,7 +87,7 @@ func TestTaskQueue_EnqueueUserTask(t *testing.T) {
 	}
 	id := task.Uid
 	p := task.Priority
-	c.EnqueueTask(&task, 999)
+	c.EnqueueTask(task, 999)
 
 	tasks2, _, err := c.PopTasks(1)
 	if err != nil {

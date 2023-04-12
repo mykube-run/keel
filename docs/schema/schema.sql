@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS resourcequota
 )
     ENGINE = InnoDB COMMENT 'Tenant resource quota options. Resource quotas are optional, 0 means there is no limit for specified resource type';
 
-CREATE TABLE IF NOT EXISTS usertask
+CREATE TABLE IF NOT EXISTS task
 (
     uid               VARCHAR(255) NOT NULL PRIMARY KEY COMMENT 'Task uid',
     tenant_id         VARCHAR(255) NOT NULL COMMENT 'Tenant uid',
@@ -38,44 +38,7 @@ CREATE TABLE IF NOT EXISTS usertask
     created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'UTC time the task was created at',
     updated_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'UTC time the task was updated at',
     INDEX idx_handler (handler)
-) ENGINE = InnoDB COMMENT 'User tasks';
-# UNIQUE idx_tenant_id_uid (tenant_id, uid),
-
-CREATE TABLE IF NOT EXISTS crontask
-(
-    uid               VARCHAR(255) NOT NULL PRIMARY KEY COMMENT 'Task uid',
-    tenant_id         VARCHAR(255) NOT NULL COMMENT 'Tenant uid',
-    handler           VARCHAR(100) NOT NULL COMMENT 'Task handler',
-    name              VARCHAR(100) NOT NULL COMMENT 'Task name',
-    description       VARCHAR(255) NOT NULL DEFAULT '' COMMENT 'Task description',
-    cron              VARCHAR(20)  NOT NULL COMMENT 'Cron expression, e.g. "0 0 18 28-31 * *"',
-    config            JSON         NOT NULL COMMENT 'Task config',
-    schedule_strategy VARCHAR(20)  NOT NULL COMMENT 'Task schedule strategy',
-    priority          INT          NOT NULL COMMENT 'Task priority',
-    next_tick         DATETIME     NOT NULL COMMENT 'Task next tick time in UTC',
-    status            VARCHAR(20)  NOT NULL COMMENT 'Task status',
-    created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'UTC time the task was created at',
-    updated_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'UTC time the task was updated at',
-    INDEX idx_tenant_id_next_tick (tenant_id, next_tick),
-    INDEX idx_handler (handler)
-) ENGINE = InnoDB COMMENT 'Cron tasks';
-
-CREATE TABLE IF NOT EXISTS delaytask
-(
-    uid               VARCHAR(255) NOT NULL PRIMARY KEY COMMENT 'Task uid',
-    tenant_id         VARCHAR(255) NOT NULL COMMENT 'Tenant uid',
-    handler           VARCHAR(100) NOT NULL COMMENT 'Task handler',
-    config            JSON         NOT NULL COMMENT 'Task config',
-    schedule_strategy VARCHAR(20)  NOT NULL COMMENT 'Task schedule strategy',
-    priority          INT          NOT NULL COMMENT 'Task priority',
-    time_to_run       DATETIME     NOT NULL COMMENT 'UTC time to run the delay task',
-    status            VARCHAR(20)  NOT NULL COMMENT 'Task status',
-    created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'UTC time the task was created at',
-    updated_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'UTC time the task was updated at',
-    UNIQUE idx_tenant_id_uid (tenant_id, uid),
-    INDEX idx_tenant_id_time (tenant_id, time_to_run),
-    INDEX idx_handler (handler)
-) ENGINE = InnoDB COMMENT 'Delay tasks';
+) ENGINE = InnoDB COMMENT 'Tasks';
 
 CREATE TABLE IF NOT EXISTS taskrun
 (

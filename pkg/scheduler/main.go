@@ -184,7 +184,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 				"message", "received message from a tenant not managed by the scheduler")
 			return
 		}
-		s.dispatch([]entity.Task{{TenantId: m.Task.TenantId, Uid: m.Task.Uid,
+		s.dispatch(entity.Tasks{{TenantId: m.Task.TenantId, Uid: m.Task.Uid,
 			Handler: m.Task.Handler, Config: m.Task.Config},
 		})
 	case enum.TaskFailed:
@@ -211,7 +211,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", ev.TenantId, "taskId", ev.TaskId,
 				"message", "failed to update tasks status")
 		}
-		s.dispatch([]entity.Task{{
+		s.dispatch(entity.Tasks{{
 			TenantId: m.Task.TenantId, Uid: m.Task.Uid,
 			Handler: m.Task.Handler, Config: m.Task.Config},
 		})
@@ -342,14 +342,14 @@ func (s *Scheduler) dispatch(tasks entity.Tasks) {
 		}
 
 		// 3. Record the dispatch event and update task status accordingly
-		ev := NewEventFromTask(TaskDispatched, &task)
+		ev := NewEventFromTask(TaskDispatched, task)
 		if err = s.em.Insert(ev); err != nil {
 			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", task.TenantId, "taskId", task.Uid, "message", "failed to record task dispatch event")
 		}
 		if err = s.updateTaskStatus(ev); err != nil {
 			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", task.TenantId, "taskId", task.Uid, "message", "failed to update task status")
 		}
-		le := types.ListenerEvent{SchedulerId: s.SchedulerId(), Task: types.NewTaskMetadataFromTaskEntity(&task)}
+		le := types.ListenerEvent{SchedulerId: s.SchedulerId(), Task: types.NewTaskMetadataFromTaskEntity(task)}
 		s.ls.OnTaskDispatching(le)
 	}
 	// 4. Update tenants' active state after dispatching

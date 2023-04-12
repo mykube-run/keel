@@ -96,9 +96,9 @@ func (m *MockDB) Close() error {
 	return nil
 }
 
-func (m *MockDB) newTask(i int64) entity.Task {
+func (m *MockDB) newTask(i int64) *entity.Task {
 	now := time.Now()
-	return entity.Task{
+	return &entity.Task{
 		TenantId:  "tenant-1",
 		Uid:       fmt.Sprintf("task-%v-%v", m.hdl, now.Unix()),
 		Handler:   "mock-test",

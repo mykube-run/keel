@@ -49,7 +49,7 @@ func (c *TaskQueue) PopTasks(n int) (tasks entity.Tasks, popped int, err error) 
 
 	for c.UserTasks.Len() > 0 {
 		item := heap.Pop(c.UserTasks).(*Item)
-		tasks = append(tasks, item.Value().(entity.Task))
+		tasks = append(tasks, item.Value().(*entity.Task))
 		popped += 1
 		if popped >= n {
 			break
@@ -113,7 +113,7 @@ func (c *TaskQueue) populateTasks(ctx context.Context) error {
 	}
 
 	for _, t := range tasks {
-		le := types.ListenerEvent{Task: types.NewTaskMetadataFromTaskEntity(&t)}
+		le := types.ListenerEvent{Task: types.NewTaskMetadataFromTaskEntity(t)}
 		c.ls.OnTaskScheduling(le)
 	}
 
@@ -137,7 +137,7 @@ func (c *TaskQueue) PopAllTasks() (tasks entity.Tasks, err error) {
 
 	for c.UserTasks.Len() > 0 {
 		item := heap.Pop(c.UserTasks).(*Item)
-		tasks = append(tasks, item.Value().(entity.Task))
+		tasks = append(tasks, item.Value().(*entity.Task))
 	}
 	return
 }
