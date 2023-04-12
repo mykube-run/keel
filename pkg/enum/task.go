@@ -3,13 +3,6 @@ package enum
 // TaskType defines task type
 type TaskType string
 
-const (
-	TaskTypeCronTask  TaskType = "CronTask"
-	TaskTypeDelayTask TaskType = "DelayTask"
-	TaskTypeUserTask  TaskType = "UserTask"
-	TaskTypeAll       TaskType = "All"
-)
-
 // TaskStatus defines task status
 type TaskStatus string
 

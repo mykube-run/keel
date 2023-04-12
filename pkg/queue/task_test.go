@@ -25,12 +25,12 @@ var (
 
 func TestNewTaskQueue(t *testing.T) {
 	c := NewTaskQueue(db, logging.NewDefaultLogger(nil), tenant, listener.Default)
-	if c.UserTasks == nil {
+	if c.Tasks == nil {
 		t.Fatal("invalid tenant cache")
 	}
 }
 
-func TestTaskQueue_PopUserTasks(t *testing.T) {
+func TestTaskQueue_PopTasks(t *testing.T) {
 	n := 3
 	c := NewTaskQueue(db, logging.NewDefaultLogger(nil), tenant, listener.Default)
 
@@ -46,7 +46,7 @@ func TestTaskQueue_PopUserTasks(t *testing.T) {
 		if len(tasks) != 0 {
 			t.Fatalf("expected popping 0 tasks, got %v", len(tasks))
 		}
-		c.lg.Log(types.LevelDebug, "len", c.UserTasks.Len(), "message", "user tasks length")
+		c.lg.Log(types.LevelDebug, "len", c.Tasks.Len(), "message", "user tasks length")
 	}
 
 	// User tasks should be populated
@@ -62,12 +62,12 @@ func TestTaskQueue_PopUserTasks(t *testing.T) {
 		if len(tasks) != n {
 			t.Fatalf("expected popping %v tasks, got %v", n, len(tasks))
 		}
-		c.lg.Log(types.LevelDebug, "len", c.UserTasks.Len(), "message", "user tasks length")
+		c.lg.Log(types.LevelDebug, "len", c.Tasks.Len(), "message", "user tasks length")
 	}
 
 }
 
-func TestTaskQueue_EnqueueUserTask(t *testing.T) {
+func TestTaskQueue_EnqueueTask(t *testing.T) {
 	c := NewTaskQueue(db, logging.NewDefaultLogger(nil), tenant, listener.Default)
 	c.FetchTasks()
 
@@ -107,14 +107,14 @@ func TestTaskQueue_EnqueueUserTask(t *testing.T) {
 
 func TestTaskQueue_PopulateTasks(t *testing.T) {
 	c := NewTaskQueue(db, logging.NewDefaultLogger(nil), tenant, listener.Default)
-	if c.UserTasks.Len() != 0 {
-		t.Fatalf("expected user tasks length to be 0, got %v", c.UserTasks.Len())
+	if c.Tasks.Len() != 0 {
+		t.Fatalf("expected user tasks length to be 0, got %v", c.Tasks.Len())
 	}
 
 	c.FetchTasks()
 	time.Sleep(time.Millisecond * 100)
 
-	if c.UserTasks.Len() == 0 {
-		t.Fatalf("expected user tasks length to be >0, got %v", c.UserTasks.Len())
+	if c.Tasks.Len() == 0 {
+		t.Fatalf("expected user tasks length to be >0, got %v", c.Tasks.Len())
 	}
 }

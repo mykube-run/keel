@@ -15,29 +15,27 @@ const FetchFromDBWatermarkRatio = 2
 // TaskQueue is in-memory cache for tenant tasks and resource quota, automatically handling
 // fetching tasks from database when necessary.
 type TaskQueue struct {
-	Tenant     *entity.Tenant
-	DelayTasks interface{} // TODO: time wheel
-	CronTasks  interface{} // TODO: time wheel
-	UserTasks  *PriorityQueue
+	Tenant *entity.Tenant
+	Tasks  *PriorityQueue
 
-	// User task id is incremental, hence maxUserTaskId is used to
+	// User task id is incremental, hence maxUid is used to
 	// avoid populating tasks that already exist in queue
-	maxUserTaskId string
-	db            types.DB
-	lg            types.Logger
-	ls            types.Listener
-	mu            sync.RWMutex
+	maxUid string
+	db     types.DB
+	lg     types.Logger
+	ls     types.Listener
+	mu     sync.RWMutex
 }
 
 func NewTaskQueue(db types.DB, lg types.Logger, t *entity.Tenant, ls types.Listener) *TaskQueue {
 	pq := make(PriorityQueue, 0)
 	heap.Init(&pq)
 	c := &TaskQueue{
-		Tenant:    t,
-		UserTasks: &pq,
-		db:        db,
-		lg:        lg,
-		ls:        ls,
+		Tenant: t,
+		Tasks:  &pq,
+		db:     db,
+		lg:     lg,
+		ls:     ls,
 	}
 	return c
 }
@@ -47,8 +45,8 @@ func NewTaskQueue(db types.DB, lg types.Logger, t *entity.Tenant, ls types.Liste
 func (c *TaskQueue) PopTasks(n int) (tasks entity.Tasks, popped int, err error) {
 	c.mu.Lock()
 
-	for c.UserTasks.Len() > 0 {
-		item := heap.Pop(c.UserTasks).(*Item)
+	for c.Tasks.Len() > 0 {
+		item := heap.Pop(c.Tasks).(*Item)
 		tasks = append(tasks, item.Value().(*entity.Task))
 		popped += 1
 		if popped >= n {
@@ -59,7 +57,7 @@ func (c *TaskQueue) PopTasks(n int) (tasks entity.Tasks, popped int, err error) 
 	// Do not forget to unlock
 	c.mu.Unlock()
 
-	if c.UserTasks.Len() < FetchFromDBWatermarkRatio*n || c.UserTasks.Len() == 0 {
+	if c.Tasks.Len() < FetchFromDBWatermarkRatio*n || c.Tasks.Len() == 0 {
 		go c.FetchTasks()
 	}
 	return
@@ -73,7 +71,7 @@ func (c *TaskQueue) EnqueueTask(task *entity.Task, delta int) {
 
 	task.Priority = task.Priority + int32(delta)
 	item := NewItem(int(task.Priority), task)
-	heap.Push(c.UserTasks, item)
+	heap.Push(c.Tasks, item)
 }
 
 // FetchTasks read tasks from database and populate in-memory queue
@@ -90,14 +88,14 @@ func (c *TaskQueue) FetchTasks() {
 
 func (c *TaskQueue) populateTasks(ctx context.Context) error {
 	var status []enum.TaskStatus
-	if c.maxUserTaskId == "" {
+	if c.maxUid == "" {
 		status = []enum.TaskStatus{enum.TaskStatusPending, enum.TaskStatusScheduling}
 	} else {
 		status = []enum.TaskStatus{enum.TaskStatusPending}
 	}
 	opt := types.FindPendingTasksOption{
 		TenantId: &c.Tenant.Uid,
-		// MinUid: &c.maxUserTaskId,
+		// MinUid: &c.maxUid,
 		MinUid: nil,
 		Status: status,
 	}
@@ -120,9 +118,9 @@ func (c *TaskQueue) populateTasks(ctx context.Context) error {
 	n := 0
 	for _, v := range tasks {
 		vc := v
-		c.maxUserTaskId = vc.Uid
+		c.maxUid = vc.Uid
 		item := NewItem(int(vc.Priority), vc)
-		heap.Push(c.UserTasks, item)
+		heap.Push(c.Tasks, item)
 		n += 1
 	}
 	if n > 0 {
@@ -135,8 +133,8 @@ func (c *TaskQueue) PopAllTasks() (tasks entity.Tasks, err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	for c.UserTasks.Len() > 0 {
-		item := heap.Pop(c.UserTasks).(*Item)
+	for c.Tasks.Len() > 0 {
+		item := heap.Pop(c.Tasks).(*Item)
 		tasks = append(tasks, item.Value().(*entity.Task))
 	}
 	return

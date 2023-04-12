@@ -76,11 +76,11 @@ type WorkerInfo struct {
 
 // Task details
 type Task struct {
-	Handler      string          `json:"handler"`      // Task handler name
-	TenantId     string          `json:"tenantId"`     // Task tenant id
-	Uid          string          `json:"uid"`          // Task uid, aka taskId
-	SchedulerId  string          `json:"schedulerId"`  // Scheduler id that is responsible for scheduling the task
-	Type         enum.TaskType   `json:"type"`         // TaskType
+	Handler     string `json:"handler"`     // Task handler name
+	TenantId    string `json:"tenantId"`    // Task tenant id
+	Uid         string `json:"uid"`         // Task uid, aka taskId
+	SchedulerId string `json:"schedulerId"` // Scheduler id that is responsible for scheduling the task
+	// Type         enum.TaskType   `json:"type"`         // TaskType
 	Config       json.RawMessage `json:"config"`       // Task configurations in JSON, might be nil
 	RestartTimes int             `json:"restartTimes"` // Number of restart
 	InTransition bool            `json:"inTransition"` // Indicates whether this task run is a migration task
@@ -115,10 +115,10 @@ type TaskStatus struct {
 
 // TaskMetadata metadata
 type TaskMetadata struct {
-	Handler  string        `json:"handler"`  // Task handler name
-	TenantId string        `json:"tenantId"` // Task tenant id
-	Uid      string        `json:"uid"`      // Task uid, aka taskId
-	Type     enum.TaskType `json:"type"`     // TaskType
+	Handler  string `json:"handler"`  // Task handler name
+	TenantId string `json:"tenantId"` // Task tenant id
+	Uid      string `json:"uid"`      // Task uid, aka taskId
+	// Type     enum.TaskType `json:"type"`     // TaskType
 }
 
 func NewTaskMetadataFromTaskEntity(t *entity.Task) TaskMetadata {
@@ -126,7 +126,7 @@ func NewTaskMetadataFromTaskEntity(t *entity.Task) TaskMetadata {
 		Handler:  t.Handler,
 		TenantId: t.TenantId,
 		Uid:      t.Uid,
-		Type:     enum.TaskTypeUserTask,
+		// Type:     enum.TaskTypeUserTask,
 	}
 	return m
 }
@@ -136,7 +136,7 @@ func NewTaskMetadataFromTaskMessage(msg *TaskMessage) TaskMetadata {
 		Handler:  msg.Task.Handler,
 		TenantId: msg.Task.TenantId,
 		Uid:      msg.Task.Uid,
-		Type:     msg.Task.Type,
+		// Type:     msg.Task.Type,
 	}
 	return m
 }

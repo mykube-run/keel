@@ -312,7 +312,7 @@ func (s *Scheduler) dispatch(tasks entity.Tasks) {
 			TenantId:    task.TenantId,
 			Uid:         task.Uid,
 			SchedulerId: s.SchedulerId(),
-			Type:        enum.TaskTypeUserTask,
+			// Type:        enum.TaskTypeUserTask,
 		}
 		active = append(active, task.TenantId)
 

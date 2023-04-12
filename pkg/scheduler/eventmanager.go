@@ -41,11 +41,11 @@ const (
 )
 
 type TaskEvent struct {
-	EventType string          `json:"eventType"`
-	WorkerId  string          `json:"workerId"`
-	TenantId  string          `json:"tenantId"`
-	TaskId    string          `json:"taskId"`
-	TaskType  enum.TaskType   `json:"taskType"`
+	EventType string `json:"eventType"`
+	WorkerId  string `json:"workerId"`
+	TenantId  string `json:"tenantId"`
+	TaskId    string `json:"taskId"`
+	// TaskType  enum.TaskType   `json:"taskType"`
 	Timestamp time.Time       `json:"timestamp"`
 	Value     json.RawMessage `json:"value"`
 }
@@ -60,7 +60,7 @@ func NewEventFromMessage(m *types.TaskMessage) *TaskEvent {
 		WorkerId:  m.WorkerId,
 		TenantId:  m.Task.TenantId,
 		TaskId:    m.Task.Uid,
-		TaskType:  m.Task.Type,
+		// TaskType:  m.Task.Type,
 		Timestamp: m.Timestamp,
 		Value:     m.Value,
 	}
@@ -72,7 +72,7 @@ func NewEventFromTask(typ string, t *entity.Task) *TaskEvent {
 		WorkerId:  "",
 		TenantId:  t.TenantId,
 		TaskId:    t.Uid,
-		TaskType:  enum.TaskTypeUserTask,
+		// TaskType:  enum.TaskTypeUserTask,
 		Timestamp: time.Now(),
 		Value:     nil,
 	}

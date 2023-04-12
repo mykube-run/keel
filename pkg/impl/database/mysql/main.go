@@ -164,7 +164,7 @@ func (m *MySQL) FindPendingTasks(ctx context.Context, opt types.FindPendingTasks
 		if err = rows.Scan(t.Fields()...); err != nil {
 			return nil, err
 		}
-		tasks = append(tasks, *t)
+		tasks = append(tasks, t)
 	}
 	return tasks, nil
 }
