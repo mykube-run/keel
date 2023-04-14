@@ -153,7 +153,7 @@ func (m *MySQL) FindPendingTasks(ctx context.Context, opt types.FindPendingTasks
 	if len(q) > 0 {
 		where = "WHERE " + strings.Join(q, " AND ")
 	}
-	stmt := fmt.Sprintf(TemplateFindRecentTasks, where)
+	stmt := fmt.Sprintf(TemplateFindPendingTasks, where)
 
 	rows, err := m.db.QueryContext(ctx, stmt, args...)
 	if err != nil {
