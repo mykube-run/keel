@@ -39,18 +39,21 @@ type FindPendingTasksOption struct {
 
 // GetTaskOption specifies the options for getting task by uid
 type GetTaskOption struct {
-	Uid string
+	TenantId string // Required by Redis DB implementation
+	Uid      string
 }
 
 // UpdateTaskStatusOption specifies the options for updating user tasks' status
 type UpdateTaskStatusOption struct {
-	Uids   []string
-	Status enum.TaskStatus
+	TenantId string // Required by Redis DB implementation
+	Uids     []string
+	Status   enum.TaskStatus
 }
 
 // GetTaskStatusOption specifies the options for getting user task's status
 type GetTaskStatusOption struct {
-	Uid string
+	TenantId string // Required by Redis DB implementation
+	Uid      string
 }
 
 // GetTenantOption specifies options for getting tenant entity

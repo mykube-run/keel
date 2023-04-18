@@ -10,6 +10,7 @@ require (
 	github.com/minio/minio-go v6.0.14+incompatible
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/panjf2000/ants/v2 v2.5.0
+	github.com/redis/go-redis/v9 v9.0.3 // indirect
 	github.com/rs/zerolog v1.26.0
 	github.com/satori/uuid v1.2.0
 	go.etcd.io/bbolt v1.3.6
