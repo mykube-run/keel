@@ -34,7 +34,7 @@ local function update_tasks_status(tenant_id, uids_str, status)
 	local count = 0
 	for idx, value in ipairs(uids) do
 		update_task_status(tenant_id, value, status)
-		count += 1
+		count = count + 1
 	end
 	return count
 end

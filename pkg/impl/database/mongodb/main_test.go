@@ -166,7 +166,7 @@ func TestMongoDB_CreateTask(t *testing.T) {
 	}
 }
 
-func TestMongoDB_FindRecentTasks(t *testing.T) {
+func TestMongoDB_FindPendingTasks(t *testing.T) {
 	tid := tenantId
 	opt := types.FindPendingTasksOption{
 		TenantId: &tid,
@@ -202,7 +202,8 @@ func TestMongoDB_CountTenantPendingTasks(t *testing.T) {
 
 func TestMongoDB_GetTask(t *testing.T) {
 	opt := types.GetTaskOption{
-		Uid: taskId,
+		TenantId: tenantId,
+		Uid:      taskId,
 	}
 	task, err := db.GetTask(context.TODO(), opt)
 	if err != nil {
@@ -218,7 +219,8 @@ func TestMongoDB_GetTask(t *testing.T) {
 
 func TestMongoDB_GetTaskStatus(t *testing.T) {
 	opt := types.GetTaskStatusOption{
-		Uid: taskId,
+		TenantId: tenantId,
+		Uid:      taskId,
 	}
 	status, err := db.GetTaskStatus(context.TODO(), opt)
 	if err != nil {

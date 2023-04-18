@@ -8,8 +8,10 @@ import (
 	"github.com/mykube-run/keel/pkg/enum"
 	"github.com/mykube-run/keel/pkg/types"
 	"github.com/redis/go-redis/v9"
+	"io"
 	"net"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -20,52 +22,41 @@ var (
 
 type Redis struct {
 	s redis.Scripter
+	c io.Closer
 }
 
-func NewCluster(dsn string) (*Redis, error) {
-	opt, err := parseDSN(dsn)
+func New(dsn string) (*Redis, error) {
+	opt, typ, err := parseDSN(dsn)
 	if err != nil {
 		return nil, err
 	}
-	c := redis.NewClusterClient(opt.Cluster())
-	if err = c.Ping(context.Background()).Err(); err != nil {
-		return nil, fmt.Errorf("error pinging redis cluster: %w", err)
-	}
-	r := &Redis{s: c}
-	if err = r.LoadScripts(); err != nil {
-		return nil, fmt.Errorf("error loading scripts: %w", err)
-	}
-	return r, nil
-}
 
-func NewSentinel(dsn string) (*Redis, error) {
-	opt, err := parseDSN(dsn)
-	if err != nil {
-		return nil, err
-	}
-	c := redis.NewFailoverClient(opt.Failover())
-	if err = c.Ping(context.Background()).Err(); err != nil {
-		return nil, fmt.Errorf("error pinging redis sentinel: %w", err)
-	}
-	r := &Redis{s: c}
-	if err = r.LoadScripts(); err != nil {
-		return nil, fmt.Errorf("error loading scripts: %w", err)
-	}
-	return r, nil
-}
+	r := new(Redis)
 
-func NewSimple(dsn string) (*Redis, error) {
-	opt, err := parseDSN(dsn)
-	if err != nil {
-		return nil, err
-	}
-	c := redis.NewClient(opt.Simple())
-	if err = c.Ping(context.Background()).Err(); err != nil {
-		return nil, fmt.Errorf("error pinging redis server: %w", err)
-	}
-	r := &Redis{s: c}
-	if err = r.LoadScripts(); err != nil {
-		return nil, fmt.Errorf("error loading scripts: %w", err)
+	switch strings.ToLower(typ) {
+	case "simple":
+		c := redis.NewClient(opt.Simple())
+		if err = c.Ping(context.Background()).Err(); err != nil {
+			return nil, fmt.Errorf("error pinging redis server: %w", err)
+		}
+		r.s = c
+		r.c = c
+	case "sentinel":
+		c := redis.NewFailoverClient(opt.Failover())
+		if err = c.Ping(context.Background()).Err(); err != nil {
+			return nil, fmt.Errorf("error pinging redis sentinel: %w", err)
+		}
+		r.s = c
+		r.c = c
+	case "cluster":
+		c := redis.NewClusterClient(opt.Cluster())
+		if err = c.Ping(context.Background()).Err(); err != nil {
+			return nil, fmt.Errorf("error pinging redis cluster: %w", err)
+		}
+		r.s = c
+		r.c = c
+	default:
+		return nil, fmt.Errorf("unsupported redis connection type: %v (available options are: simple, sentinel and cluster)", typ)
 	}
 	return r, nil
 }
@@ -151,18 +142,23 @@ func (r *Redis) UpdateTaskStatus(ctx context.Context, opt types.UpdateTaskStatus
 	return updateTaskStatus.Run(ctx, r.s, []string{opt.TenantId}, string(uids), opt.Status).Err()
 }
 
-func parseDSN(dsn string) (*redis.UniversalOptions, error) {
+func (r *Redis) Close() error {
+	return r.c.Close()
+}
+
+// parseDSN parses redis datasource name. Code converted from https://github.com/gomodule/redigo/blob/master/redis/conn.go#L329
+func parseDSN(dsn string) (*redis.UniversalOptions, string, error) {
 	u, err := url.Parse(dsn)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing redis dsn url: %w", err)
+		return nil, "", fmt.Errorf("error parsing redis dsn url: %w", err)
 	}
 
 	if u.Scheme != "redis" {
-		return nil, fmt.Errorf("invalid redis dsn url scheme: %s", u.Scheme)
+		return nil, "", fmt.Errorf("invalid redis dsn url scheme: %s", u.Scheme)
 	}
 
 	if u.Opaque != "" {
-		return nil, fmt.Errorf("invalid redis dsn url, url is opaque: %s", dsn)
+		return nil, "", fmt.Errorf("invalid redis dsn url, url is opaque: %s", dsn)
 	}
 
 	opt := new(redis.UniversalOptions)
@@ -179,6 +175,7 @@ func parseDSN(dsn string) (*redis.UniversalOptions, error) {
 		host = "localhost"
 	}
 	opt.Addrs = []string{net.JoinHostPort(host, port)}
+	fmt.Println(opt.Addrs)
 
 	if u.User != nil {
 		password, isSet := u.User.Password()
@@ -198,19 +195,32 @@ func parseDSN(dsn string) (*redis.UniversalOptions, error) {
 		}
 	}
 
-	return opt, nil
+	typ := u.Query().Get("type")
+	if typ == "" {
+		typ = "simple"
+	}
+	return opt, typ, nil
 }
 
+// extendedTask extends entity.Task with task & bucket timestamp, which are used to determine task bucket in Redis
+type extendedTask struct {
+	entity.Task
+
+	// Task create timestamp
+	TaskTimestamp int64 `json:"__task_ts__"`
+
+	// Bucket here is a time period that contains tasks created within that time period.
+	// A bucket is one of the buckets that we split 24 hours into several time periods evenly by BucketSize
+	// starting from zero time of the day. e.g. when BucketSize default to 5m, we will get 288 buckets.
+	// Bucket timestamp is the start point of the bucket, its tasks are created in `[BucketTimestamp, BucketTimestamp+BucketSize)`
+	BucketTimestamp int64 `json:"__bucket_ts__"`
+}
+
+// getBucketTimestamp returns a bucket timestamp from give task create time & specified bucket size.
 func getBucketTimestamp(t time.Time) int64 {
 	tmp := t.Round(BucketSize)
 	if tmp.After(t) {
 		tmp = tmp.Add(-BucketSize)
 	}
 	return tmp.Unix()
-}
-
-type extendedTask struct {
-	entity.Task
-	TaskTimestamp   int64 `json:"__task_ts__"`
-	BucketTimestamp int64 `json:"__bucket_ts__"`
 }
