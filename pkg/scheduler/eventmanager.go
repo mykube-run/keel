@@ -41,11 +41,11 @@ const (
 )
 
 type TaskEvent struct {
-	EventType string          `json:"eventType"`
-	WorkerId  string          `json:"workerId"`
-	TenantId  string          `json:"tenantId"`
-	TaskId    string          `json:"taskId"`
-	TaskType  enum.TaskType   `json:"taskType"`
+	EventType string `json:"eventType"`
+	WorkerId  string `json:"workerId"`
+	TenantId  string `json:"tenantId"`
+	TaskId    string `json:"taskId"`
+	// TaskType  enum.TaskType   `json:"taskType"`
 	Timestamp time.Time       `json:"timestamp"`
 	Value     json.RawMessage `json:"value"`
 }
@@ -60,19 +60,19 @@ func NewEventFromMessage(m *types.TaskMessage) *TaskEvent {
 		WorkerId:  m.WorkerId,
 		TenantId:  m.Task.TenantId,
 		TaskId:    m.Task.Uid,
-		TaskType:  m.Task.Type,
+		// TaskType:  m.Task.Type,
 		Timestamp: m.Timestamp,
 		Value:     m.Value,
 	}
 }
 
-func NewEventFromUserTask(typ string, t *entity.UserTask) *TaskEvent {
+func NewEventFromTask(typ string, t *entity.Task) *TaskEvent {
 	return &TaskEvent{
 		EventType: typ,
 		WorkerId:  "",
 		TenantId:  t.TenantId,
 		TaskId:    t.Uid,
-		TaskType:  enum.TaskTypeUserTask,
+		// TaskType:  enum.TaskTypeUserTask,
 		Timestamp: time.Now(),
 		Value:     nil,
 	}
@@ -313,7 +313,7 @@ func (m *EventManager) loadSnapshot() error {
 		tmp := m.snapshotKey(i)
 		info, err := m.s3.StatObject(m.sc.Bucket, tmp, minio.StatObjectOptions{})
 		if err != nil {
-			m.lg.Log(types.LevelError, "error", err.Error(), "message", "stat object error")
+			m.lg.Log(types.LevelInfo, "error", err.Error(), "key", tmp, "message", "snapshot not found")
 			continue
 		}
 		if info.LastModified.After(newest) {

@@ -32,7 +32,7 @@ func (s *HangUpTaskHandler) HeartBeat() (*types.TaskContext, *types.TaskStatus, 
 	return s.ctx, nil, nil
 }
 
-func (s *HangUpTaskHandler) StartTransitionTask(chan struct{}) (bool, error) {
+func (s *HangUpTaskHandler) StartMigratedTask(chan struct{}) (bool, error) {
 	s.started = time.Now()
 	log.Info().Str("taskId", s.ctx.Task.Uid).
 		Msgf("start to process task, will hang up for %v seconds and return error on HeartBeat call", HangUpDuration)
@@ -44,7 +44,7 @@ func (s *HangUpTaskHandler) Stop() error {
 	return nil
 }
 
-func (s *HangUpTaskHandler) BeforeTransitionStart() (*types.TaskContext, *types.TaskStatus, error) {
+func (s *HangUpTaskHandler) PrepareMigration() (*types.TaskContext, *types.TaskStatus, error) {
 	status := &types.TaskStatus{
 		State:     enum.TaskStatusNeedsRetry,
 		Progress:  s.progress(),
@@ -64,7 +64,7 @@ func (s *HangUpTaskHandler) TransitionFinish() (*types.TaskContext, *types.TaskS
 	return s.ctx, status, nil
 }
 
-func (s *HangUpTaskHandler) TransitionError() (*types.TaskContext, *types.TaskStatus, error) {
+func (s *HangUpTaskHandler) MigrateError() (*types.TaskContext, *types.TaskStatus, error) {
 	status := &types.TaskStatus{
 		State:     enum.TaskStatusFailed,
 		Progress:  s.progress(),

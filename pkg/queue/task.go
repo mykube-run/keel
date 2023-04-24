@@ -15,41 +15,39 @@ const FetchFromDBWatermarkRatio = 2
 // TaskQueue is in-memory cache for tenant tasks and resource quota, automatically handling
 // fetching tasks from database when necessary.
 type TaskQueue struct {
-	Tenant     *entity.Tenant
-	DelayTasks interface{} // TODO: time wheel
-	CronTasks  interface{} // TODO: time wheel
-	UserTasks  *PriorityQueue
+	Tenant *entity.Tenant
+	Tasks  *PriorityQueue
 
-	// User task id is incremental, hence maxUserTaskId is used to
+	// User task id is incremental, hence maxUid is used to
 	// avoid populating tasks that already exist in queue
-	maxUserTaskId string
-	db            types.DB
-	lg            types.Logger
-	ls            types.Listener
-	mu            sync.RWMutex
+	maxUid string
+	db     types.DB
+	lg     types.Logger
+	ls     types.Listener
+	mu     sync.RWMutex
 }
 
 func NewTaskQueue(db types.DB, lg types.Logger, t *entity.Tenant, ls types.Listener) *TaskQueue {
 	pq := make(PriorityQueue, 0)
 	heap.Init(&pq)
 	c := &TaskQueue{
-		Tenant:    t,
-		UserTasks: &pq,
-		db:        db,
-		lg:        lg,
-		ls:        ls,
+		Tenant: t,
+		Tasks:  &pq,
+		db:     db,
+		lg:     lg,
+		ls:     ls,
 	}
 	return c
 }
 
-// PopUserTasks pops at most n entity.UserTasks from cache, returns tasks and the actual number successfully popped.
-// When the number of cached entity.UserTasks is zero or less than FetchFromDBWatermarkRatio * n, it will populate tasks in background.
-func (c *TaskQueue) PopUserTasks(n int) (tasks entity.UserTasks, popped int, err error) {
+// PopTasks pops at most n entity.Tasks from cache, returns tasks and the actual number successfully popped.
+// When the number of cached entity.Tasks is zero or less than FetchFromDBWatermarkRatio * n, it will populate tasks in background.
+func (c *TaskQueue) PopTasks(n int) (tasks entity.Tasks, popped int, err error) {
 	c.mu.Lock()
 
-	for c.UserTasks.Len() > 0 {
-		item := heap.Pop(c.UserTasks).(*Item)
-		tasks = append(tasks, item.Value().(*entity.UserTask))
+	for c.Tasks.Len() > 0 {
+		item := heap.Pop(c.Tasks).(*Item)
+		tasks = append(tasks, item.Value().(*entity.Task))
 		popped += 1
 		if popped >= n {
 			break
@@ -59,21 +57,21 @@ func (c *TaskQueue) PopUserTasks(n int) (tasks entity.UserTasks, popped int, err
 	// Do not forget to unlock
 	c.mu.Unlock()
 
-	if c.UserTasks.Len() < FetchFromDBWatermarkRatio*n || c.UserTasks.Len() == 0 {
+	if c.Tasks.Len() < FetchFromDBWatermarkRatio*n || c.Tasks.Len() == 0 {
 		go c.FetchTasks()
 	}
 	return
 }
 
-// EnqueueUserTask put task back to the priority queue, adding delta to task's priority.
+// EnqueueTask put task back to the priority queue, adding delta to task's priority.
 // This is useful when task has to be retried as soon as possible before processing other tasks.
-func (c *TaskQueue) EnqueueUserTask(task *entity.UserTask, delta int) {
+func (c *TaskQueue) EnqueueTask(task *entity.Task, delta int) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	task.Priority = task.Priority + int32(delta)
 	item := NewItem(int(task.Priority), task)
-	heap.Push(c.UserTasks, item)
+	heap.Push(c.Tasks, item)
 }
 
 // FetchTasks read tasks from database and populate in-memory queue
@@ -90,41 +88,40 @@ func (c *TaskQueue) FetchTasks() {
 
 func (c *TaskQueue) populateTasks(ctx context.Context) error {
 	var status []enum.TaskStatus
-	if c.maxUserTaskId == "" {
+	if c.maxUid == "" {
 		status = []enum.TaskStatus{enum.TaskStatusPending, enum.TaskStatusScheduling}
 	} else {
 		status = []enum.TaskStatus{enum.TaskStatusPending}
 	}
-	opt := types.FindRecentTasksOption{
+	opt := types.FindPendingTasksOption{
 		TenantId: &c.Tenant.Uid,
-		// MinUserTaskId: &c.maxUserTaskId,
-		MinUserTaskId: nil,
-		TaskType:      enum.TaskTypeUserTask,
-		Status:        status,
+		// MinUid: &c.maxUid,
+		MinUid: nil,
+		Status: status,
 	}
-	tasks, err := c.db.FindRecentTasks(ctx, opt)
+	tasks, err := c.db.FindPendingTasks(ctx, opt)
 	if err != nil {
 		return err
 	}
 	if err = c.db.UpdateTaskStatus(ctx, types.UpdateTaskStatusOption{
-		TaskType: enum.TaskTypeUserTask,
-		Uids:     tasks.UserTasks.TaskIds(),
+		TenantId: c.Tenant.Uid,
+		Uids:     tasks.TaskIds(),
 		Status:   enum.TaskStatusScheduling,
 	}); err != nil {
 		return err
 	}
 
-	for _, t := range tasks.UserTasks {
-		le := types.ListenerEvent{Task: types.NewTaskMetadataFromUserTaskEntity(t)}
+	for _, t := range tasks {
+		le := types.ListenerEvent{Task: types.NewTaskMetadataFromTaskEntity(t)}
 		c.ls.OnTaskScheduling(le)
 	}
 
 	n := 0
-	for _, v := range tasks.UserTasks {
+	for _, v := range tasks {
 		vc := v
-		c.maxUserTaskId = vc.Uid
+		c.maxUid = vc.Uid
 		item := NewItem(int(vc.Priority), vc)
-		heap.Push(c.UserTasks, item)
+		heap.Push(c.Tasks, item)
 		n += 1
 	}
 	if n > 0 {
@@ -133,13 +130,13 @@ func (c *TaskQueue) populateTasks(ctx context.Context) error {
 	return nil
 }
 
-func (c *TaskQueue) PopAllUserTasks() (tasks entity.UserTasks, err error) {
+func (c *TaskQueue) PopAllTasks() (tasks entity.Tasks, err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	for c.UserTasks.Len() > 0 {
-		item := heap.Pop(c.UserTasks).(*Item)
-		tasks = append(tasks, item.Value().(*entity.UserTask))
+	for c.Tasks.Len() > 0 {
+		item := heap.Pop(c.Tasks).(*Item)
+		tasks = append(tasks, item.Value().(*entity.Task))
 	}
 	return
 }

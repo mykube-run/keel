@@ -119,7 +119,7 @@ func (s *Server) CreateTask(ctx context.Context, req *pb.CreateTaskRequest) (*pb
 		"handler", req.GetHandler(), "message", "creating new task")
 
 	now := time.Now()
-	t := entity.UserTask{
+	t := entity.Task{
 		TenantId:         req.GetTenantId(),
 		Uid:              req.GetUid(),
 		Handler:          req.GetHandler(),
@@ -158,7 +158,7 @@ func (s *Server) CreateTask(ctx context.Context, req *pb.CreateTaskRequest) (*pb
 	}
 	s.lg.Log(types.LevelDebug, "tenantId", req.GetTenantId(), "taskId", req.GetUid(),
 		"handler", req.GetHandler(), "message", "created new task")
-	le := types.ListenerEvent{SchedulerId: s.sched.SchedulerId(), Task: types.NewTaskMetadataFromUserTaskEntity(&t)}
+	le := types.ListenerEvent{SchedulerId: s.sched.SchedulerId(), Task: types.NewTaskMetadataFromTaskEntity(&t)}
 	s.ls.OnTaskCreated(le)
 	return resp, nil
 }
@@ -167,7 +167,7 @@ func (s *Server) PauseTask(ctx context.Context, req *pb.PauseTaskRequest) (*pb.R
 	s.lg.Log(types.LevelInfo, "taskId", req.GetUid(), "taskType", req.GetType(), "message", "pausing task")
 
 	opt := types.GetTaskStatusOption{
-		TaskType: enum.TaskType(req.GetType()),
+		TenantId: req.GetTenantId(),
 		Uid:      req.GetUid(),
 	}
 	ts, err := s.db.GetTaskStatus(ctx, opt)
@@ -180,8 +180,8 @@ func (s *Server) PauseTask(ctx context.Context, req *pb.PauseTaskRequest) (*pb.R
 	}
 	// TODO: pause running task
 	err = s.db.UpdateTaskStatus(ctx, types.UpdateTaskStatusOption{
+		TenantId: req.GetTenantId(),
 		Uids:     []string{req.GetUid()},
-		TaskType: enum.TaskType(req.GetType()),
 		Status:   enum.TaskStatusCanceled,
 	})
 	if err != nil {
@@ -198,7 +198,7 @@ func (s *Server) RestartTask(ctx context.Context, req *pb.RestartTaskRequest) (*
 	s.lg.Log(types.LevelInfo, "taskId", req.GetUid(), "taskType", req.GetType(), "message", "restarting task")
 
 	err := s.db.UpdateTaskStatus(ctx, types.UpdateTaskStatusOption{
-		TaskType: enum.TaskType(req.GetType()),
+		TenantId: req.GetTenantId(),
 		Uids:     []string{req.GetUid()},
 		Status:   enum.TaskStatusPending,
 	})
@@ -216,7 +216,7 @@ func (s *Server) StopTask(ctx context.Context, req *pb.StopTaskRequest) (*pb.Res
 	s.lg.Log(types.LevelInfo, "taskId", req.GetUid(), "taskType", req.GetType(), "message", "stopping task")
 
 	opt := types.GetTaskStatusOption{
-		TaskType: enum.TaskType(req.GetType()),
+		TenantId: req.GetTenantId(),
 		Uid:      req.GetUid(),
 	}
 	ts, err := s.db.GetTaskStatus(ctx, opt)
@@ -242,7 +242,7 @@ func (s *Server) StopTask(ctx context.Context, req *pb.StopTaskRequest) (*pb.Res
 
 func (s *Server) QueryTaskStatus(ctx context.Context, req *pb.QueryTaskStatusRequest) (*pb.QueryTaskStatusResponse, error) {
 	opt := types.GetTaskStatusOption{
-		TaskType: enum.TaskType(req.GetType()),
+		TenantId: req.GetTenantId(),
 		Uid:      req.GetUid(),
 	}
 	ts, err := s.db.GetTaskStatus(ctx, opt)

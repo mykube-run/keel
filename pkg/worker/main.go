@@ -107,7 +107,7 @@ func (w *Worker) Start() {
 		w.lg.Log(types.LevelInfo, "message", "received stop signal")
 		_ = w.tran.CloseReceive()
 		time.Sleep(500 * time.Millisecond)
-		w.transferAllTasks()
+		w.migrateAllTasks()
 		_ = w.tran.CloseSend()
 	}
 }
@@ -263,18 +263,18 @@ func (w *Worker) notify(m *types.TaskMessage) {
 	}
 }
 
-// transferAllTasks transfers all tasks to other handlers
-func (w *Worker) transferAllTasks() {
+// migrateAllTasks migrates all running tasks to other workers
+func (w *Worker) migrateAllTasks() {
 	w.running.Range(func(k, v interface{}) bool {
 		hdl, ok := v.(types.TaskHandler)
 		if !ok {
 			return true
 		}
 
-		tc, s, err := hdl.BeforeTransitionStart()
+		tc, s, err := hdl.PrepareMigration()
 		if err != nil {
 			w.lg.Log(types.LevelError, "error", err.Error(), "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId,
-				"message", "failed to start task transition")
+				"message", "failed to prepare task migration")
 			w.notify(tc.NewMessage(enum.RetryTask, nil))
 			return true
 		}

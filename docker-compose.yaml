@@ -53,6 +53,15 @@ services:
     networks:
       - test
 
+  # Redis
+  redis:
+    image: bitnami/redis:6.0
+    environment:
+      REDIS_PASSWORD: 'pa88w0rd'
+    restart: 'on-failure'
+    networks:
+      - test
+
   # MongoDB
   # See: https://hub.docker.com/r/bitnami/mongodb
   # Bitnami mongodb may not be working on M1 chips, so we use official image

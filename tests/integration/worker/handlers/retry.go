@@ -41,7 +41,7 @@ func (s *RetryTaskHandler) Start() (bool, error) {
 	return false, nil
 }
 
-func (s *RetryTaskHandler) StartTransitionTask(chan struct{}) (bool, error) {
+func (s *RetryTaskHandler) StartMigratedTask(chan struct{}) (bool, error) {
 	s.started = time.Now()
 	log.Info().Str("taskId", s.ctx.Task.Uid).
 		Msgf("start to process task, will sleep for at most %v seconds, retry %v times and finish the task",
@@ -58,7 +58,7 @@ func (s *RetryTaskHandler) Stop() error {
 	return nil
 }
 
-func (s *RetryTaskHandler) BeforeTransitionStart() (*types.TaskContext, *types.TaskStatus, error) {
+func (s *RetryTaskHandler) PrepareMigration() (*types.TaskContext, *types.TaskStatus, error) {
 	status := &types.TaskStatus{
 		State:     enum.TaskStatusNeedsRetry,
 		Progress:  s.progress(),
@@ -78,7 +78,7 @@ func (s *RetryTaskHandler) TransitionFinish() (*types.TaskContext, *types.TaskSt
 	return s.ctx, status, nil
 }
 
-func (s *RetryTaskHandler) TransitionError() (*types.TaskContext, *types.TaskStatus, error) {
+func (s *RetryTaskHandler) MigrateError() (*types.TaskContext, *types.TaskStatus, error) {
 	status := &types.TaskStatus{
 		State:     enum.TaskStatusFailed,
 		Progress:  s.progress(),

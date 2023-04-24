@@ -3,7 +3,7 @@ package queue
 import (
 	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
-	"github.com/mykube-run/keel/pkg/impl/database"
+	"github.com/mykube-run/keel/pkg/impl/database/mock"
 	"github.com/mykube-run/keel/pkg/impl/listener"
 	"github.com/mykube-run/keel/pkg/impl/logging"
 	"github.com/mykube-run/keel/pkg/types"
@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	db     = database.NewMockDB()
+	db     = mock.NewMockDB()
 	tenant = &entity.Tenant{
 		Uid:           "tenant-10001",
 		Zone:          "default",
@@ -25,18 +25,18 @@ var (
 
 func TestNewTaskQueue(t *testing.T) {
 	c := NewTaskQueue(db, logging.NewDefaultLogger(nil), tenant, listener.Default)
-	if c.UserTasks == nil {
+	if c.Tasks == nil {
 		t.Fatal("invalid tenant cache")
 	}
 }
 
-func TestTaskQueue_PopUserTasks(t *testing.T) {
+func TestTaskQueue_PopTasks(t *testing.T) {
 	n := 3
 	c := NewTaskQueue(db, logging.NewDefaultLogger(nil), tenant, listener.Default)
 
 	// No user tasks for the first time
 	{
-		tasks, popped, err := c.PopUserTasks(n)
+		tasks, popped, err := c.PopTasks(n)
 		if err != nil {
 			t.Fatalf("error popping user tasks: %v", err)
 		}
@@ -46,13 +46,13 @@ func TestTaskQueue_PopUserTasks(t *testing.T) {
 		if len(tasks) != 0 {
 			t.Fatalf("expected popping 0 tasks, got %v", len(tasks))
 		}
-		c.lg.Log(types.LevelDebug, "len", c.UserTasks.Len(), "message", "user tasks length")
+		c.lg.Log(types.LevelDebug, "len", c.Tasks.Len(), "message", "user tasks length")
 	}
 
 	// User tasks should be populated
 	time.Sleep(time.Millisecond * 100)
 	{
-		tasks, popped, err := c.PopUserTasks(n)
+		tasks, popped, err := c.PopTasks(n)
 		if err != nil {
 			t.Fatalf("error popping user tasks: %v", err)
 		}
@@ -62,18 +62,18 @@ func TestTaskQueue_PopUserTasks(t *testing.T) {
 		if len(tasks) != n {
 			t.Fatalf("expected popping %v tasks, got %v", n, len(tasks))
 		}
-		c.lg.Log(types.LevelDebug, "len", c.UserTasks.Len(), "message", "user tasks length")
+		c.lg.Log(types.LevelDebug, "len", c.Tasks.Len(), "message", "user tasks length")
 	}
 
 }
 
-func TestTaskQueue_EnqueueUserTask(t *testing.T) {
+func TestTaskQueue_EnqueueTask(t *testing.T) {
 	c := NewTaskQueue(db, logging.NewDefaultLogger(nil), tenant, listener.Default)
 	c.FetchTasks()
 
 	// No user tasks for the first time
 	time.Sleep(time.Millisecond * 100)
-	tasks, _, err := c.PopUserTasks(1)
+	tasks, _, err := c.PopTasks(1)
 	if err != nil {
 		t.Fatalf("error popping user tasks: %v", err)
 	}
@@ -87,9 +87,9 @@ func TestTaskQueue_EnqueueUserTask(t *testing.T) {
 	}
 	id := task.Uid
 	p := task.Priority
-	c.EnqueueUserTask(task, 999)
+	c.EnqueueTask(task, 999)
 
-	tasks2, _, err := c.PopUserTasks(1)
+	tasks2, _, err := c.PopTasks(1)
 	if err != nil {
 		t.Fatalf("error popping user tasks: %v", err)
 	}
@@ -107,14 +107,14 @@ func TestTaskQueue_EnqueueUserTask(t *testing.T) {
 
 func TestTaskQueue_PopulateTasks(t *testing.T) {
 	c := NewTaskQueue(db, logging.NewDefaultLogger(nil), tenant, listener.Default)
-	if c.UserTasks.Len() != 0 {
-		t.Fatalf("expected user tasks length to be 0, got %v", c.UserTasks.Len())
+	if c.Tasks.Len() != 0 {
+		t.Fatalf("expected user tasks length to be 0, got %v", c.Tasks.Len())
 	}
 
 	c.FetchTasks()
 	time.Sleep(time.Millisecond * 100)
 
-	if c.UserTasks.Len() == 0 {
-		t.Fatalf("expected user tasks length to be >0, got %v", c.UserTasks.Len())
+	if c.Tasks.Len() == 0 {
+		t.Fatalf("expected user tasks length to be >0, got %v", c.Tasks.Len())
 	}
 }
