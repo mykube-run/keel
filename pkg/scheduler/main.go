@@ -297,7 +297,8 @@ func (s *Scheduler) dispatch(tasks entity.Tasks) {
 	for _, task := range tasks {
 		// 1. Check task status to avoid repeat dispatching Success/TaskRunStatusFailed/Canceled tasks
 		status, _ := s.db.GetTaskStatus(ctx, types.GetTaskStatusOption{
-			Uid: task.Uid,
+			TenantId: task.TenantId,
+			Uid:      task.Uid,
 		})
 		if status == enum.TaskStatusSuccess || status == enum.TaskStatusFailed || status == enum.TaskStatusCanceled {
 			s.lg.Log(types.LevelInfo, "tenantId", task.TenantId, "taskId", task.Uid, "status", status,
@@ -414,8 +415,9 @@ func (s *Scheduler) updateTaskStatus(ev *TaskEvent) error {
 	}
 
 	err := s.db.UpdateTaskStatus(context.Background(), types.UpdateTaskStatusOption{
-		Uids:   []string{ev.TaskId},
-		Status: status,
+		TenantId: ev.TenantId,
+		Uids:     []string{ev.TaskId},
+		Status:   status,
 	})
 	return err
 }
@@ -462,7 +464,10 @@ func (s *Scheduler) checkStaleTasks() {
 
 					// check database task status if not finish scheduler again
 					var taskStatus enum.TaskStatus
-					taskStatus, err = s.db.GetTaskStatus(context.Background(), types.GetTaskStatusOption{Uid: ev.TaskId})
+					taskStatus, err = s.db.GetTaskStatus(context.Background(), types.GetTaskStatusOption{
+						TenantId: ev.TenantId,
+						Uid:      ev.TaskId,
+					})
 					if err != nil {
 						s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", tenant, "taskId", task,
 							"message", "failed to get the newest status of the stale task")
@@ -470,8 +475,9 @@ func (s *Scheduler) checkStaleTasks() {
 					}
 					if taskStatus != enum.TaskStatusSuccess && taskStatus != enum.TaskStatusFailed {
 						if err = s.db.UpdateTaskStatus(context.Background(), types.UpdateTaskStatusOption{
-							Uids:   []string{ev.TaskId},
-							Status: enum.TaskStatusPending,
+							TenantId: ev.TenantId,
+							Uids:     []string{ev.TaskId},
+							Status:   enum.TaskStatusPending,
 						}); err != nil {
 							s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", tenant, "taskId", task,
 								"message", "failed to update task status")

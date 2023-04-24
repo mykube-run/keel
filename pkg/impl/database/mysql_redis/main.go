@@ -83,22 +83,13 @@ func (m *MySQLRedis) Close() error {
 func parseDSN(dsn string) (string, string, error) {
 	dsn = strings.ReplaceAll(dsn, " ", "")
 
-	// mysql://xxx,redis://xxx
+	// xxx,redis://xxx
 	if strings.Contains(dsn, ",redis") {
 		spl := strings.SplitN(dsn, ",redis", 2)
 		if len(spl) != 2 {
 			return "", "", fmt.Errorf("invalid mysql+redis dsn: %v", dsn)
 		}
-		return spl[0], spl[1], nil
-	}
-
-	// redis://xxx,mysql://xxx
-	if strings.Contains(dsn, ",mysql") {
-		spl := strings.SplitN(dsn, ",mysql", 2)
-		if len(spl) != 2 {
-			return "", "", fmt.Errorf("invalid mysql+redis dsn: %v", dsn)
-		}
-		return spl[1], spl[0], nil
+		return spl[0], "redis" + spl[1], nil
 	}
 
 	return "", "", fmt.Errorf("invalid mysql+redis dsn: %v", dsn)

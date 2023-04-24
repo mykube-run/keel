@@ -313,7 +313,7 @@ func (m *EventManager) loadSnapshot() error {
 		tmp := m.snapshotKey(i)
 		info, err := m.s3.StatObject(m.sc.Bucket, tmp, minio.StatObjectOptions{})
 		if err != nil {
-			m.lg.Log(types.LevelError, "error", err.Error(), "message", "stat object error")
+			m.lg.Log(types.LevelInfo, "error", err.Error(), "key", tmp, "message", "snapshot not found")
 			continue
 		}
 		if info.LastModified.After(newest) {

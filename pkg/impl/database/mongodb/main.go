@@ -182,6 +182,9 @@ func (m *MongoDB) FindPendingTasks(ctx context.Context, opt types.FindPendingTas
 }
 
 func (m *MongoDB) UpdateTaskStatus(ctx context.Context, opt types.UpdateTaskStatusOption) error {
+	if len(opt.Uids) == 0 {
+		return nil
+	}
 	q := bson.M{"uid": bson.M{"$in": opt.Uids}}
 	u := bson.D{{"$set", bson.D{{"status", opt.Status}, {"updatedAt", time.Now()}}}}
 	_, err := m.task.UpdateMany(ctx, q, u)

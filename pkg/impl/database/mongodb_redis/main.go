@@ -89,7 +89,7 @@ func parseDSN(dsn string) (string, string, error) {
 		if len(spl) != 2 {
 			return "", "", fmt.Errorf("invalid mongodb+redis dsn: %v", dsn)
 		}
-		return spl[0], spl[1], nil
+		return spl[0], "redis" + spl[1], nil
 	}
 
 	// redis://xxx,mongodb://xxx
@@ -98,7 +98,7 @@ func parseDSN(dsn string) (string, string, error) {
 		if len(spl) != 2 {
 			return "", "", fmt.Errorf("invalid mongodb+redis dsn: %v", dsn)
 		}
-		return spl[1], spl[0], nil
+		return "mongodb" + spl[1], spl[0], nil
 	}
 
 	return "", "", fmt.Errorf("invalid mongodb+redis dsn: %v", dsn)

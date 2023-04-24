@@ -135,11 +135,14 @@ func (r *Redis) FindPendingTasks(ctx context.Context, opt types.FindPendingTasks
 }
 
 func (r *Redis) UpdateTaskStatus(ctx context.Context, opt types.UpdateTaskStatusOption) error {
+	if len(opt.Uids) == 0 {
+		return nil
+	}
 	uids, err := json.Marshal(opt.Uids)
 	if err != nil {
 		return err
 	}
-	return updateTaskStatus.Run(ctx, r.s, []string{opt.TenantId}, string(uids), opt.Status).Err()
+	return updateTaskStatus.Run(ctx, r.s, []string{opt.TenantId}, string(uids), string(opt.Status)).Err()
 }
 
 func (r *Redis) Close() error {
@@ -175,7 +178,6 @@ func parseDSN(dsn string) (*redis.UniversalOptions, string, error) {
 		host = "localhost"
 	}
 	opt.Addrs = []string{net.JoinHostPort(host, port)}
-	fmt.Println(opt.Addrs)
 
 	if u.User != nil {
 		password, isSet := u.User.Password()

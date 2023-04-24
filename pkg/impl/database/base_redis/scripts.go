@@ -28,17 +28,6 @@ end
 `
 
 var updateTaskStatus = redis.NewScript(common + `
--- update specified tasks status, uids_str is JSON array string
-local function update_tasks_status(tenant_id, uids_str, status)
-	local uids = cjson.decode(uids_str)
-	local count = 0
-	for idx, value in ipairs(uids) do
-		update_task_status(tenant_id, value, status)
-		count = count + 1
-	end
-	return count
-end
-
 -- update specified task status, uid
 local function update_task_status(tenant_id, uid, status)
     local task = cjson.decode(get_task(tenant_id, uid))
@@ -61,6 +50,18 @@ local function update_task_status(tenant_id, uid, status)
         redis.call('ZADD', buckets, tonumber(bucket_ts), bucket_ts)
         redis.log(log_level, string.format('[UpdateTaskStatus] added %s in bucket %s', uid, bucket))
     end
+end
+
+-- update specified tasks status, uids_str is JSON array string
+local function update_tasks_status(tenant_id, uids_str, status)
+	redis.log(log_level, string.format('[UpdateTaskStatus] uids: %s, status: %s', uids_str, status))
+	local uids = cjson.decode(uids_str)
+	local count = 0
+	for idx, value in ipairs(uids) do
+		update_task_status(tenant_id, value, status)
+		count = count + 1
+	end
+	return count
 end
 
 return update_tasks_status(KEYS[1], ARGV[1], ARGV[2])

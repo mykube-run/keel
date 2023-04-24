@@ -104,8 +104,9 @@ func (c *TaskQueue) populateTasks(ctx context.Context) error {
 		return err
 	}
 	if err = c.db.UpdateTaskStatus(ctx, types.UpdateTaskStatusOption{
-		Uids:   tasks.TaskIds(),
-		Status: enum.TaskStatusScheduling,
+		TenantId: c.Tenant.Uid,
+		Uids:     tasks.TaskIds(),
+		Status:   enum.TaskStatusScheduling,
 	}); err != nil {
 		return err
 	}

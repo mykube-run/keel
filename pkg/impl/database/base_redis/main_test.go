@@ -15,7 +15,8 @@ var (
 )
 
 const (
-	dsn      = "redis://root:pa88w0rd@redis:6379"
+	//dsn      = "redis://localhost:7379"
+	dsn      = "redis://pa88w0rd@redis:6379"
 	tenantId = "tenant-unit-test-1"
 	taskId   = "task-unit-test-1"
 )
@@ -133,5 +134,32 @@ func TestRedis_GetTaskStatus(t *testing.T) {
 	}
 	if status != enum.TaskStatusPending {
 		t.Fatalf("task status should be %v, but got %v", enum.TaskStatusPending, status)
+	}
+}
+
+func TestRedis_UpdateTaskStatus(t *testing.T) {
+	{
+		opt := types.UpdateTaskStatusOption{
+			TenantId: tenantId,
+			Uids:     []string{taskId},
+			Status:   enum.TaskStatusCanceled,
+		}
+		err := db.UpdateTaskStatus(context.TODO(), opt)
+		if err != nil {
+			t.Fatalf("should be able to update task status, but got error: %v", err)
+		}
+	}
+	{
+		opt := types.GetTaskStatusOption{
+			TenantId: tenantId,
+			Uid:      taskId,
+		}
+		status, err := db.GetTaskStatus(context.TODO(), opt)
+		if err != nil {
+			t.Fatalf("should be able to get task, but got error: %v", err)
+		}
+		if status != enum.TaskStatusCanceled {
+			t.Fatalf("task status should be updated to %v, but got %v", enum.TaskStatusCanceled, status)
+		}
 	}
 }

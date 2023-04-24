@@ -1,11 +1,11 @@
 echo "--------------------------------------------------------------"
-echo "                   Starting unit tests                        "
+echo "                   Starting Unit Tests                        "
 echo "--------------------------------------------------------------"
 
 go clean -testcache && go test ./pkg/...
 
 echo "--------------------------------------------------------------"
-echo "                   Starting integration tests                 "
+echo "                   Starting Integration Tests                 "
 echo "--------------------------------------------------------------"
 
 go clean -testcache && go test -v ./tests/testkit/...

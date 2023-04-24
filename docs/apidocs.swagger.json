@@ -327,7 +327,7 @@
         "type": {
           "type": "string",
           "description": "Task type, available options are: CronTask, DelayTask, UserTask",
-          "title": "Task type"
+          "title": "Task type\nDeprecated since v0.1.6, will be removed in the future"
         },
         "tenantId": {
           "type": "string",
@@ -428,12 +428,19 @@
         "type": {
           "type": "string",
           "description": "Task type, available options are: CronTask, DelayTask, UserTask",
-          "title": "Task type"
+          "title": "Task type\nDeprecated since v0.1.6, will be removed in the future"
         },
         "uid": {
           "type": "string",
           "description": "Task uid, must be unique",
           "title": "Task uid",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "Tenant uid that this task belongs to",
+          "title": "Tenant uid",
           "maxLength": 255,
           "minLength": 1
         }
@@ -449,12 +456,19 @@
         "type": {
           "type": "string",
           "description": "Task type, available options are: CronTask, DelayTask, UserTask",
-          "title": "Task type"
+          "title": "Task type\nDeprecated since v0.1.6, will be removed in the future"
         },
         "uid": {
           "type": "string",
           "description": "Task uid, must be unique",
           "title": "Task uid",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "Tenant uid that this task belongs to",
+          "title": "Tenant uid",
           "maxLength": 255,
           "minLength": 1
         }
@@ -527,7 +541,7 @@
         "cpu": {
           "type": "string",
           "format": "int64",
-          "description": "CPU cores"
+          "description": "CPU quota in cores"
         },
         "custom": {
           "type": "string",
@@ -537,7 +551,7 @@
         "gpu": {
           "type": "string",
           "format": "int64",
-          "description": "GPU cores"
+          "description": "GPU quota in cores"
         },
         "memory": {
           "type": "string",
@@ -575,12 +589,19 @@
         "type": {
           "type": "string",
           "description": "Task type, available options are: CronTask, DelayTask, UserTask",
-          "title": "Task type"
+          "title": "Task type\nDeprecated since v0.1.6, will be removed in the future"
         },
         "uid": {
           "type": "string",
           "description": "Task uid, must be unique",
           "title": "Task uid",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "Tenant uid that this task belongs to",
+          "title": "Tenant uid",
           "maxLength": 255,
           "minLength": 1
         }
@@ -596,12 +617,19 @@
         "type": {
           "type": "string",
           "description": "Task type, available options are: CronTask, DelayTask, UserTask",
-          "title": "Task type"
+          "title": "Task type\nDeprecated since v0.1.6, will be removed in the future"
         },
         "uid": {
           "type": "string",
           "description": "Task uid, must be unique",
           "title": "Task uid",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "Tenant uid that this task belongs to",
+          "title": "Tenant uid",
           "maxLength": 255,
           "minLength": 1
         }

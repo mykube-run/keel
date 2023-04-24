@@ -167,7 +167,8 @@ func (s *Server) PauseTask(ctx context.Context, req *pb.PauseTaskRequest) (*pb.R
 	s.lg.Log(types.LevelInfo, "taskId", req.GetUid(), "taskType", req.GetType(), "message", "pausing task")
 
 	opt := types.GetTaskStatusOption{
-		Uid: req.GetUid(),
+		TenantId: req.GetTenantId(),
+		Uid:      req.GetUid(),
 	}
 	ts, err := s.db.GetTaskStatus(ctx, opt)
 	if ts != enum.TaskStatusRunning {
@@ -179,8 +180,9 @@ func (s *Server) PauseTask(ctx context.Context, req *pb.PauseTaskRequest) (*pb.R
 	}
 	// TODO: pause running task
 	err = s.db.UpdateTaskStatus(ctx, types.UpdateTaskStatusOption{
-		Uids:   []string{req.GetUid()},
-		Status: enum.TaskStatusCanceled,
+		TenantId: req.GetTenantId(),
+		Uids:     []string{req.GetUid()},
+		Status:   enum.TaskStatusCanceled,
 	})
 	if err != nil {
 		s.lg.Log(types.LevelError, "error", err.Error(), "taskId", req.GetUid(), "message", "failed to update task status")
@@ -196,8 +198,9 @@ func (s *Server) RestartTask(ctx context.Context, req *pb.RestartTaskRequest) (*
 	s.lg.Log(types.LevelInfo, "taskId", req.GetUid(), "taskType", req.GetType(), "message", "restarting task")
 
 	err := s.db.UpdateTaskStatus(ctx, types.UpdateTaskStatusOption{
-		Uids:   []string{req.GetUid()},
-		Status: enum.TaskStatusPending,
+		TenantId: req.GetTenantId(),
+		Uids:     []string{req.GetUid()},
+		Status:   enum.TaskStatusPending,
 	})
 	if err != nil {
 		s.lg.Log(types.LevelError, "error", err.Error(), "taskId", req.GetUid(), "message", "failed to update task status")
@@ -213,7 +216,8 @@ func (s *Server) StopTask(ctx context.Context, req *pb.StopTaskRequest) (*pb.Res
 	s.lg.Log(types.LevelInfo, "taskId", req.GetUid(), "taskType", req.GetType(), "message", "stopping task")
 
 	opt := types.GetTaskStatusOption{
-		Uid: req.GetUid(),
+		TenantId: req.GetTenantId(),
+		Uid:      req.GetUid(),
 	}
 	ts, err := s.db.GetTaskStatus(ctx, opt)
 	if err != nil {
@@ -238,7 +242,8 @@ func (s *Server) StopTask(ctx context.Context, req *pb.StopTaskRequest) (*pb.Res
 
 func (s *Server) QueryTaskStatus(ctx context.Context, req *pb.QueryTaskStatusRequest) (*pb.QueryTaskStatusResponse, error) {
 	opt := types.GetTaskStatusOption{
-		Uid: req.GetUid(),
+		TenantId: req.GetTenantId(),
+		Uid:      req.GetUid(),
 	}
 	ts, err := s.db.GetTaskStatus(ctx, opt)
 	if err != nil {

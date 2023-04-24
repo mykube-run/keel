@@ -110,7 +110,8 @@ func Test_OrdinaryTaskHandler(t *testing.T) {
 		time.Sleep(time.Second * 8)
 		req := &pb.QueryTaskStatusRequest{
 			// Type: string(enum.TaskTypeUserTask),
-			Uid: taskId + "-ordinary",
+			TenantId: tenantId,
+			Uid:      taskId + "-ordinary",
 		}
 		resp, err := client.QueryTaskStatus(context.TODO(), req)
 		if err != nil {
@@ -130,7 +131,8 @@ func Test_OrdinaryTaskHandler(t *testing.T) {
 		time.Sleep(time.Second * 300)
 		req := &pb.QueryTaskStatusRequest{
 			// Type: string(enum.TaskTypeUserTask),
-			Uid: taskId + "-ordinary",
+			TenantId: tenantId,
+			Uid:      taskId + "-ordinary",
 		}
 		resp, err := client.QueryTaskStatus(context.TODO(), req)
 		if err != nil {
