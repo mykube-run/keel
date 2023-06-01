@@ -16,20 +16,23 @@ import (
 	"google.golang.org/grpc/status"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 )
 
 type Server struct {
 	pb.UnimplementedScheduleServiceServer
-	db     types.DB
-	lg     types.Logger
-	ls     types.Listener
-	sched  *Scheduler
-	config config.ServerConfig
+	db                  types.DB
+	lg                  types.Logger
+	ls                  types.Listener
+	sched               *Scheduler
+	config              config.ServerConfig
+	cachedActiveTenants []string
+	lock                sync.Mutex
 }
 
 func NewServer(db types.DB, sched *Scheduler, config config.ServerConfig, lg types.Logger, ls types.Listener) *Server {
-	return &Server{db: db, sched: sched, config: config, lg: lg, ls: ls}
+	return &Server{db: db, sched: sched, config: config, lg: lg, ls: ls, cachedActiveTenants: make([]string, 0)}
 }
 
 // Tenant API
@@ -153,6 +156,9 @@ func (s *Server) CreateTask(ctx context.Context, req *pb.CreateTaskRequest) (*pb
 			"message", "failed to create new task")
 		return nil, err
 	}
+	s.lock.Lock()
+	s.cachedActiveTenants = append(s.cachedActiveTenants, t.TenantId)
+	s.lock.Unlock()
 	resp := &pb.Response{
 		Code: pb.Code_Ok,
 	}
@@ -257,13 +263,30 @@ func (s *Server) QueryTaskStatus(ctx context.Context, req *pb.QueryTaskStatusReq
 	return resp, nil
 }
 
+func (s *Server) startUpdateActiveTenants() {
+	tick := time.Tick(time.Second * 10)
+	for _ = range tick {
+		s.lock.Lock()
+		if len(s.cachedActiveTenants) > 0 {
+			err := s.db.ActivateTenants(context.Background(), types.ActivateTenantsOption{TenantId: s.cachedActiveTenants, ActiveTime: time.Now()})
+			if err != nil {
+				s.lg.Log(types.LevelError, "error", err.Error(), "message", "failed to activate tenants by tick")
+				continue
+			}
+			s.lg.Log(types.LevelInfo, "tenants", s.cachedActiveTenants, "message", "failed to activate tenants by tick")
+			s.cachedActiveTenants = make([]string, 0)
+		}
+		s.lock.Unlock()
+	}
+}
+
 func (s *Server) Start() {
 	// Create a ls on TCP port
 	lis, err := net.Listen("tcp", s.config.GrpcAddress)
 	if err != nil {
 		s.lg.Log(types.LevelFatal, "message", fmt.Sprintf("failed to listen: %v", err))
 	}
-
+	go s.startUpdateActiveTenants()
 	// Create a gRPC server object
 	srv := grpc.NewServer()
 	// Attach the Greeter service to the server
