@@ -109,6 +109,7 @@ func (w *Worker) Start() {
 		time.Sleep(500 * time.Millisecond)
 		w.migrateAllTasks()
 		_ = w.tran.CloseSend()
+		os.Exit(0)
 	}
 }
 
