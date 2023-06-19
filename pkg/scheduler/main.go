@@ -16,6 +16,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -32,29 +33,34 @@ type Options struct {
 }
 
 type Scheduler struct {
-	opt    *Options
-	mu     sync.Mutex
-	cs     map[string]*queue.TaskQueue
-	em     *EventManager
-	db     types.DB
-	lg     types.Logger
-	ls     types.Listener
-	tran   types.Transport
-	srv    *Server
-	closeC chan struct{}
+	opt                 *Options
+	mu                  sync.Mutex
+	cs                  map[string]*queue.TaskQueue
+	em                  *EventManager
+	db                  types.DB
+	lg                  types.Logger
+	ls                  types.Listener
+	tran                types.Transport
+	srv                 *Server
+	cachedActiveTenants sync.Map
+	cachedCount         *uint64
+	closeC              chan struct{}
 }
 
 func New(opt *Options, db types.DB, lg types.Logger, ls types.Listener) (s *Scheduler, err error) {
+	var cachedCount = uint64(0)
 	if ls == nil {
 		ls = listener.Default
 	}
 	s = &Scheduler{
-		opt:    opt,
-		cs:     make(map[string]*queue.TaskQueue),
-		db:     db,
-		lg:     lg,
-		ls:     ls,
-		closeC: make(chan struct{}),
+		opt:                 opt,
+		cs:                  make(map[string]*queue.TaskQueue),
+		db:                  db,
+		lg:                  lg,
+		ls:                  ls,
+		closeC:              make(chan struct{}),
+		cachedActiveTenants: sync.Map{},
+		cachedCount:         &cachedCount,
 	}
 	s.srv = NewServer(db, s, opt.ServerConfig, lg, ls)
 	s.em, err = NewEventManager(opt.Snapshot, s.SchedulerId(), lg)
@@ -91,6 +97,7 @@ func (s *Scheduler) Start() {
 	go s.schedule()
 	go s.checkStaleTasks()
 	go s.srv.Start()
+	go s.startUpdateActiveTenants()
 
 	stopC := make(chan os.Signal)
 	signal.Notify(stopC, os.Interrupt, syscall.SIGTERM /* SIGTERM is expected inside k8s */)
@@ -105,6 +112,7 @@ func (s *Scheduler) Start() {
 		if err != nil {
 			s.lg.Log(types.LevelError, "key", key, "error", err.Error(), "message", "error saving events db snapshot")
 		}
+		os.Exit(0)
 	}
 }
 
@@ -158,6 +166,11 @@ func (s *Scheduler) onReceiveMessage(from, to string, msg []byte) ([]byte, error
 
 	s.handleTaskMessage(&m)
 	return nil, nil
+}
+
+func (s *Scheduler) addActiveTenant(tid string) {
+	s.cachedActiveTenants.Store(tid, struct{}{})
+	atomic.AddUint64(s.cachedCount, 1)
 }
 
 func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
@@ -486,6 +499,28 @@ func (s *Scheduler) checkStaleTasks() {
 					}
 				}
 			}
+		}
+	}
+}
+
+func (s *Scheduler) startUpdateActiveTenants() {
+	tick := time.Tick(time.Duration(s.opt.ScheduleInterval) * time.Second)
+	for _ = range tick {
+		if atomic.LoadUint64(s.cachedCount) > 0 {
+			ids := make([]string, 0)
+			s.cachedActiveTenants.Range(func(key, value interface{}) bool {
+				uid := key.(string)
+				ids = append(ids, uid)
+				return true
+			})
+			err := s.db.ActivateTenants(context.Background(), types.ActivateTenantsOption{TenantId: ids, ActiveTime: time.Now()})
+			if err != nil {
+				s.lg.Log(types.LevelError, "error", err.Error(), "message", "failed to activate tenants by tick")
+				continue
+			}
+			s.lg.Log(types.LevelInfo, "tenants", ids, "message", "failed to activate tenants by tick")
+			atomic.StoreUint64(s.cachedCount, 0)
+			s.cachedActiveTenants = sync.Map{}
 		}
 	}
 }
