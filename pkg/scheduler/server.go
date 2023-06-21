@@ -84,7 +84,7 @@ func (s *Server) QueryTenantTaskConcurrency(ctx context.Context, req *pb.QueryTe
 	}
 
 	// 2. Get running and concurrency limit from queue or database
-	queue, ok := s.sched.cs[req.GetUid()]
+	queue, ok := s.sched.qs[req.GetUid()]
 	if ok {
 		limit = queue.Tenant.ResourceQuota.Concurrency
 		running, err = s.sched.em.CountRunningTasks(req.GetUid())
@@ -132,7 +132,7 @@ func (s *Server) CreateTask(ctx context.Context, req *pb.CreateTaskRequest) (*pb
 		Status:           enum.TaskStatusPending,
 	}
 	if req.Options.GetCheckResourceQuota() {
-		queue, ok := s.sched.cs[req.TenantId]
+		queue, ok := s.sched.qs[req.TenantId]
 		if ok {
 			limit := queue.Tenant.ResourceQuota.Concurrency
 			running, err := s.sched.em.CountRunningTasks(req.TenantId)
@@ -154,8 +154,7 @@ func (s *Server) CreateTask(ctx context.Context, req *pb.CreateTaskRequest) (*pb
 		return nil, err
 
 	}
-	s.sched.addActiveTenant(t.TenantId)
-	s.sched.resetSchedulingTask()
+	s.sched.markActive(t.TenantId)
 	resp := &pb.Response{
 		Code: pb.Code_Ok,
 	}

@@ -33,34 +33,35 @@ type Options struct {
 }
 
 type Scheduler struct {
-	opt                 *Options
-	mu                  sync.Mutex
-	cs                  map[string]*queue.TaskQueue
-	em                  *EventManager
-	db                  types.DB
-	lg                  types.Logger
-	ls                  types.Listener
-	tran                types.Transport
-	srv                 *Server
-	cachedActiveTenants sync.Map
-	cachedCount         *uint64
-	closeC              chan struct{}
+	opt    *Options                    // Scheduler options
+	qs     map[string]*queue.TaskQueue // Task queues indexed by tenant id
+	mu     sync.Mutex                  // Mutex to protect qs
+	em     *EventManager               // Scheduler event manager
+	db     types.DB                    // The database interface
+	lg     types.Logger                // Logger
+	ls     types.Listener              // Event listener
+	tran   types.Transport             // The transport among scheduler and workers
+	srv    *Server                     // API server
+	st     sync.Map                    // Staging tenants that are recently active, but haven't been updated in database
+	stc    *uint64                     // The number of staging tenants
+	closeC chan struct{}               // Close signal channel
 }
 
+// New initializes a scheduler instance
 func New(opt *Options, db types.DB, lg types.Logger, ls types.Listener) (s *Scheduler, err error) {
-	var cachedCount = uint64(0)
+	var stc = uint64(0)
 	if ls == nil {
 		ls = listener.Default
 	}
 	s = &Scheduler{
-		opt:                 opt,
-		cs:                  make(map[string]*queue.TaskQueue),
-		db:                  db,
-		lg:                  lg,
-		ls:                  ls,
-		closeC:              make(chan struct{}),
-		cachedActiveTenants: sync.Map{},
-		cachedCount:         &cachedCount,
+		opt:    opt,
+		qs:     make(map[string]*queue.TaskQueue),
+		db:     db,
+		lg:     lg,
+		ls:     ls,
+		closeC: make(chan struct{}),
+		st:     sync.Map{},
+		stc:    &stc,
 	}
 	s.srv = NewServer(db, s, opt.ServerConfig, lg, ls)
 	s.em, err = NewEventManager(opt.Snapshot, s.SchedulerId(), lg)
@@ -79,6 +80,7 @@ func New(opt *Options, db types.DB, lg types.Logger, ls types.Listener) (s *Sche
 	return s, nil
 }
 
+// Start starts the scheduler's API server and schedule loop
 func (s *Scheduler) Start() {
 	defer func() {
 		if r := recover(); r != nil {
@@ -91,13 +93,12 @@ func (s *Scheduler) Start() {
 	if err := s.tran.Start(); err != nil {
 		s.lg.Log(types.LevelFatal, "error", err.Error(), "message", "failed to start transport")
 	}
-	_, _ = s.updateActiveTenantsLocal()
+	_, _ = s.updateActiveTenants()
 
 	// Start background goroutines
 	go s.schedule()
 	go s.checkStaleTasks()
 	go s.srv.Start()
-	go s.startUpdateActiveTenants()
 
 	stopC := make(chan os.Signal)
 	signal.Notify(stopC, os.Interrupt, syscall.SIGTERM /* SIGTERM is expected inside k8s */)
@@ -107,7 +108,7 @@ func (s *Scheduler) Start() {
 		s.lg.Log(types.LevelInfo, "message", "received stop signal")
 		// close scheduler
 		s.closeC <- struct{}{}
-		s.resetSchedulingTask()
+
 		key, err := s.em.Backup()
 		if err != nil {
 			s.lg.Log(types.LevelError, "key", key, "error", err.Error(), "message", "error saving events db snapshot")
@@ -116,17 +117,24 @@ func (s *Scheduler) Start() {
 	}
 }
 
+// SchedulerId returns scheduler's id in the form of <zone>-<name>
+func (s *Scheduler) SchedulerId() string {
+	return strings.ToLower(fmt.Sprintf("%v-%v", s.opt.Zone, s.opt.Name))
+}
+
+// schedule starts the schedule loop
 func (s *Scheduler) schedule() {
 	tick := time.NewTicker(time.Duration(s.opt.ScheduleInterval) * time.Second)
 	for {
 		select {
 		case <-s.closeC:
+			s.reviveQueuedTasks()
 			return
 		case <-tick.C:
-			if _, err := s.updateActiveTenantsLocal(); err != nil {
+			if _, err := s.updateActiveTenants(); err != nil {
 				s.lg.Log(types.LevelError, "error", err.Error(), "message", "failed to update active tenants")
 			}
-			for k, c := range s.cs {
+			for k, c := range s.qs {
 				running, err := s.em.CountRunningTasks(k)
 				if err != nil {
 					s.lg.Log(types.LevelError, "error", err.Error(), "message", "failed to count running tasks")
@@ -153,6 +161,7 @@ func (s *Scheduler) schedule() {
 	}
 }
 
+// onReceiveMessage the transport message handler that is called when a message is received
 func (s *Scheduler) onReceiveMessage(from, to string, msg []byte) ([]byte, error) {
 	if to != s.SchedulerId() {
 		return nil, nil
@@ -168,11 +177,7 @@ func (s *Scheduler) onReceiveMessage(from, to string, msg []byte) ([]byte, error
 	return nil, nil
 }
 
-func (s *Scheduler) addActiveTenant(tid string) {
-	s.cachedActiveTenants.Store(tid, struct{}{})
-	atomic.AddUint64(s.cachedCount, 1)
-}
-
+// handleTaskMessage handles TaskMessage
 func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 	if m == nil {
 		return
@@ -191,7 +196,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 			"detail", ev.Value, "message", "task needs retry")
 		s.ls.OnTaskNeedsRetry(le)
 
-		_, ok := s.cs[ev.TenantId]
+		_, ok := s.qs[ev.TenantId]
 		if !ok {
 			s.lg.Log(types.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId,
 				"message", "received message from a tenant not managed by the scheduler")
@@ -266,6 +271,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 	}
 }
 
+// taskHistory returns known task run history of specified task
 func (s *Scheduler) taskHistory(tenantId, taskId string) (*types.TaskRun, int, bool, error) {
 	var (
 		retried      = 0
@@ -298,7 +304,7 @@ func (s *Scheduler) taskHistory(tenantId, taskId string) (*types.TaskRun, int, b
 	return last, retried, inTransition, nil
 }
 
-// dispatch dispatches user tasks
+// dispatch dispatches tasks
 func (s *Scheduler) dispatch(tasks entity.Tasks) {
 	ctx := context.Background()
 
@@ -376,7 +382,10 @@ func (s *Scheduler) dispatch(tasks entity.Tasks) {
 	}
 }
 
-func (s *Scheduler) updateActiveTenantsLocal() (entity.Tenants, error) {
+// updateActiveTenants updates local active tenants from database, creates TaskQueue accordingly
+func (s *Scheduler) updateActiveTenants() (entity.Tenants, error) {
+	s.activateStagingTenants()
+
 	start := time.Now().AddDate(0, 0, -7)
 	scid := s.SchedulerId()
 	opt := types.FindActiveTenantsOption{
@@ -396,18 +405,19 @@ func (s *Scheduler) updateActiveTenantsLocal() (entity.Tenants, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for i, v := range tenants {
-		if _, ok := s.cs[v.Uid]; !ok {
+		if _, ok := s.qs[v.Uid]; !ok {
 			s.lg.Log(types.LevelInfo, "tenantId", v.Uid, "message", "found new active tenant")
-			s.cs[v.Uid] = queue.NewTaskQueue(s.db, s.lg, tenants[i], s.ls)
+			s.qs[v.Uid] = queue.NewTaskQueue(s.db, s.lg, tenants[i], s.ls)
 		} else {
 			// Update tenant
-			s.cs[v.Uid].Tenant = tenants[i]
+			s.qs[v.Uid].Tenant = tenants[i]
 		}
 		s.em.CreateTenantBucket(v.Uid)
 	}
 	return tenants, nil
 }
 
+// updateTaskStatus updates task status triggered by TaskEvent
 func (s *Scheduler) updateTaskStatus(ev *TaskEvent) error {
 	var status enum.TaskStatus
 	switch ev.EventType {
@@ -435,6 +445,7 @@ func (s *Scheduler) updateTaskStatus(ev *TaskEvent) error {
 	return err
 }
 
+// checkStaleTasks starts stale tasks check loop
 func (s *Scheduler) checkStaleTasks() {
 	var (
 		ev    *TaskEvent
@@ -447,7 +458,7 @@ func (s *Scheduler) checkStaleTasks() {
 	for {
 		select {
 		case <-tick.C:
-			for tenant, _ := range s.cs {
+			for tenant, _ := range s.qs {
 				tasks, err = s.em.Tasks(tenant)
 				if err != nil {
 					s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", tenant, "message", "error finding tasks")
@@ -460,7 +471,7 @@ func (s *Scheduler) checkStaleTasks() {
 						s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", tenant, "message", "error finding the latest event")
 						continue
 					}
-					if !s.IsTaskTimeout(ev) {
+					if !s.isTaskTimeout(ev) {
 						continue
 					}
 
@@ -503,29 +514,36 @@ func (s *Scheduler) checkStaleTasks() {
 	}
 }
 
-func (s *Scheduler) startUpdateActiveTenants() {
-	tick := time.Tick(time.Duration(s.opt.ScheduleInterval) * time.Second)
-	for _ = range tick {
-		if atomic.LoadUint64(s.cachedCount) > 0 {
-			ids := make([]string, 0)
-			s.cachedActiveTenants.Range(func(key, value interface{}) bool {
-				uid := key.(string)
-				ids = append(ids, uid)
-				return true
-			})
-			err := s.db.ActivateTenants(context.Background(), types.ActivateTenantsOption{TenantId: ids, ActiveTime: time.Now()})
-			if err != nil {
-				s.lg.Log(types.LevelError, "error", err.Error(), "message", "failed to activate tenants by tick")
-				continue
-			}
-			s.lg.Log(types.LevelInfo, "tenants", ids, "message", "active tenants sucess")
-			atomic.StoreUint64(s.cachedCount, 0)
-			s.cachedActiveTenants = sync.Map{}
-		}
-	}
+// markActive adds tenant id into staged tenants map
+func (s *Scheduler) markActive(tid string) {
+	s.st.Store(tid, struct{}{})
+	atomic.AddUint64(s.stc, 1)
 }
 
-func (s *Scheduler) IsTaskTimeout(ev *TaskEvent) bool {
+// activateStagingTenants updates staging tenants
+func (s *Scheduler) activateStagingTenants() {
+	if atomic.LoadUint64(s.stc) == 0 {
+		return
+	}
+
+	ids := make([]string, 0)
+	s.st.Range(func(key, val interface{}) bool {
+		ids = append(ids, key.(string))
+		return true
+	})
+	err := s.db.ActivateTenants(context.Background(), types.ActivateTenantsOption{TenantId: ids, ActiveTime: time.Now()})
+	if err != nil {
+		s.lg.Log(types.LevelError, "error", err.Error(), "message", "failed to activate tenants")
+	} else {
+		s.lg.Log(types.LevelDebug, "tenants", ids, "message", "activated tenants")
+	}
+
+	s.st = sync.Map{}
+	atomic.StoreUint64(s.stc, 0)
+}
+
+// isTaskTimeout checks whether the task is timeout
+func (s *Scheduler) isTaskTimeout(ev *TaskEvent) bool {
 	now := time.Now()
 	if now.Before(ev.Timestamp) /* The event timestamp is in the future */ {
 		return false
@@ -552,14 +570,10 @@ func (s *Scheduler) IsTaskTimeout(ev *TaskEvent) bool {
 	}
 }
 
-func (s *Scheduler) SchedulerId() string {
-	return strings.ToLower(fmt.Sprintf("%v-%v", s.opt.Zone, s.opt.Name))
-}
-
-// TODO: ?
-func (s *Scheduler) resetSchedulingTask() {
+// reviveQueuedTasks reset queued tasks' status back to Pending before shutting down
+func (s *Scheduler) reviveQueuedTasks() {
 	ids := make([]string, 0)
-	for _, q := range s.cs {
+	for _, q := range s.qs {
 		tasks, err := q.PopAllTasks()
 		if err != nil {
 			continue
