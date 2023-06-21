@@ -13,6 +13,11 @@ gen:
 		--openapiv2_opt logtostderr=true,allow_merge=true,enums_as_ints=true,openapi_naming_strategy=fqn  --openapiv2_out=docs \
 		 ./proto/*.proto
 
+	mkdir -p pkg/impl/transport/pb && protoc -I=./pkg/impl/transport/ \
+    	--go_opt paths=source_relative --go_out=pkg/impl/transport/pb \
+		--go-grpc_opt paths=source_relative --go-grpc_out=pkg/impl/transport/pb \
+		./pkg/impl/transport/*.proto
+
 test:
 	go clean -testcache && go test -v -cover -failfast ./pkg/**/
 

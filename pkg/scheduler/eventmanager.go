@@ -103,7 +103,6 @@ func NewEventManager(sc config.SnapshotConfig, schedulerId string, lg types.Logg
 		if err = m.loadSnapshot(); err != nil {
 			return nil, fmt.Errorf("error loading snapshot from s3: %w", err)
 		}
-		go m.backgroundBackup()
 	}
 
 	db, err := bbolt.Open(DefaultDBPath, os.ModePerm, BoltDBOption)
@@ -111,6 +110,10 @@ func NewEventManager(sc config.SnapshotConfig, schedulerId string, lg types.Logg
 		return nil, fmt.Errorf("error opening event manager db file (%v): %w", DefaultDBPath, err)
 	}
 	m.db = db
+
+	if sc.Enabled {
+		go m.backgroundBackup()
+	}
 	return m, nil
 }
 

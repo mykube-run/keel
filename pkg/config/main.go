@@ -52,26 +52,15 @@ type WorkerConfig struct {
 }
 
 type TransportConfig struct {
-	Type  string      // Transport type, e.g. kafka
-	Role  string      // Transport role, available values are enum.TransportRole
-	Kafka KafkaConfig // Kafka config
+	Type  string               // Transport type, e.g. kafka
+	Role  string               // Transport role, available values are enum.TransportRole
+	Kafka KafkaTransportConfig // Kafka transport config
+	GRPC  GRPCTransportConfig  // GRPC transport config
 }
 
 type ServerConfig struct {
 	HttpAddress string // HTTP server address
 	GrpcAddress string // GRPC server address
-}
-
-type KafkaConfig struct {
-	Brokers    []string    // Broker addresses
-	Topics     KafkaTopics // Topics
-	GroupId    string      // Consumer group id
-	MessageTTL int         // Message TTL in seconds
-}
-
-type KafkaTopics struct {
-	Tasks    []string // Tasks topics
-	Messages []string // Messages topics
 }
 
 type SnapshotConfig struct {
@@ -84,4 +73,28 @@ type SnapshotConfig struct {
 	AccessKey    string        // S3 access key
 	AccessSecret string        // S3 access secret
 	Secure       bool          // Whether LTS is enabled
+}
+
+type KafkaTransportConfig struct {
+	Brokers    []string    // Broker addresses
+	Topics     KafkaTopics // Topics
+	GroupId    string      // Consumer group id
+	MessageTTL int         // Message TTL in seconds
+}
+
+type KafkaTopics struct {
+	Tasks    []string // Tasks topics
+	Messages []string // Messages topics
+}
+
+type GRPCTransportConfig struct {
+	Port       int
+	Address    string
+	Schedulers []PeerConfig
+}
+
+type PeerConfig struct {
+	Name    string
+	Role    string
+	Address string
 }

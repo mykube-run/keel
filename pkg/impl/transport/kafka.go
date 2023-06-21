@@ -222,7 +222,7 @@ func createTopics(brokers, topics []string) {
 	}
 }
 
-func newConsumerConfig(conf config.KafkaConfig) *kafka.ConfigMap {
+func newConsumerConfig(conf config.KafkaTransportConfig) *kafka.ConfigMap {
 	return &kafka.ConfigMap{
 		"bootstrap.servers":         strings.Join(conf.Brokers, ","),
 		"group.id":                  conf.GroupId,
@@ -246,7 +246,7 @@ func newConsumerConfig(conf config.KafkaConfig) *kafka.ConfigMap {
 	}
 }
 
-func newProducerConfig(conf config.KafkaConfig) *kafka.ConfigMap {
+func newProducerConfig(conf config.KafkaTransportConfig) *kafka.ConfigMap {
 	return &kafka.ConfigMap{
 		"acks":                "all", // All replicas ack
 		"bootstrap.servers":   strings.Join(conf.Brokers, ","),

@@ -48,7 +48,7 @@ func DefaultFromEnv() Config {
 		},
 		Transport: TransportConfig{
 			Type: str("TRANSPORT_TYPE"),
-			Kafka: KafkaConfig{
+			Kafka: KafkaTransportConfig{
 				Brokers: strs("TRANSPORT_KAFKA_BROKERS"),
 				Topics: KafkaTopics{
 					Tasks:    strs("TRANSPORT_KAFKA_TOPICS_TASKS"),

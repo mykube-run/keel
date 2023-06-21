@@ -1,0 +1,30 @@
+syntax = "proto3";
+package pb;
+option go_package = "github.com/mykube-run/keel/pkg/impl/transport/pb";
+
+service TransportService {
+  rpc Send(Request) returns (Response);
+}
+
+message From {
+  string name = 1;
+  string role = 2;
+  string address = 3;
+}
+
+message To {
+  string name = 1;
+  string role = 2;
+  string address = 3;
+}
+
+message Request {
+  From from = 1;
+  To   to = 2;
+  bytes msg = 3;
+  string timestamp = 4;
+}
+
+message Response {
+  bytes msg = 1;
+}
