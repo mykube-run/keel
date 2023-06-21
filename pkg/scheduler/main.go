@@ -533,9 +533,9 @@ func (s *Scheduler) activateStagingTenants() {
 	})
 	err := s.db.ActivateTenants(context.Background(), types.ActivateTenantsOption{TenantId: ids, ActiveTime: time.Now()})
 	if err != nil {
-		s.lg.Log(types.LevelError, "error", err.Error(), "message", "failed to activate tenants")
+		s.lg.Log(types.LevelError, "error", err.Error(), "message", "failed to activate staging tenants")
 	} else {
-		s.lg.Log(types.LevelDebug, "tenants", ids, "message", "activated tenants")
+		s.lg.Log(types.LevelDebug, "tenants", ids, "message", "activated staging tenants")
 	}
 
 	s.st = sync.Map{}
