@@ -84,7 +84,7 @@ func (s *Server) QueryTenantTaskConcurrency(ctx context.Context, req *pb.QueryTe
 	}
 
 	// 2. Get running and concurrency limit from queue or database
-	queue, ok := s.sched.cs[req.GetUid()]
+	queue, ok := s.sched.qs[req.GetUid()]
 	if ok {
 		limit = queue.Tenant.ResourceQuota.Concurrency
 		running, err = s.sched.em.CountRunningTasks(req.GetUid())
@@ -132,7 +132,7 @@ func (s *Server) CreateTask(ctx context.Context, req *pb.CreateTaskRequest) (*pb
 		Status:           enum.TaskStatusPending,
 	}
 	if req.Options.GetCheckResourceQuota() {
-		queue, ok := s.sched.cs[req.TenantId]
+		queue, ok := s.sched.qs[req.TenantId]
 		if ok {
 			limit := queue.Tenant.ResourceQuota.Concurrency
 			running, err := s.sched.em.CountRunningTasks(req.TenantId)
@@ -152,7 +152,9 @@ func (s *Server) CreateTask(ctx context.Context, req *pb.CreateTaskRequest) (*pb
 		s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", req.GetTenantId(), "taskId", req.GetUid(),
 			"message", "failed to create new task")
 		return nil, err
+
 	}
+	s.sched.markActive(t.TenantId)
 	resp := &pb.Response{
 		Code: pb.Code_Ok,
 	}
@@ -263,7 +265,6 @@ func (s *Server) Start() {
 	if err != nil {
 		s.lg.Log(types.LevelFatal, "message", fmt.Sprintf("failed to listen: %v", err))
 	}
-
 	// Create a gRPC server object
 	srv := grpc.NewServer()
 	// Attach the Greeter service to the server
