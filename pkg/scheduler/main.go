@@ -219,6 +219,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 		}
 	case enum.ReportTaskStatus:
 		// Do Nothing
+		// TODO: Update task progress
 		return
 	case enum.StartTransition:
 		s.lg.Log(types.LevelWarn, "tenantId", ev.TenantId, "taskId", ev.TaskId, "workerId", ev.WorkerId,

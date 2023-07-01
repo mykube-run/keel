@@ -352,8 +352,7 @@
         },
         "config": {
           "type": "string",
-          "format": "byte",
-          "default": "\"{}\"",
+          "default": "{}",
           "description": "Task configuration in JSON",
           "title": "Task config"
         },

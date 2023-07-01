@@ -92,7 +92,7 @@ func Test_OrdinaryTaskHandler(t *testing.T) {
 			TenantId:         tenantId,
 			Uid:              taskId + "-ordinary",
 			Handler:          "ordinary",
-			Config:           []byte(`{"key": "value"}`),
+			Config:           `{"key": "value"}`,
 			ScheduleStrategy: "",
 			Priority:         0,
 		}
