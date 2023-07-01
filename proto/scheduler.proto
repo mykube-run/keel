@@ -204,9 +204,9 @@ message CreateTaskRequest {
   }];
 
   // Task config
-  bytes config = 6 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+  string config = 6 [(google.api.field_behavior) = REQUIRED, (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "Task configuration in JSON",
-    default: "\"{}\""
+    default: "{}"
   }];
 
   // Task schedule strategy

@@ -37,7 +37,9 @@ CREATE TABLE IF NOT EXISTS task
     status            VARCHAR(20)  NOT NULL COMMENT 'Task status, possible values are: Pending, Scheduling, Dispatched, Running, NeedsRetry, InTransition, Success, Failed, Canceled',
     created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'UTC time the task was created at',
     updated_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'UTC time the task was updated at',
-    INDEX idx_handler (handler)
+    INDEX idx_handler (handler),
+    INDEX idx_created_at (created_at),
+    INDEX idx_tenant_id_created_at (tenant_id, created_at)
 ) ENGINE = InnoDB COMMENT 'Tasks';
 
 CREATE TABLE IF NOT EXISTS taskrun
