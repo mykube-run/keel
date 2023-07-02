@@ -336,13 +336,9 @@ func (s *Scheduler) dispatch(tasks entity.Tasks) {
 			// Type:        enum.TaskTypeUserTask,
 		}
 		active = append(active, task.TenantId)
+		v.Config = task.Config
 
-		cfg, err := json.Marshal(task.Config)
-		if err != nil {
-			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", task.TenantId, "taskId", task.Uid, "message", "failed to marshal task config")
-			continue
-		}
-		v.Config = cfg
+		var err error
 		v.LastRun, v.RestartTimes, v.InTransition, err = s.taskHistory(task.TenantId, task.Uid)
 		if err != nil {
 			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", task.TenantId, "taskId", task.Uid, "message", "failed to lookup task history")
