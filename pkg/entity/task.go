@@ -22,7 +22,7 @@ type Task struct {
 	Uid              string          `json:"uid" bson:"uid"`
 	TenantId         string          `json:"tenantId" bson:"tenantId"`
 	Handler          string          `json:"handler" bson:"handler"`
-	Config           interface{}     `json:"config" bson:"config"`
+	Config           string          `json:"config" bson:"config"`
 	ScheduleStrategy string          `json:"scheduleStrategy" bson:"scheduleStrategy"`
 	Priority         int32           `json:"priority" bson:"priority"`
 	Progress         int32           `json:"progress" bson:"progress"`

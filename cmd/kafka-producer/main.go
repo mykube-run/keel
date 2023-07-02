@@ -16,7 +16,7 @@ var task = types.Task{
 	TenantId:     "1",
 	Uid:          "test-task-1",
 	SchedulerId:  "scheduler-1",
-	Config:       []byte(`{"key": "value"}`),
+	Config:       `{"key": "value"}`,
 	RestartTimes: 0,
 	LastRun:      nil,
 }
