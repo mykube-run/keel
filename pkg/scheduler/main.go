@@ -4,6 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"os/signal"
+	"strings"
+	"sync"
+	"syscall"
+	"time"
+
 	"github.com/mykube-run/keel/pkg/config"
 	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
@@ -12,12 +19,6 @@ import (
 	"github.com/mykube-run/keel/pkg/logger"
 	"github.com/mykube-run/keel/pkg/queue"
 	"github.com/mykube-run/keel/pkg/types"
-	"os"
-	"os/signal"
-	"strings"
-	"sync"
-	"syscall"
-	"time"
 )
 
 type Options struct {
@@ -428,7 +429,7 @@ func (s *Scheduler) checkStaleTasks() {
 						_ = s.lg.Log(logger.LevelDebug, "err", err.Error(), "message", "get deathTask state error")
 						continue
 					}
-					if taskStatus != enum.TaskStatusSuccess && taskStatus != enum.TaskStatusFailed {
+					if taskStatus != enum.TaskStatusSuccess && taskStatus != enum.TaskStatusFailed && taskStatus != enum.TaskStatusCanceled {
 						if err = s.db.UpdateTaskStatus(context.Background(), types.UpdateTaskStatusOption{
 							TaskType: ev.TaskType,
 							Uids:     []string{ev.TaskId},
