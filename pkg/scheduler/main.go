@@ -484,7 +484,9 @@ func (s *Scheduler) RecoverSchedulingTask() {
 			continue
 		}
 		for _, task := range tasks {
-			allSchedulingTask = append(allSchedulingTask, task.Uid)
+			if task.Status != enum.TaskStatusCanceled {
+				allSchedulingTask = append(allSchedulingTask, task.Uid)
+			}
 		}
 	}
 	err := s.db.UpdateTaskStatus(context.Background(), types.UpdateTaskStatusOption{
