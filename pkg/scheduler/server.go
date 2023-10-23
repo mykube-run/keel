@@ -10,6 +10,7 @@ import (
 	"github.com/mykube-run/keel/pkg/enum"
 	"github.com/mykube-run/keel/pkg/pb"
 	"github.com/mykube-run/keel/pkg/types"
+	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -221,25 +222,32 @@ func (s *Server) StopTask(ctx context.Context, req *pb.StopTaskRequest) (*pb.Res
 		TenantId: req.GetTenantId(),
 		Uid:      req.GetUid(),
 	}
+	resp := &pb.Response{
+		Code:    pb.Code_Ok,
+		Message: "success",
+	}
 	ts, err := s.db.GetTaskStatus(ctx, opt)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		resp.Code = pb.Code_TaskNotExist
+		resp.Message = "task is not exist"
+		return resp, nil
+	}
 	if err != nil {
 		s.lg.Log(types.LevelError, "taskId", req.GetUid(), "taskType", req.GetType(), "message", "failed to get task status while stopping task")
 		return nil, err
 	}
-	if ts == enum.TaskStatusSuccess || ts == enum.TaskStatusFailed {
-		resp := &pb.Response{
-			Code:    pb.Code_TaskFinished,
-			Message: fmt.Sprintf("task has been finished (status: %v)", ts),
-		}
-		return resp, nil
+	switch ts {
+	case enum.TaskStatusPending:
+		err = s.db.UpdateTaskStatus(ctx, types.UpdateTaskStatusOption{
+			TenantId: req.TenantId,
+			Uids:     []string{req.GetUid()},
+			Status:   enum.TaskStatusCanceled,
+		})
+	default:
+		resp.Code = pb.Code_TaskUnableToTerminate
+		resp.Message = "task is not pending, can't Terminate"
 	}
-
-	// TODO: stop task
-
-	resp := &pb.Response{
-		Code: pb.Code_Ok,
-	}
-	return resp, nil
+	return resp, err
 }
 
 func (s *Server) QueryTaskStatus(ctx context.Context, req *pb.QueryTaskStatusRequest) (*pb.QueryTaskStatusResponse, error) {
