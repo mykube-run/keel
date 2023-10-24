@@ -94,10 +94,11 @@ func (r *Redis) GetTask(ctx context.Context, opt types.GetTaskOption) (*entity.T
 		}
 		return nil, err
 	}
-	t := new(entity.Task)
 	if len(str) == 0 {
 		return nil, enum.ErrTaskNotFound
 	}
+
+	t := new(entity.Task)
 	if err = json.Unmarshal([]byte(str), t); err != nil {
 		return nil, err
 	}

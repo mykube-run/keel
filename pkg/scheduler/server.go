@@ -217,24 +217,26 @@ func (s *Server) RestartTask(ctx context.Context, req *pb.RestartTaskRequest) (*
 func (s *Server) StopTask(ctx context.Context, req *pb.StopTaskRequest) (*pb.Response, error) {
 	s.lg.Log(types.LevelInfo, "taskId", req.GetUid(), "taskType", req.GetType(), "message", "stopping task")
 
-	opt := types.GetTaskStatusOption{
-		TenantId: req.GetTenantId(),
-		Uid:      req.GetUid(),
-	}
 	resp := &pb.Response{
 		Code:    pb.Code_Ok,
 		Message: "success",
 	}
+
+	opt := types.GetTaskStatusOption{
+		TenantId: req.GetTenantId(),
+		Uid:      req.GetUid(),
+	}
 	ts, err := s.db.GetTaskStatus(ctx, opt)
 	if errors.Is(err, enum.ErrTaskNotFound) {
 		resp.Code = pb.Code_TaskNotExist
-		resp.Message = "task is not exist"
+		resp.Message = "task does not exist"
 		return resp, nil
 	}
 	if err != nil {
 		s.lg.Log(types.LevelError, "taskId", req.GetUid(), "taskType", req.GetType(), "message", "failed to get task status while stopping task")
 		return nil, err
 	}
+
 	switch ts {
 	case enum.TaskStatusPending, enum.TaskStatusScheduling:
 		err = s.db.UpdateTaskStatus(ctx, types.UpdateTaskStatusOption{
@@ -244,7 +246,7 @@ func (s *Server) StopTask(ctx context.Context, req *pb.StopTaskRequest) (*pb.Res
 		})
 	default:
 		resp.Code = pb.Code_TaskUnableToTerminate
-		resp.Message = "task is not pending, can't Terminate"
+		resp.Message = "task is not pending nor scheduling, cannot be stopped"
 	}
 	return resp, err
 }
@@ -256,7 +258,7 @@ func (s *Server) QueryTaskStatus(ctx context.Context, req *pb.QueryTaskStatusReq
 	}
 	ts, err := s.db.GetTaskStatus(ctx, opt)
 	if err != nil {
-		s.lg.Log(types.LevelError, "error", err.Error(), "taskId", req.GetUid(), "message", "query task error")
+		s.lg.Log(types.LevelError, "error", err.Error(), "taskId", req.GetUid(), "message", "error getting task status")
 		return nil, err
 	}
 	resp := &pb.QueryTaskStatusResponse{
