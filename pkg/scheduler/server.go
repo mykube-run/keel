@@ -237,7 +237,7 @@ func (s *Server) StopTask(ctx context.Context, req *pb.StopTaskRequest) (*pb.Res
 		return nil, err
 	}
 	switch ts {
-	case enum.TaskStatusPending:
+	case enum.TaskStatusPending, enum.TaskStatusScheduling:
 		err = s.db.UpdateTaskStatus(ctx, types.UpdateTaskStatusOption{
 			TenantId: req.TenantId,
 			Uids:     []string{req.GetUid()},
