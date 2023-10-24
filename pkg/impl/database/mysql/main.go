@@ -3,6 +3,7 @@ package mysql
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/mykube-run/keel/pkg/entity"
@@ -113,6 +114,9 @@ func (m *MySQL) GetTask(ctx context.Context, opt types.GetTaskOption) (*entity.T
 	task := new(entity.Task)
 	err := row.Scan(task.Fields()...)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, enum.ErrTaskNotFound
+		}
 		return nil, err
 	}
 	return task, nil
@@ -122,6 +126,9 @@ func (m *MySQL) GetTaskStatus(ctx context.Context, opt types.GetTaskStatusOption
 	row := m.db.QueryRowContext(ctx, StmtGetTaskStatus, opt.Uid)
 	var s enum.TaskStatus
 	err := row.Scan(&s)
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return "", enum.ErrTaskNotFound
+	}
 	return s, err
 }
 

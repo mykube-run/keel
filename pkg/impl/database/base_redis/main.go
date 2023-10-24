@@ -3,6 +3,7 @@ package base_redis
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
@@ -88,9 +89,15 @@ func (r *Redis) CountTenantPendingTasks(ctx context.Context, opt types.CountTena
 func (r *Redis) GetTask(ctx context.Context, opt types.GetTaskOption) (*entity.Task, error) {
 	str, err := getTask.Run(ctx, r.s, []string{opt.TenantId}, opt.Uid).Text()
 	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return nil, enum.ErrTaskNotFound
+		}
 		return nil, err
 	}
 	t := new(entity.Task)
+	if len(str) == 0 {
+		return nil, enum.ErrTaskNotFound
+	}
 	if err = json.Unmarshal([]byte(str), t); err != nil {
 		return nil, err
 	}
@@ -99,6 +106,9 @@ func (r *Redis) GetTask(ctx context.Context, opt types.GetTaskOption) (*entity.T
 
 func (r *Redis) GetTaskStatus(ctx context.Context, opt types.GetTaskStatusOption) (enum.TaskStatus, error) {
 	str, err := getTaskStatus.Run(ctx, r.s, []string{opt.TenantId}, opt.Uid).Text()
+	if errors.Is(err, redis.Nil) || len(str) == 0 {
+		return enum.TaskStatus(str), enum.ErrTaskNotFound
+	}
 	return enum.TaskStatus(str), err
 }
 
@@ -121,6 +131,9 @@ func (r *Redis) FindPendingTasks(ctx context.Context, opt types.FindPendingTasks
 	}
 	strs, err := findPendingTasks.Run(ctx, r.s, []string{*opt.TenantId}, 500).StringSlice()
 	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return nil, enum.ErrTaskNotFound
+		}
 		return nil, err
 	}
 	tasks := make(entity.Tasks, 0)

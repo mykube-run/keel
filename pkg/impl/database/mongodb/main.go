@@ -2,6 +2,7 @@ package mongodb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
@@ -130,6 +131,9 @@ func (m *MongoDB) GetTask(ctx context.Context, opt types.GetTaskOption) (*entity
 	q := bson.M{"uid": opt.Uid}
 	res := m.task.FindOne(ctx, q)
 	if res.Err() != nil {
+		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
+			return nil, enum.ErrTaskNotFound
+		}
 		return nil, res.Err()
 	}
 	if err := res.Decode(task); err != nil {
@@ -142,6 +146,9 @@ func (m *MongoDB) GetTaskStatus(ctx context.Context, opt types.GetTaskStatusOpti
 	q := bson.M{"uid": opt.Uid}
 	res := m.task.FindOne(ctx, q)
 	if res.Err() != nil {
+		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
+			return "", enum.ErrTaskNotFound
+		}
 		return "", res.Err()
 	}
 	t := new(entity.Task)
