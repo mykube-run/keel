@@ -10,7 +10,6 @@ import (
 	"github.com/mykube-run/keel/pkg/enum"
 	"github.com/mykube-run/keel/pkg/pb"
 	"github.com/mykube-run/keel/pkg/types"
-	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -227,7 +226,7 @@ func (s *Server) StopTask(ctx context.Context, req *pb.StopTaskRequest) (*pb.Res
 		Message: "success",
 	}
 	ts, err := s.db.GetTaskStatus(ctx, opt)
-	if errors.Is(err, mongo.ErrNoDocuments) {
+	if errors.Is(err, enum.ErrTaskNotFound) {
 		resp.Code = pb.Code_TaskNotExist
 		resp.Message = "task is not exist"
 		return resp, nil
