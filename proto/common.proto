@@ -15,6 +15,7 @@ enum Code {
   TaskFinished = 7;
   TaskNotRunning = 8;
   TaskUnableToTerminate = 9;
+  TaskNotFound = 10;
 }
 
 message Response {

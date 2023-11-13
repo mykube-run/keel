@@ -56,7 +56,7 @@ func New(dsn string) (*MongoDB, error) {
 
 func (m *MongoDB) CreateTenant(ctx context.Context, t entity.Tenant) error {
 	_, err := m.getTenant(ctx, types.GetTenantOption{TenantId: t.Uid})
-	if err != mongo.ErrNoDocuments {
+	if !errors.Is(err, mongo.ErrNoDocuments) {
 		return enum.ErrTenantAlreadyExists
 	}
 
@@ -143,7 +143,7 @@ func (m *MongoDB) GetTask(ctx context.Context, opt types.GetTaskOption) (*entity
 }
 
 func (m *MongoDB) GetTaskStatus(ctx context.Context, opt types.GetTaskStatusOption) (enum.TaskStatus, error) {
-	q := bson.M{"uid": opt.Uid}
+	q := bson.M{"uid": opt.Uid, "tenantId": opt.TenantId}
 	res := m.task.FindOne(ctx, q)
 	if res.Err() != nil {
 		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
