@@ -262,7 +262,7 @@ func (s *Server) QueryTaskStatus(ctx context.Context, req *pb.QueryTaskStatusReq
 	ts, err := s.db.GetTaskStatus(ctx, opt)
 	if err != nil {
 		if errors.Is(err, enum.ErrTaskNotFound) {
-			resp.Code = pb.Code_TaskNotFound
+			resp.Code = pb.Code_TaskNotExist
 			return resp, nil
 		}
 		s.lg.Log(types.LevelError, "error", err.Error(), "taskId", req.GetUid(), "message", "error getting task status")
