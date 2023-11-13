@@ -5,6 +5,8 @@ prepare:
         google.golang.org/protobuf/cmd/protoc-gen-go \
         google.golang.org/grpc/cmd/protoc-gen-go-grpc
 
+.PHONY: gen
+# api
 gen:
 	mkdir -p pkg/pb && protoc -I=./proto \
 		--go_opt paths=source_relative --go_out=pkg/pb \

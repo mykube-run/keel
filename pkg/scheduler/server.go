@@ -246,25 +246,30 @@ func (s *Server) StopTask(ctx context.Context, req *pb.StopTaskRequest) (*pb.Res
 		})
 	default:
 		resp.Code = pb.Code_TaskUnableToTerminate
-		resp.Message = "task is not pending nor scheduling, cannot be stopped"
+		resp.Message = "task is not pending or scheduling, cannot be stopped"
 	}
 	return resp, err
 }
 
 func (s *Server) QueryTaskStatus(ctx context.Context, req *pb.QueryTaskStatusRequest) (*pb.QueryTaskStatusResponse, error) {
+	resp := &pb.QueryTaskStatusResponse{
+		Code: pb.Code_Ok,
+	}
 	opt := types.GetTaskStatusOption{
 		TenantId: req.GetTenantId(),
 		Uid:      req.GetUid(),
 	}
 	ts, err := s.db.GetTaskStatus(ctx, opt)
 	if err != nil {
+		if errors.Is(err, enum.ErrTaskNotFound) {
+			resp.Code = pb.Code_TaskNotExist
+			return resp, nil
+		}
 		s.lg.Log(types.LevelError, "error", err.Error(), "taskId", req.GetUid(), "message", "error getting task status")
 		return nil, err
 	}
-	resp := &pb.QueryTaskStatusResponse{
-		Code:   pb.Code_Ok,
-		Status: string(ts),
-	}
+	resp.Status = string(ts)
+
 	return resp, nil
 }
 
