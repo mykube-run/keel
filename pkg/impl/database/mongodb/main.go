@@ -276,6 +276,20 @@ func (m *MongoDB) createIndices() {
 			log.Err(err).Msg("error creating index")
 		}
 	}
+
+	// create index for task.tenantId
+	{
+		keys := primitive.D{}
+		keys = append(keys, primitive.E{Key: "tenantId", Value: 1})
+		idx := mongo.IndexModel{
+			Keys:    keys,
+			Options: new(options.IndexOptions),
+		}
+		_, err := m.task.Indexes().CreateOne(ctx, idx)
+		if err != nil {
+			log.Err(err).Msg("error creating index")
+		}
+	}
 }
 
 func (m *MongoDB) getTenant(ctx context.Context, opt types.GetTenantOption) (t *entity.Tenant, err error) {
