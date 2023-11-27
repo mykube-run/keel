@@ -260,6 +260,20 @@ func (m *MongoDB) createIndices() {
 			log.Err(err).Msg("error creating index")
 		}
 	}
+	// tenantId
+	// tenantId_1
+	{
+		keys := primitive.D{}
+		keys = append(keys, primitive.E{Key: "tenantId", Value: 1})
+		idx := mongo.IndexModel{
+			Keys:    keys,
+			Options: new(options.IndexOptions),
+		}
+		_, err := m.task.Indexes().CreateOne(ctx, idx)
+		if err != nil {
+			log.Err(err).Msg("error creating index")
+		}
+	}
 
 	// resourcequota indices
 	// tenantId_1
