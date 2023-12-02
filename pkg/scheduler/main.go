@@ -137,11 +137,11 @@ func (s *Scheduler) schedule() {
 			for k, c := range s.qs {
 				running, err := s.em.CountRunningTasks(k)
 				if err != nil {
-					s.lg.Log(types.LevelError, "error", err.Error(), "message", "failed to count running tasks")
+					s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", k, "message", "failed to count running tasks")
 					continue
 				}
 				if !c.Tenant.ResourceQuota.ConcurrencyEnabled() {
-					s.lg.Log(types.LevelWarn, "message", "tenant resource quota concurrency was disabled")
+					s.lg.Log(types.LevelWarn, "tenantId", k, "message", "tenant resource quota concurrency was disabled")
 					continue
 				}
 				s.lg.Log(types.LevelTrace, "tenantId", k, "quota", c.Tenant.ResourceQuota.Concurrency,
@@ -152,7 +152,7 @@ func (s *Scheduler) schedule() {
 				}
 				tasks, _, err := c.PopTasks(n)
 				if err != nil {
-					s.lg.Log(types.LevelError, "error", err.Error(), "message", "failed to pop user tasks from local task queue")
+					s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", k, "message", "failed to pop user tasks from local task queue")
 					continue
 				}
 				s.dispatch(tasks)
@@ -311,8 +311,8 @@ func (s *Scheduler) dispatch(tasks entity.Tasks) {
 
 	active := make([]string, 0)
 	if len(tasks) > 0 {
-		s.lg.Log(types.LevelInfo, "schedulerId", s.SchedulerId(), "taskIds", tasks.TaskIds(),
-			"message", "dispatching tasks")
+		s.lg.Log(types.LevelInfo, "schedulerId", s.SchedulerId(), "tenantId", tasks[0].TenantId,
+			"taskIds", tasks.TaskIds(), "message", "dispatching tasks")
 	}
 	for _, task := range tasks {
 		// 1. Check task status to avoid repeat dispatching Success/TaskRunStatusFailed/Canceled tasks

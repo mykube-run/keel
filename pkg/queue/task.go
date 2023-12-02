@@ -78,11 +78,11 @@ func (c *TaskQueue) EnqueueTask(task *entity.Task, delta int) {
 func (c *TaskQueue) FetchTasks() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
 	if err := c.populateTasks(ctx); err != nil {
-		c.lg.Log(types.LevelError, "error", err.Error(), "message", "failed to fetch tasks from database")
+		c.lg.Log(types.LevelError, "error", err.Error(), "tenantId", c.Tenant.Uid, "message", "failed to fetch tasks from database")
 	}
 }
 
@@ -101,6 +101,7 @@ func (c *TaskQueue) populateTasks(ctx context.Context) error {
 	}
 	tasks, err := c.db.FindPendingTasks(ctx, opt)
 	if err != nil {
+		c.lg.Log(types.LevelTrace, "tenantId", c.Tenant.Uid, "tasks", len(tasks), "message", "fetched tasks from database")
 		return err
 	}
 	if err = c.db.UpdateTaskStatus(ctx, types.UpdateTaskStatusOption{
@@ -108,6 +109,7 @@ func (c *TaskQueue) populateTasks(ctx context.Context) error {
 		Uids:     tasks.TaskIds(),
 		Status:   enum.TaskStatusScheduling,
 	}); err != nil {
+		c.lg.Log(types.LevelTrace, "error", err.Error(), "tenantId", c.Tenant.Uid, "message", "failed to update task status to Scheduling")
 		return err
 	}
 
@@ -125,7 +127,7 @@ func (c *TaskQueue) populateTasks(ctx context.Context) error {
 		n += 1
 	}
 	if n > 0 {
-		c.lg.Log(types.LevelTrace, "tasks", n, "message", "populating task queue from database")
+		c.lg.Log(types.LevelTrace, "tenantId", c.Tenant.Uid, "tasks", n, "message", "populating task queue from database")
 	}
 	return nil
 }
