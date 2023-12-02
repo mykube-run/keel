@@ -403,7 +403,7 @@ func (m *EventManager) snapshotKey(v int) string {
 }
 
 func (m *EventManager) backgroundBackup() {
-	tick := time.NewTicker(m.sc.Interval)
+	tick := time.NewTicker(m.sc.Interval * time.Second)
 	for {
 		select {
 		case <-tick.C:
