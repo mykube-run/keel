@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+var PendingTaskExpiredTime = time.Hour * 24 * 7
+
 type DB interface {
 	CreateTenant(ctx context.Context, t entity.Tenant) error
 	ActivateTenants(ctx context.Context, opt ActivateTenantsOption) error

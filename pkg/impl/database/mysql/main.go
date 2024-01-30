@@ -157,6 +157,8 @@ func (m *MySQL) FindPendingTasks(ctx context.Context, opt types.FindPendingTasks
 		q = append(q, "uid >= ?")
 		args = append(args, *opt.MinUid)
 	}
+	q = append(q, "created_at >= ?")
+	args = append(args, time.Now().Add(-types.PendingTaskExpiredTime).Format(enum.ISOFormat))
 	if len(q) > 0 {
 		where = "WHERE " + strings.Join(q, " AND ")
 	}
