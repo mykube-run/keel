@@ -175,9 +175,10 @@ func (m *MongoDB) FindPendingTasks(ctx context.Context, opt types.FindPendingTas
 	if opt.MinUid != nil {
 		q["uid"] = bson.M{"$gte": *opt.MinUid}
 	}
+	q["createdAt"] = bson.M{"$gte": time.Now().Add(-types.PendingTaskExpiredTime)}
 
 	tasks := make(entity.Tasks, 0)
-	limit := int64(500)
+	limit := int64(300)
 	cur, err := m.task.Find(ctx, q, &options.FindOptions{Sort: bson.M{"createdAt": 1}, Limit: &limit})
 	if err != nil {
 		return nil, err
