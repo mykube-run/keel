@@ -5,7 +5,7 @@ option go_package = "github.com/mykube-run/keel/pkg/pb";
 import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
-import "common.proto";
+import "keel_common.proto";
 
 option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
   info: {
