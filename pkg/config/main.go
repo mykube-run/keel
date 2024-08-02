@@ -63,10 +63,13 @@ type ServerConfig struct {
 }
 
 type KafkaConfig struct {
-	Brokers    []string    // Broker addresses
-	Topics     KafkaTopics // Topics
-	GroupId    string      // Consumer group id
-	MessageTTL int         // Message TTL in seconds
+	Brokers      []string    // Broker addresses
+	Topics       KafkaTopics // Topics
+	GroupId      string      // Consumer group id
+	MessageTTL   int         // Message TTL in seconds
+	EnableSasl   bool        // Enable SASL
+	SaslUsername string      // SASL username
+	SaslPassword string      // SASL password
 }
 
 type KafkaTopics struct {
