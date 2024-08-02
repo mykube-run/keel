@@ -47,7 +47,7 @@ func NewKafkaTransport(cfg *config.TransportConfig) (*KafkaTransport, error) {
 	if cfg.Role == string(enum.TransportRoleWorker) {
 		topics = cfg.Kafka.Topics.Tasks
 	}
-	createTopics(cfg.Kafka.Brokers, topics)
+	createTopics(cfg.Kafka, topics)
 
 	// Create producer and consumer
 	p, err := kafka.NewProducer(newProducerConfig(cfg.Kafka))
@@ -199,9 +199,16 @@ func (t *KafkaTransport) selectTopic() string {
 }
 
 // createTopics creates specified topics silently
-func createTopics(brokers, topics []string) {
+func createTopics(conf config.KafkaConfig, topics []string) {
+	brokers := conf.Brokers
 	cfg := &kafka.ConfigMap{
 		"bootstrap.servers": strings.Join(brokers, ","),
+	}
+	if conf.EnableSasl {
+		_ = cfg.SetKey("security.protocol", "SASL_PLAINTEXT")
+		_ = cfg.SetKey("sasl.mechanisms", "PLAIN")
+		_ = cfg.SetKey("sasl.username", conf.SaslUsername)
+		_ = cfg.SetKey("sasl.password", conf.SaslPassword)
 	}
 	client, err := kafka.NewAdminClient(cfg)
 	if err != nil {
@@ -223,7 +230,7 @@ func createTopics(brokers, topics []string) {
 }
 
 func newConsumerConfig(conf config.KafkaConfig) *kafka.ConfigMap {
-	return &kafka.ConfigMap{
+	kafkaConfig := &kafka.ConfigMap{
 		"bootstrap.servers":         strings.Join(conf.Brokers, ","),
 		"group.id":                  conf.GroupId,
 		"client.id":                 uuid.NewV4().String(),
@@ -236,7 +243,6 @@ func newConsumerConfig(conf config.KafkaConfig) *kafka.ConfigMap {
 		"message.max.bytes":         500 * enum.KB,      // 100KB
 		"fetch.max.bytes":           500 * enum.KB,      // 100KB
 		"max.partition.fetch.bytes": 500 * enum.KB,      // 100KB
-		"security.protocol":         "PLAINTEXT",
 
 		// "group.instance.id": ""
 		// TODO: Enable static group membership.
@@ -244,19 +250,33 @@ func newConsumerConfig(conf config.KafkaConfig) *kafka.ConfigMap {
 		// This should be used in combination with a larger session.timeout.ms to avoid group rebalances caused by transient unavailability (e.g. process restarts).
 		// Requires broker version >= 2.3.0.
 	}
+	if conf.EnableSasl {
+		_ = kafkaConfig.SetKey("security.protocol", "SASL_PLAINTEXT")
+		_ = kafkaConfig.SetKey("sasl.mechanisms", "PLAIN")
+		_ = kafkaConfig.SetKey("sasl.username", conf.SaslUsername)
+		_ = kafkaConfig.SetKey("sasl.password", conf.SaslPassword)
+	}
+	return kafkaConfig
 }
 
 func newProducerConfig(conf config.KafkaConfig) *kafka.ConfigMap {
-	return &kafka.ConfigMap{
+	kafkaConfig := &kafka.ConfigMap{
 		"acks":                "all", // All replicas ack
 		"bootstrap.servers":   strings.Join(conf.Brokers, ","),
 		"client.id":           uuid.NewV4().String(),
 		"api.version.request": "true",
-		"security.protocol":   "PLAINTEXT",
 		"retries":             3,
 		"retry.backoff.ms":    100,
 		"linger.ms":           200,
 	}
+
+	if conf.EnableSasl {
+		_ = kafkaConfig.SetKey("security.protocol", "SASL_PLAINTEXT")
+		_ = kafkaConfig.SetKey("sasl.mechanisms", "PLAIN")
+		_ = kafkaConfig.SetKey("sasl.username", conf.SaslUsername)
+		_ = kafkaConfig.SetKey("sasl.password", conf.SaslPassword)
+	}
+	return kafkaConfig
 }
 
 func topicSpecs(topics []string) []kafka.TopicSpecification {
