@@ -204,11 +204,11 @@ func createTopics(conf config.KafkaConfig, topics []string) {
 	cfg := &kafka.ConfigMap{
 		"bootstrap.servers": strings.Join(brokers, ","),
 	}
-	if conf.EnableSasl {
+	if conf.EnableSASL {
 		_ = cfg.SetKey("security.protocol", "SASL_PLAINTEXT")
 		_ = cfg.SetKey("sasl.mechanisms", "PLAIN")
-		_ = cfg.SetKey("sasl.username", conf.SaslUsername)
-		_ = cfg.SetKey("sasl.password", conf.SaslPassword)
+		_ = cfg.SetKey("sasl.username", conf.SASLUsername)
+		_ = cfg.SetKey("sasl.password", conf.SASLPassword)
 	}
 	client, err := kafka.NewAdminClient(cfg)
 	if err != nil {
@@ -250,11 +250,11 @@ func newConsumerConfig(conf config.KafkaConfig) *kafka.ConfigMap {
 		// This should be used in combination with a larger session.timeout.ms to avoid group rebalances caused by transient unavailability (e.g. process restarts).
 		// Requires broker version >= 2.3.0.
 	}
-	if conf.EnableSasl {
+	if conf.EnableSASL {
 		_ = kafkaConfig.SetKey("security.protocol", "SASL_PLAINTEXT")
 		_ = kafkaConfig.SetKey("sasl.mechanisms", "PLAIN")
-		_ = kafkaConfig.SetKey("sasl.username", conf.SaslUsername)
-		_ = kafkaConfig.SetKey("sasl.password", conf.SaslPassword)
+		_ = kafkaConfig.SetKey("sasl.username", conf.SASLUsername)
+		_ = kafkaConfig.SetKey("sasl.password", conf.SASLPassword)
 	}
 	return kafkaConfig
 }
@@ -270,11 +270,11 @@ func newProducerConfig(conf config.KafkaConfig) *kafka.ConfigMap {
 		"linger.ms":           200,
 	}
 
-	if conf.EnableSasl {
+	if conf.EnableSASL {
 		_ = kafkaConfig.SetKey("security.protocol", "SASL_PLAINTEXT")
 		_ = kafkaConfig.SetKey("sasl.mechanisms", "PLAIN")
-		_ = kafkaConfig.SetKey("sasl.username", conf.SaslUsername)
-		_ = kafkaConfig.SetKey("sasl.password", conf.SaslPassword)
+		_ = kafkaConfig.SetKey("sasl.username", conf.SASLUsername)
+		_ = kafkaConfig.SetKey("sasl.password", conf.SASLPassword)
 	}
 	return kafkaConfig
 }

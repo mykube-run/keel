@@ -67,9 +67,9 @@ type KafkaConfig struct {
 	Topics       KafkaTopics // Topics
 	GroupId      string      // Consumer group id
 	MessageTTL   int         // Message TTL in seconds
-	EnableSasl   bool        // Enable SASL
-	SaslUsername string      // SASL username
-	SaslPassword string      // SASL password
+	EnableSASL   bool        // Enable SASL
+	SASLUsername string      // SASL username
+	SASLPassword string      // SASL password
 }
 
 type KafkaTopics struct {

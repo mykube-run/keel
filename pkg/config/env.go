@@ -56,9 +56,9 @@ func DefaultFromEnv() Config {
 				},
 				GroupId:      envstr("TRANSPORT_KAFKA_GROUP_ID"),
 				MessageTTL:   num("TRANSPORT_KAFKA_MESSAGE_TTL"),
-				EnableSasl:   boolean("TRANSPORT_KAFKA_ENABLE_SASL"),
-				SaslUsername: str("TRANSPORT_KAFKA_SASL_USERNAME"),
-				SaslPassword: str("TRANSPORT_KAFKA_SASL_PASSWORD"),
+				EnableSASL:   boolean("TRANSPORT_KAFKA_ENABLE_SASL"),
+				SASLUsername: str("TRANSPORT_KAFKA_SASL_USERNAME"),
+				SASLPassword: str("TRANSPORT_KAFKA_SASL_PASSWORD"),
 			},
 		},
 	}
