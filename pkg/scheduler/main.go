@@ -465,7 +465,8 @@ func (s *Scheduler) checkStaleTasks() {
 				for _, task := range tasks {
 					ev, err = s.em.Latest(tenant, task)
 					if err != nil {
-						s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", tenant, "message", "error finding the latest event")
+						s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", tenant, "taskId", task,
+							"message", "error finding the latest event")
 						continue
 					}
 					if !s.isTaskTimeout(ev) {
