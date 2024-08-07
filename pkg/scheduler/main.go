@@ -218,7 +218,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 				"message", "failed to delete task events")
 		}
 	case enum.ReportTaskStatus:
-		// Do Nothing
+		s.ls.OnTaskRunning(le)
 		// TODO: Update task progress
 		return
 	case enum.StartTransition:
