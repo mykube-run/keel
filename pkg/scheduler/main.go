@@ -533,7 +533,7 @@ func (s *Scheduler) activateStagingTenants() {
 	if err != nil {
 		s.lg.Log(types.LevelError, "error", err.Error(), "message", "failed to activate staging tenants")
 	} else {
-		s.lg.Log(types.LevelDebug, "tenants", ids, "message", "activated staging tenants")
+		s.lg.Log(types.LevelDebug, "tenants", ids, "message", "activated staging tenants (if task is not being scheduled by this scheduler process, check configured tenant partition in database)")
 	}
 
 	s.st = sync.Map{}
