@@ -170,6 +170,8 @@ func (t *KafkaTransport) consume() {
 				}
 			}
 			continue
+		} else {
+			timeoutCount = 0 //  Reset the number of times when message is read normally
 		}
 
 		if int(time.Now().Sub(msg.Timestamp).Seconds()) > t.ttl {
