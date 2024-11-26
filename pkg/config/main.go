@@ -1,8 +1,9 @@
 package config
 
 import (
-	"github.com/rs/zerolog"
 	"time"
+
+	"github.com/rs/zerolog"
 )
 
 type Config struct {
@@ -52,9 +53,10 @@ type WorkerConfig struct {
 }
 
 type TransportConfig struct {
-	Type  string      // Transport type, e.g. kafka
-	Role  string      // Transport role, available values are enum.TransportRole
-	Kafka KafkaConfig // Kafka config
+	Type               string      // Transport type, e.g. kafka
+	Role               string      // Transport role, available values are enum.TransportRole
+	Kafka              KafkaConfig // Kafka config
+	MaxAllowedTimeouts int         // Maximum allowed consecutive timeouts for the transport, e.g., 10. If set to 0, there is no limit (infinite timeouts allowed).
 }
 
 type ServerConfig struct {

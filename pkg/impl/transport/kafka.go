@@ -3,6 +3,12 @@ package transport
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	"os"
+	"strings"
+	"syscall"
+	"time"
+
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/mykube-run/keel/pkg/config"
 	"github.com/mykube-run/keel/pkg/enum"
@@ -10,10 +16,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/satori/uuid"
-	"math/rand"
-	"os"
-	"strings"
-	"time"
 )
 
 var (
@@ -132,9 +134,10 @@ func (t *KafkaTransport) CloseReceive() error {
 
 func (t *KafkaTransport) consume() {
 	var (
-		err error
-		res []byte
-		msg *kafka.Message
+		err          error
+		res          []byte
+		msg          *kafka.Message
+		timeoutCount int // Counter for consecutive timeouts
 	)
 
 	defer func() {
@@ -148,8 +151,23 @@ func (t *KafkaTransport) consume() {
 			return
 		}
 		if msg, err = t.c.ReadMessage(time.Second); err != nil {
-			if !isTimeout(err) {
-				t.lg.Err(err).Msg("error reading message from brokers")
+			if isTimeout(err) {
+				limit := t.cfg.MaxAllowedTimeouts
+				if limit <= 0 {
+					t.lg.Err(err).Msg("error reading message from brokers")
+					continue
+				}
+				timeoutCount++
+				t.lg.Warn().Err(err).Msgf("consumer timeout (%d/%d)", timeoutCount, limit)
+				if timeoutCount >= limit {
+					t.lg.Warn().Msg(fmt.Sprintf("sending termination signal due to %d consecutive timeouts", limit))
+					// Directly send SIGTERM to the system
+					if err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM); err != nil {
+						t.lg.Error().Err(err).Msg("failed to send SIGTERM signal")
+					}
+					return
+
+				}
 			}
 			continue
 		}
