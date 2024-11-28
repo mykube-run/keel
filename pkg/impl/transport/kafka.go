@@ -3,6 +3,11 @@ package transport
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/mykube-run/keel/pkg/config"
 	"github.com/mykube-run/keel/pkg/enum"
@@ -10,10 +15,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/satori/uuid"
-	"math/rand"
-	"os"
-	"strings"
-	"time"
 )
 
 var (
@@ -238,7 +239,7 @@ func newConsumerConfig(conf config.KafkaConfig) *kafka.ConfigMap {
 		"auto.offset.reset":         "latest", // Must be latest
 		"enable.auto.commit":        "true",
 		"heartbeat.interval.ms":     3 * enum.Second,    // 3s
-		"session.timeout.ms":        30 * enum.Second,   // 30s
+		"session.timeout.ms":        60 * enum.Second,   // 60s
 		"max.poll.interval.ms":      7200 * enum.Second, // 7200s, 2hours
 		"message.max.bytes":         500 * enum.KB,      // 100KB
 		"fetch.max.bytes":           500 * enum.KB,      // 100KB
