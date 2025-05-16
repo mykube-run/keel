@@ -352,7 +352,7 @@ func (s *Scheduler) dispatch(tasks entity.Tasks) {
 		}
 
 		// 2.2 Send task message through transport
-		err = s.tran.Send(s.SchedulerId(), "", byt)
+		err = s.tran.Send(s.SchedulerId(), task.Uid, byt)
 		if err != nil {
 			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", task.TenantId, "taskId", task.Uid, "message", "failed to dispatch task")
 			continue
