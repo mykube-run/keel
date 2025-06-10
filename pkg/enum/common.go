@@ -1,5 +1,7 @@
 package enum
 
+import "time"
+
 // KB and other size constants
 const (
 	KB = 1024
@@ -25,3 +27,5 @@ const (
 const (
 	ResultOmitted = "ResultOmitted"
 )
+
+var PendingTaskExpiration = time.Hour * 24 * 7

@@ -429,7 +429,7 @@ func (s *Scheduler) updateTaskStatus(ev *TaskEvent) error {
 	case string(enum.TaskFailed):
 		status = enum.TaskStatusFailed
 	case string(enum.StartMigration):
-		status = enum.TaskStatusInTransition
+		status = enum.TaskStatusMigrating
 	default:
 		return nil
 	}
