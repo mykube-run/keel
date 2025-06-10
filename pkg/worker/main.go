@@ -83,7 +83,7 @@ func (w *Worker) RegisterHandler(name string, f types.TaskHandlerFactory) {
 		w.factories[name] = f
 	} else {
 		w.lg.Log(types.LevelWarn, "handler", name, "whiteList", w.opt.HandlerWhiteList,
-			"message", "handler was not registered, not configured in white list")
+			"message", "handler was not registered in white list")
 	}
 }
 
@@ -120,7 +120,7 @@ func (w *Worker) onReceiveMessage(from, to string, msg []byte) (result []byte, e
 		return nil, err
 	}
 	if _, ok := w.factories[task.Handler]; !ok {
-		return []byte(task.Handler), fmt.Errorf("unsupported handler")
+		return []byte(task.Handler), enum.ErrUnsupportedTaskType
 	}
 
 	w.lg.Log(types.LevelDebug, "running", w.pool.Running(), "capacity", w.pool.Cap(), "taskId", task.Uid,
@@ -160,7 +160,7 @@ func (w *Worker) run(tc *types.TaskContext) error {
 	// Get handler factory and initialize a new handler for the task
 	f, ok := w.factories[tc.Task.Handler]
 	if !ok {
-		return fmt.Errorf("unknown handler %v", tc.Task.Handler)
+		return enum.ErrUnsupportedTaskType
 	}
 	hdl, err := f(tc, w.info)
 	if err != nil {
@@ -203,7 +203,7 @@ func (w *Worker) run(tc *types.TaskContext) error {
 
 		// if task is in transition, start transition
 		if tc.Task.InTransition {
-			w.notify(tc.NewMessage(enum.FinishTransition, nil))
+			w.notify(tc.NewMessage(enum.FinishMigration, nil))
 			w.lg.Log(types.LevelInfo, "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId,
 				"schedulerId", tc.Task.SchedulerId, "handler", tc.Task.Handler,
 				"message", "start processing transited task")
@@ -278,7 +278,7 @@ func (w *Worker) migrateAllTasks() {
 			w.notify(tc.NewMessage(enum.RetryTask, nil))
 			return true
 		}
-		w.notify(tc.NewMessage(enum.StartTransition, s))
+		w.notify(tc.NewMessage(enum.StartMigration, s))
 		w.lg.Log(types.LevelWarn, "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId,
 			"message", "succeeded starting task transition")
 		return true

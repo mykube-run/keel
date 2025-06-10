@@ -5,7 +5,7 @@ import (
 	"github.com/mykube-run/keel/pkg/config"
 	"github.com/mykube-run/keel/pkg/enum"
 	"github.com/mykube-run/keel/pkg/impl/database"
-	"github.com/mykube-run/keel/pkg/impl/listener"
+	"github.com/mykube-run/keel/pkg/impl/hook"
 	"github.com/mykube-run/keel/pkg/impl/logging"
 	"github.com/mykube-run/keel/pkg/scheduler"
 	"github.com/rs/zerolog"
@@ -34,7 +34,7 @@ func main() {
 	if err != nil {
 		log.Fatal().Msgf("error creating database: %v", err)
 	}
-	s, err := scheduler.New(opt, db, logging.NewDefaultLogger(nil), listener.Default)
+	s, err := scheduler.New(opt, db, logging.NewDefaultLogger(nil), hook.Default)
 	if err != nil {
 		log.Fatal().Msgf("error creating scheduler: %v", err)
 	}

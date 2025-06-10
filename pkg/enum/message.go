@@ -9,8 +9,8 @@ const (
 	TaskStarted      TaskMessageType = "TaskStarted"
 	TaskFinished     TaskMessageType = "TaskFinished"
 	TaskFailed       TaskMessageType = "TaskFailed"
-	StartTransition  TaskMessageType = "StartTransition"
-	FinishTransition TaskMessageType = "FinishTransition"
+	StartMigration   TaskMessageType = "StartMigration"
+	FinishMigration  TaskMessageType = "FinishMigration"
 )
 
 type ScheduleTaskMessageType string

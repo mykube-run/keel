@@ -23,13 +23,13 @@ type Server struct {
 	pb.UnimplementedScheduleServiceServer
 	db     types.DB
 	lg     types.Logger
-	ls     types.Listener
+	hooks  types.Hooks
 	sched  *Scheduler
 	config config.ServerConfig
 }
 
-func NewServer(db types.DB, sched *Scheduler, config config.ServerConfig, lg types.Logger, ls types.Listener) *Server {
-	return &Server{db: db, sched: sched, config: config, lg: lg, ls: ls}
+func NewServer(db types.DB, sched *Scheduler, config config.ServerConfig, lg types.Logger, hooks types.Hooks) *Server {
+	return &Server{db: db, sched: sched, config: config, lg: lg, hooks: hooks}
 }
 
 // Tenant API
@@ -160,8 +160,8 @@ func (s *Server) CreateTask(ctx context.Context, req *pb.CreateTaskRequest) (*pb
 	}
 	s.lg.Log(types.LevelDebug, "tenantId", req.GetTenantId(), "taskId", req.GetUid(),
 		"handler", req.GetHandler(), "message", "created new task")
-	le := types.ListenerEvent{SchedulerId: s.sched.SchedulerId(), Task: types.NewTaskMetadataFromTaskEntity(&t)}
-	s.ls.OnTaskCreated(le)
+	le := types.HookEvent{SchedulerId: s.sched.SchedulerId(), Task: types.NewTaskMetadataFromTaskEntity(&t)}
+	s.hooks.OnTaskCreated(le)
 	return resp, nil
 }
 
@@ -274,10 +274,11 @@ func (s *Server) QueryTaskStatus(ctx context.Context, req *pb.QueryTaskStatusReq
 }
 
 func (s *Server) Start() {
-	// Create a ls on TCP port
+	// Create a listener on TCP port
 	lis, err := net.Listen("tcp", s.config.GrpcAddress)
 	if err != nil {
-		s.lg.Log(types.LevelFatal, "message", fmt.Sprintf("failed to listen: %v", err))
+		s.lg.Log(types.LevelFatal, "message", fmt.Sprintf("failed to listen on tcp address %v: %v",
+			s.config.GrpcAddress, err))
 	}
 	// Create a gRPC server object
 	srv := grpc.NewServer()

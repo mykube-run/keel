@@ -7,7 +7,7 @@ import (
 	"github.com/mykube-run/keel/pkg/config"
 	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
-	"github.com/mykube-run/keel/pkg/impl/listener"
+	"github.com/mykube-run/keel/pkg/impl/hook"
 	"github.com/mykube-run/keel/pkg/impl/transport"
 	"github.com/mykube-run/keel/pkg/queue"
 	"github.com/mykube-run/keel/pkg/types"
@@ -39,8 +39,8 @@ type Scheduler struct {
 	em     *EventManager               // Scheduler event manager
 	db     types.DB                    // The database interface
 	lg     types.Logger                // Logger
-	ls     types.Listener              // Event listener
 	tran   types.Transport             // The transport among scheduler and workers
+	hooks  types.Hooks                 // Event hooks
 	srv    *Server                     // API server
 	st     sync.Map                    // Staging tenants that are recently active, but haven't been updated in database
 	stc    *uint64                     // The number of staging tenants
@@ -48,22 +48,22 @@ type Scheduler struct {
 }
 
 // New initializes a scheduler instance
-func New(opt *Options, db types.DB, lg types.Logger, ls types.Listener) (s *Scheduler, err error) {
+func New(opt *Options, db types.DB, lg types.Logger, hooks types.Hooks) (s *Scheduler, err error) {
 	var stc = uint64(0)
-	if ls == nil {
-		ls = listener.Default
+	if hooks == nil {
+		hooks = hook.Default
 	}
 	s = &Scheduler{
 		opt:    opt,
 		qs:     make(map[string]*queue.TaskQueue),
 		db:     db,
 		lg:     lg,
-		ls:     ls,
+		hooks:  hooks,
 		closeC: make(chan struct{}),
 		st:     sync.Map{},
 		stc:    &stc,
 	}
-	s.srv = NewServer(db, s, opt.ServerConfig, lg, ls)
+	s.srv = NewServer(db, s, opt.ServerConfig, lg, hooks)
 	s.em, err = NewEventManager(opt.Snapshot, s.SchedulerId(), lg)
 	if err != nil {
 		return nil, err
@@ -183,7 +183,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 		return
 	}
 
-	le := types.ListenerEvent{SchedulerId: s.SchedulerId(), WorkerId: m.WorkerId, Task: types.NewTaskMetadataFromTaskMessage(m)}
+	le := types.HookEvent{SchedulerId: s.SchedulerId(), WorkerId: m.WorkerId, Task: types.NewTaskMetadataFromTaskMessage(m)}
 	ev := NewEventFromMessage(m)
 	if err := s.em.Insert(ev); err != nil {
 		s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", ev.TenantId, "taskId", ev.TaskId,
@@ -194,7 +194,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 	case enum.RetryTask:
 		s.lg.Log(types.LevelWarn, "tenantId", ev.TenantId, "taskId", ev.TaskId, "workerId", ev.WorkerId,
 			"detail", ev.Value, "message", "task needs retry")
-		s.ls.OnTaskNeedsRetry(le)
+		s.hooks.OnTaskNeedsRetry(le)
 
 		_, ok := s.qs[ev.TenantId]
 		if !ok {
@@ -218,10 +218,10 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 				"message", "failed to delete task events")
 		}
 	case enum.ReportTaskStatus:
-		s.ls.OnTaskRunning(le)
+		s.hooks.OnTaskRunning(le)
 		// TODO: Update task progress
 		return
-	case enum.StartTransition:
+	case enum.StartMigration:
 		s.lg.Log(types.LevelWarn, "tenantId", ev.TenantId, "taskId", ev.TaskId, "workerId", ev.WorkerId,
 			"detail", ev.Value, "message", "task transition start")
 
@@ -234,7 +234,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 			TenantId: m.Task.TenantId, Uid: m.Task.Uid,
 			Handler: m.Task.Handler, Config: m.Task.Config},
 		})
-	case enum.FinishTransition:
+	case enum.FinishMigration:
 		s.lg.Log(types.LevelWarn, "tenantId", ev.TenantId, "taskId", ev.TaskId, "workerId", ev.WorkerId,
 			"detail", ev.Value, "message", "task transition finished")
 
@@ -251,7 +251,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", ev.TenantId, "taskId", ev.TaskId,
 				"message", "failed to update task status")
 		}
-		s.ls.OnTaskRunning(le)
+		s.hooks.OnTaskRunning(le)
 	case enum.TaskFinished:
 		s.lg.Log(types.LevelInfo, "tenantId", ev.TenantId, "taskId", ev.TaskId, "workerId", ev.WorkerId,
 			"message", "worker has finished processing task")
@@ -260,7 +260,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", ev.TenantId, "taskId", ev.TaskId,
 				"message", "failed to update task status")
 		}
-		s.ls.OnTaskFinished(le)
+		s.hooks.OnTaskFinished(le)
 
 		if err := s.em.Delete(ev.TenantId, ev.TaskId); err != nil {
 			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", ev.TenantId, "taskId", ev.TaskId,
@@ -295,7 +295,7 @@ func (s *Scheduler) taskHistory(tenantId, taskId string) (*types.TaskRun, int, b
 	if err != nil {
 		return nil, 0, false, nil
 	}
-	if latest.EventType == string(enum.StartTransition) {
+	if latest.EventType == string(enum.StartMigration) {
 		inTransition = true
 	}
 	last := &types.TaskRun{
@@ -366,8 +366,8 @@ func (s *Scheduler) dispatch(tasks entity.Tasks) {
 		if err = s.updateTaskStatus(ev); err != nil {
 			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", task.TenantId, "taskId", task.Uid, "message", "failed to update task status")
 		}
-		le := types.ListenerEvent{SchedulerId: s.SchedulerId(), Task: types.NewTaskMetadataFromTaskEntity(task)}
-		s.ls.OnTaskDispatching(le)
+		le := types.HookEvent{SchedulerId: s.SchedulerId(), Task: types.NewTaskMetadataFromTaskEntity(task)}
+		s.hooks.OnTaskDispatching(le)
 	}
 	// 4. Update tenants' active state after dispatching
 	if len(active) > 0 {
@@ -404,7 +404,7 @@ func (s *Scheduler) updateActiveTenants() (entity.Tenants, error) {
 	for i, v := range tenants {
 		if _, ok := s.qs[v.Uid]; !ok {
 			s.lg.Log(types.LevelInfo, "tenantId", v.Uid, "message", "found new active tenant")
-			s.qs[v.Uid] = queue.NewTaskQueue(s.db, s.lg, tenants[i], s.ls)
+			s.qs[v.Uid] = queue.NewTaskQueue(s.db, s.lg, tenants[i], s.hooks)
 		} else {
 			// Update tenant
 			s.qs[v.Uid].Tenant = tenants[i]
@@ -420,7 +420,7 @@ func (s *Scheduler) updateTaskStatus(ev *TaskEvent) error {
 	switch ev.EventType {
 	case TaskDispatched:
 		status = enum.TaskStatusDispatched
-	case string(enum.TaskStarted), string(enum.FinishTransition):
+	case string(enum.TaskStarted), string(enum.FinishMigration):
 		status = enum.TaskStatusRunning
 	case string(enum.RetryTask):
 		status = enum.TaskStatusNeedsRetry
@@ -428,7 +428,7 @@ func (s *Scheduler) updateTaskStatus(ev *TaskEvent) error {
 		status = enum.TaskStatusSuccess
 	case string(enum.TaskFailed):
 		status = enum.TaskStatusFailed
-	case string(enum.StartTransition):
+	case string(enum.StartMigration):
 		status = enum.TaskStatusInTransition
 	default:
 		return nil
@@ -559,7 +559,7 @@ func (s *Scheduler) isTaskTimeout(ev *TaskEvent) bool {
 		return sec > s.opt.TaskEventUpdateDeadline
 	case string(enum.RetryTask):
 		return sec > s.opt.TaskEventUpdateDeadline
-	case string(enum.FinishTransition):
+	case string(enum.FinishMigration):
 		return sec > s.opt.TaskEventUpdateDeadline
 	case string(enum.TaskFinished):
 		return true
