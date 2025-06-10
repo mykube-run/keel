@@ -2,6 +2,7 @@ package transport
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/mykube-run/keel/pkg/config"
@@ -161,6 +162,9 @@ func (t *KafkaTransport) consume() {
 
 		t.lg.Trace().Str("sample", sampling(msg.Value)).Msgf("handling message")
 		if res, err = t.omr(from(msg.Headers), string(msg.Key), msg.Value); err != nil {
+			if errors.Is(err, enum.ErrUnsupportedTaskType) {
+				continue
+			}
 			t.lg.Err(err).Bytes("result", res).Msg("error handling message")
 		}
 	}

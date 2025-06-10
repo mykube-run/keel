@@ -4,7 +4,7 @@ import (
 	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
 	"github.com/mykube-run/keel/pkg/impl/database/mock"
-	"github.com/mykube-run/keel/pkg/impl/listener"
+	"github.com/mykube-run/keel/pkg/impl/hook"
 	"github.com/mykube-run/keel/pkg/impl/logging"
 	"github.com/mykube-run/keel/pkg/types"
 	"testing"
@@ -24,7 +24,7 @@ var (
 )
 
 func TestNewTaskQueue(t *testing.T) {
-	c := NewTaskQueue(db, logging.NewDefaultLogger(nil), tenant, listener.Default)
+	c := NewTaskQueue(db, logging.NewDefaultLogger(nil), tenant, hook.Default)
 	if c.Tasks == nil {
 		t.Fatal("invalid tenant cache")
 	}
@@ -32,7 +32,7 @@ func TestNewTaskQueue(t *testing.T) {
 
 func TestTaskQueue_PopTasks(t *testing.T) {
 	n := 3
-	c := NewTaskQueue(db, logging.NewDefaultLogger(nil), tenant, listener.Default)
+	c := NewTaskQueue(db, logging.NewDefaultLogger(nil), tenant, hook.Default)
 
 	// No user tasks for the first time
 	{
@@ -68,7 +68,7 @@ func TestTaskQueue_PopTasks(t *testing.T) {
 }
 
 func TestTaskQueue_EnqueueTask(t *testing.T) {
-	c := NewTaskQueue(db, logging.NewDefaultLogger(nil), tenant, listener.Default)
+	c := NewTaskQueue(db, logging.NewDefaultLogger(nil), tenant, hook.Default)
 	c.FetchTasks()
 
 	// No user tasks for the first time
@@ -106,7 +106,7 @@ func TestTaskQueue_EnqueueTask(t *testing.T) {
 }
 
 func TestTaskQueue_PopulateTasks(t *testing.T) {
-	c := NewTaskQueue(db, logging.NewDefaultLogger(nil), tenant, listener.Default)
+	c := NewTaskQueue(db, logging.NewDefaultLogger(nil), tenant, hook.Default)
 	if c.Tasks.Len() != 0 {
 		t.Fatalf("expected user tasks length to be 0, got %v", c.Tasks.Len())
 	}

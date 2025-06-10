@@ -16,7 +16,7 @@ type TaskContext struct {
 
 func (c *TaskContext) NewMessage(typ enum.TaskMessageType, val interface{}) *TaskMessage {
 	switch typ {
-	case enum.ReportTaskStatus, enum.StartTransition:
+	case enum.ReportTaskStatus, enum.StartMigration:
 		byt, err := json.Marshal(val)
 		if err != nil {
 			log.Err(err).Str("taskId", c.Task.Uid).Interface("value", val).

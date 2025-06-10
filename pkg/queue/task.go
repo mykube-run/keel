@@ -21,13 +21,13 @@ type TaskQueue struct {
 	// User task id is incremental, hence maxUid is used to
 	// avoid populating tasks that already exist in queue
 	maxUid string
+	mu     sync.RWMutex
 	db     types.DB
 	lg     types.Logger
-	ls     types.Listener
-	mu     sync.RWMutex
+	hooks  types.Hooks
 }
 
-func NewTaskQueue(db types.DB, lg types.Logger, t *entity.Tenant, ls types.Listener) *TaskQueue {
+func NewTaskQueue(db types.DB, lg types.Logger, t *entity.Tenant, hooks types.Hooks) *TaskQueue {
 	pq := make(PriorityQueue, 0)
 	heap.Init(&pq)
 	c := &TaskQueue{
@@ -35,7 +35,7 @@ func NewTaskQueue(db types.DB, lg types.Logger, t *entity.Tenant, ls types.Liste
 		Tasks:  &pq,
 		db:     db,
 		lg:     lg,
-		ls:     ls,
+		hooks:  hooks,
 	}
 	return c
 }
@@ -114,8 +114,8 @@ func (c *TaskQueue) populateTasks(ctx context.Context) error {
 	}
 
 	for _, t := range tasks {
-		le := types.ListenerEvent{Task: types.NewTaskMetadataFromTaskEntity(t)}
-		c.ls.OnTaskScheduling(le)
+		le := types.HookEvent{Task: types.NewTaskMetadataFromTaskEntity(t)}
+		c.hooks.OnTaskScheduling(le)
 	}
 
 	n := 0
