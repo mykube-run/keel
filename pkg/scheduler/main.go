@@ -369,7 +369,7 @@ func (s *Scheduler) dispatch(tasks entity.Tasks) {
 		}
 
 		// 3. Record the dispatch event and update task status accordingly
-		ev := NewEventFromTask(TaskDispatched, task)
+		ev := NewEventFromTask(enum.TaskDispatched, task)
 		if err = s.em.Insert(ev); err != nil {
 			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", task.TenantId, "taskId", task.Uid, "message", "failed to record task dispatch event")
 		}
@@ -419,7 +419,7 @@ func (s *Scheduler) updateActiveTenants() (entity.Tenants, error) {
 			// Update tenant
 			s.qs[v.Uid].Tenant = tenants[i]
 		}
-		s.em.CreateTenantBucket(v.Uid)
+		// s.em.CreateTenantBucket(v.Uid)
 	}
 	return tenants, nil
 }
@@ -427,18 +427,18 @@ func (s *Scheduler) updateActiveTenants() (entity.Tenants, error) {
 // updateTaskStatus updates task status triggered by TaskEvent
 func (s *Scheduler) updateTaskStatus(ev *TaskEvent) error {
 	var status enum.TaskStatus
-	switch ev.EventType {
-	case TaskDispatched:
+	switch enum.TaskMessageType(ev.EventType) {
+	case enum.TaskDispatched:
 		status = enum.TaskStatusDispatched
-	case string(enum.TaskStarted), string(enum.FinishMigration):
+	case enum.TaskStarted, enum.FinishMigration:
 		status = enum.TaskStatusRunning
-	case string(enum.RetryTask):
+	case enum.RetryTask:
 		status = enum.TaskStatusNeedsRetry
-	case string(enum.TaskFinished):
+	case enum.TaskFinished:
 		status = enum.TaskStatusSuccess
-	case string(enum.TaskFailed):
+	case enum.TaskFailed:
 		status = enum.TaskStatusFailed
-	case string(enum.StartMigration):
+	case enum.StartMigration:
 		status = enum.TaskStatusMigrating
 	default:
 		return nil
@@ -559,7 +559,7 @@ func (s *Scheduler) isTaskTimeout(ev *TaskEvent) bool {
 	sec := int64(now.Sub(ev.Timestamp).Seconds())
 
 	switch ev.EventType {
-	case TaskDispatched:
+	case string(enum.TaskDispatched):
 		return sec > s.opt.TaskEventUpdateDeadline
 	case string(enum.TaskStarted):
 		return sec > s.opt.TaskEventUpdateDeadline

@@ -6,7 +6,9 @@ require (
 	github.com/confluentinc/confluent-kafka-go v1.9.1
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/go-sql-driver/mysql v1.6.0
+	github.com/go-xorm/xorm v0.7.9 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.3
+	github.com/mattn/go-sqlite3 v1.14.28 // indirect
 	github.com/minio/minio-go v6.0.14+incompatible
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/panjf2000/ants/v2 v2.5.0
