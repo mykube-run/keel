@@ -69,7 +69,7 @@ func New(opt *Options, db types.DB, lg types.Logger, hooks types.Hooks) (s *Sche
 		return nil, err
 	}
 
-	if opt.Transport.Type == "kafka" {
+	if opt.Transport.Type == enum.TransportTypeKafka {
 		opt.Transport.Kafka.GroupId = s.SchedulerId() /* Update group id */
 	}
 	s.tran, err = transport.New(&opt.Transport)
@@ -183,7 +183,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 		return
 	}
 
-	le := types.HookEvent{SchedulerId: s.SchedulerId(), WorkerId: m.WorkerId, Task: types.NewTaskMetadataFromTaskMessage(m)}
+	he := types.HookEvent{SchedulerId: s.SchedulerId(), WorkerId: m.WorkerId, Task: types.NewTaskMetadataFromTaskMessage(m)}
 	ev := NewEventFromMessage(m)
 	if err := s.em.Insert(ev); err != nil {
 		s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", ev.TenantId, "taskId", ev.TaskId,
@@ -194,7 +194,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 	case enum.RetryTask:
 		s.lg.Log(types.LevelWarn, "tenantId", ev.TenantId, "taskId", ev.TaskId, "workerId", ev.WorkerId,
 			"detail", ev.Value, "message", "task needs retry")
-		s.hooks.OnTaskNeedsRetry(le)
+		s.hooks.OnTaskNeedsRetry(he)
 
 		_, ok := s.qs[ev.TenantId]
 		if !ok {
@@ -202,9 +202,12 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 				"message", "received message from a tenant not managed by the scheduler")
 			return
 		}
-		s.dispatch(entity.Tasks{{TenantId: m.Task.TenantId, Uid: m.Task.Uid,
-			Handler: m.Task.Handler, Config: m.Task.Config},
-		})
+		s.dispatch(entity.Tasks{{
+			TenantId: m.Task.TenantId,
+			Uid:      m.Task.Uid,
+			Handler:  m.Task.Handler,
+			Config:   m.Task.Config,
+		}})
 	case enum.TaskFailed:
 		s.lg.Log(types.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "workerId", ev.WorkerId,
 			"detail", ev.Value, "message", "task run failed")
@@ -218,7 +221,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 				"message", "failed to delete task events")
 		}
 	case enum.ReportTaskStatus:
-		s.hooks.OnTaskRunning(le)
+		s.hooks.OnTaskRunning(he)
 		// TODO: Update task progress
 		return
 	case enum.StartMigration:
@@ -231,9 +234,11 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 				"message", "failed to update tasks status")
 		}
 		s.dispatch(entity.Tasks{{
-			TenantId: m.Task.TenantId, Uid: m.Task.Uid,
-			Handler: m.Task.Handler, Config: m.Task.Config},
-		})
+			TenantId: m.Task.TenantId,
+			Uid:      m.Task.Uid,
+			Handler:  m.Task.Handler,
+			Config:   m.Task.Config,
+		}})
 	case enum.FinishMigration:
 		s.lg.Log(types.LevelWarn, "tenantId", ev.TenantId, "taskId", ev.TaskId, "workerId", ev.WorkerId,
 			"detail", ev.Value, "message", "task transition finished")
@@ -251,7 +256,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", ev.TenantId, "taskId", ev.TaskId,
 				"message", "failed to update task status")
 		}
-		s.hooks.OnTaskRunning(le)
+		s.hooks.OnTaskRunning(he)
 	case enum.TaskFinished:
 		s.lg.Log(types.LevelInfo, "tenantId", ev.TenantId, "taskId", ev.TaskId, "workerId", ev.WorkerId,
 			"message", "worker has finished processing task")
@@ -260,7 +265,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", ev.TenantId, "taskId", ev.TaskId,
 				"message", "failed to update task status")
 		}
-		s.hooks.OnTaskFinished(le)
+		s.hooks.OnTaskFinished(he)
 
 		if err := s.em.Delete(ev.TenantId, ev.TaskId); err != nil {
 			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", ev.TenantId, "taskId", ev.TaskId,
@@ -275,9 +280,9 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 // taskHistory returns known task run history of specified task
 func (s *Scheduler) taskHistory(tenantId, taskId string) (*types.TaskRun, int, bool, error) {
 	var (
-		retried      = 0
-		start        time.Time
-		inTransition = false
+		retried   = 0
+		start     time.Time
+		migrating = false
 	)
 
 	err := s.em.Iterate(tenantId, taskId, func(e *TaskEvent) bool {
@@ -291,18 +296,23 @@ func (s *Scheduler) taskHistory(tenantId, taskId string) (*types.TaskRun, int, b
 	if err != nil {
 		return nil, 0, false, err
 	}
+
 	latest, err := s.em.Latest(tenantId, taskId)
 	if err != nil {
 		return nil, 0, false, nil
 	}
+
 	if latest.EventType == string(enum.StartMigration) {
-		inTransition = true
+		migrating = true
 	}
 	last := &types.TaskRun{
-		Result: latest.EventType, Status: enum.TaskRunStatusFailed,
-		Error: latest.EventType, Start: start, End: latest.Timestamp,
+		Result: latest.EventType,
+		Status: enum.TaskRunStatusFailed,
+		Error:  latest.EventType,
+		Start:  start,
+		End:    latest.Timestamp,
 	}
-	return last, retried, inTransition, nil
+	return last, retried, migrating, nil
 }
 
 // dispatch dispatches tasks
@@ -339,7 +349,7 @@ func (s *Scheduler) dispatch(tasks entity.Tasks) {
 		v.Config = task.Config
 
 		var err error
-		v.LastRun, v.RestartTimes, v.InTransition, err = s.taskHistory(task.TenantId, task.Uid)
+		v.LastRun, v.RestartTimes, v.Migrating, err = s.taskHistory(task.TenantId, task.Uid)
 		if err != nil {
 			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", task.TenantId, "taskId", task.Uid, "message", "failed to lookup task history")
 			continue
@@ -429,7 +439,7 @@ func (s *Scheduler) updateTaskStatus(ev *TaskEvent) error {
 	case string(enum.TaskFailed):
 		status = enum.TaskStatusFailed
 	case string(enum.StartMigration):
-		status = enum.TaskStatusInTransition
+		status = enum.TaskStatusMigrating
 	default:
 		return nil
 	}
