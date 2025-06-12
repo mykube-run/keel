@@ -49,7 +49,7 @@ func (c *TaskContext) MarkRunning() {
 	c.Task.LastRun.Start = time.Now()
 }
 
-func (c *TaskContext) MarkDone(status enum.TaskRunStatus, res string, err error) {
+func (c *TaskContext) MarkFinalStatus(status enum.TaskRunStatus, res string, err error) {
 	if c.Task.LastRun == nil {
 		c.Task.LastRun = &TaskRun{}
 	}
@@ -61,7 +61,7 @@ func (c *TaskContext) MarkDone(status enum.TaskRunStatus, res string, err error)
 	}
 }
 
-func (c *TaskContext) MarkProgress(v int) {
+func (c *TaskContext) UpdateProgress(v int) {
 	if c.Task.LastRun == nil {
 		c.Task.LastRun = &TaskRun{}
 	}
@@ -82,7 +82,7 @@ type Task struct {
 	SchedulerId  string   `json:"schedulerId"`  // Scheduler id that is responsible for scheduling the task
 	Config       string   `json:"config"`       // Task configurations in JSON, might be nil
 	RestartTimes int      `json:"restartTimes"` // Number of restart
-	InTransition bool     `json:"inTransition"` // Indicates whether this task run is a migration task
+	Migrating    bool     `json:"migrating"`    // Indicates whether this task run is migrating
 	LastRun      *TaskRun `json:"lastRun"`      // The last TaskRun, nil when Task is never run
 }
 
@@ -98,10 +98,10 @@ type TaskRun struct {
 
 // TaskStatus is reported everytime HeartBeat method is called.
 type TaskStatus struct {
-	State         enum.TaskStatus `json:"state"`
-	Progress      int             `json:"progress"`
-	Error         error           `json:"error"`
-	Timestamp     time.Time       `json:"timestamp"`
+	State         enum.TaskStatus `json:"state"`     // Current task status
+	Progress      int             `json:"progress"`  // Task run progress, value between 0 and 100
+	Error         error           `json:"error"`     // Error occurred during task run
+	Timestamp     time.Time       `json:"timestamp"` // Status report timestamp
 	ResourceUsage struct {
 		CPU         int `json:"cpu"`
 		Memory      int `json:"memory"`

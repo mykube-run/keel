@@ -306,7 +306,7 @@ func (m *EventManager) isMilestone(k []byte) bool {
 // loadSnapshot tries to load the newest snapshot from object storage
 // NOTE:
 //   - Does nothing when no snapshot available
-//   - Report an error when there is an local event db file existing
+//   - Report an error when there is a local event db file existing
 func (m *EventManager) loadSnapshot() error {
 	var (
 		newest time.Time

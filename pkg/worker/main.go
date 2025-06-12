@@ -185,7 +185,7 @@ func (w *Worker) run(tc *types.TaskContext) error {
 			if e != nil {
 				status = enum.TaskRunStatusFailed
 			}
-			tc.MarkDone(status, enum.ResultOmitted, e)
+			tc.MarkFinalStatus(status, enum.ResultOmitted, e)
 			w.running.Delete(tc.Task.Uid)
 
 			if retry {
@@ -201,12 +201,12 @@ func (w *Worker) run(tc *types.TaskContext) error {
 			}
 		}()
 
-		// if task is in transition, start transition
-		if tc.Task.InTransition {
+		// if task is migrating, start migration
+		if tc.Task.Migrating {
 			w.notify(tc.NewMessage(enum.FinishMigration, nil))
 			w.lg.Log(types.LevelInfo, "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId,
 				"schedulerId", tc.Task.SchedulerId, "handler", tc.Task.Handler,
-				"message", "start processing transited task")
+				"message", "start processing migrating task")
 			retry, e = hdl.Start()
 		} else {
 			// Notify scheduler that we have started the task
@@ -280,7 +280,7 @@ func (w *Worker) migrateAllTasks() {
 		}
 		w.notify(tc.NewMessage(enum.StartMigration, s))
 		w.lg.Log(types.LevelWarn, "taskId", tc.Task.Uid, "tenantId", tc.Task.TenantId,
-			"message", "succeeded starting task transition")
+			"message", "succeeded starting task migration")
 		return true
 	})
 }
