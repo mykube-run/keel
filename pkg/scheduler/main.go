@@ -202,9 +202,12 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 				"message", "received message from a tenant not managed by the scheduler")
 			return
 		}
-		s.dispatch(entity.Tasks{{TenantId: m.Task.TenantId, Uid: m.Task.Uid,
-			Handler: m.Task.Handler, Config: m.Task.Config},
-		})
+		s.dispatch(entity.Tasks{{
+			TenantId: m.Task.TenantId,
+			Uid:      m.Task.Uid,
+			Handler:  m.Task.Handler,
+			Config:   m.Task.Config,
+		}})
 	case enum.TaskFailed:
 		s.lg.Log(types.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "workerId", ev.WorkerId,
 			"detail", ev.Value, "message", "task run failed")
@@ -231,9 +234,11 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 				"message", "failed to update tasks status")
 		}
 		s.dispatch(entity.Tasks{{
-			TenantId: m.Task.TenantId, Uid: m.Task.Uid,
-			Handler: m.Task.Handler, Config: m.Task.Config},
-		})
+			TenantId: m.Task.TenantId,
+			Uid:      m.Task.Uid,
+			Handler:  m.Task.Handler,
+			Config:   m.Task.Config,
+		}})
 	case enum.FinishMigration:
 		s.lg.Log(types.LevelWarn, "tenantId", ev.TenantId, "taskId", ev.TaskId, "workerId", ev.WorkerId,
 			"detail", ev.Value, "message", "task transition finished")
