@@ -98,18 +98,11 @@ type TaskRun struct {
 
 // TaskStatus is reported everytime HeartBeat method is called.
 type TaskStatus struct {
-	State         enum.TaskStatus `json:"state"`     // Current task status
-	Progress      int             `json:"progress"`  // Task run progress, value between 0 and 100
-	Error         error           `json:"error"`     // Error occurred during task run
-	Timestamp     time.Time       `json:"timestamp"` // Status report timestamp
-	ResourceUsage struct {
-		CPU         int `json:"cpu"`
-		Memory      int `json:"memory"`
-		Storage     int `json:"storage"`
-		GPU         int `json:"gpu"`
-		Concurrency int `json:"concurrency"`
-		Custom      int `json:"custom"`
-	} `json:"resourceUsage"`
+	State         enum.TaskStatus `json:"state"`         // Current task status
+	Progress      int             `json:"progress"`      // Task run progress, value between 0 and 100
+	ResourceUsage ResourceUsage   `json:"resourceUsage"` // Task resource usage
+	Error         error           `json:"error"`         // Error occurred during task run
+	Timestamp     time.Time       `json:"timestamp"`     // Status report timestamp
 }
 
 // TaskMetadata metadata
