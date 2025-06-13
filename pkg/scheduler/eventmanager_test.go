@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"encoding/json"
 	"github.com/mykube-run/keel/pkg/impl/logging"
 	"os"
 	"path/filepath"
@@ -75,9 +74,9 @@ func (s *EventManagerSuite) TestNewEventFromMessage() {
 		Timestamp: timestamp,
 		Task: types.Task{
 			TenantId: "tenant-1",
-			Uid:      "task-1",
+			Uid:      "task-test-new-event-from-message",
 		},
-		Value: json.RawMessage(`{"progress": 50, "error": "some error", "resourceUsage": {"cpu": 100, "memory": 128}}`),
+		Value: nil,
 	}
 
 	event := NewEventFromMessage(taskMsg)
@@ -85,25 +84,20 @@ func (s *EventManagerSuite) TestNewEventFromMessage() {
 	s.Equal(string(enum.ReportTaskStatus), event.EventType)
 	s.Equal("worker-1", event.WorkerId)
 	s.Equal("tenant-1", event.TenantId)
-	s.Equal("task-1", event.TaskId)
-	s.True(timestamp.Sub(event.Timestamp) < time.Second)
-	s.Equal(50, event.Progress)
-	s.Equal("some error", event.Error)
-	s.Equal(types.ResourceUsage{CPU: 100, Memory: 128}, event.ResourceUsage)
+	s.Equal("task-test-new-event-from-message", event.TaskId)
+	s.True(timestamp.Sub(time.UnixMilli(event.Timestamp)) < time.Second)
 
 	// Test with task message without value
 	taskMsg.Value = nil
 	event = NewEventFromMessage(taskMsg)
 	s.Require().NotNil(event)
-	s.Equal(0, event.Progress)
-	s.Empty(event.Error)
-	s.Empty(event.ResourceUsage)
+
 }
 
 func (s *EventManagerSuite) TestNewEventFromTask() {
 	task := &entity.Task{
 		TenantId: "tenant-1",
-		Uid:      "task-1",
+		Uid:      "task-test-new-event-from-task",
 	}
 
 	event := NewEventFromTask(enum.TaskDispatched, task)
@@ -111,8 +105,8 @@ func (s *EventManagerSuite) TestNewEventFromTask() {
 	s.Equal(string(enum.TaskDispatched), event.EventType)
 	s.Empty(event.WorkerId)
 	s.Equal("tenant-1", event.TenantId)
-	s.Equal("task-1", event.TaskId)
-	s.True(time.Now().Sub(event.Timestamp) < time.Second)
+	s.Equal("task-test-new-event-from-task", event.TaskId)
+	s.True(time.Now().Sub(time.UnixMilli(event.Timestamp)) < time.Second)
 }
 
 func (s *EventManagerSuite) TestInsertEvent() {
@@ -120,48 +114,48 @@ func (s *EventManagerSuite) TestInsertEvent() {
 		EventType: string(enum.TaskDispatched),
 		WorkerId:  "worker-1",
 		TenantId:  "tenant-1",
-		TaskId:    "task-1",
-		Timestamp: time.Now(),
+		TaskId:    "task-test-insert-event",
+		Timestamp: time.Now().UnixMilli(),
 	}
 
 	err := s.eventMgr.Insert(event)
 	s.Require().NoError(err)
 
 	// Verify event was inserted
-	latest, err := s.eventMgr.Latest("tenant-1", "task-1")
+	latest, err := s.eventMgr.Latest("tenant-1", "task-test-insert-event")
 	s.Require().NoError(err)
 	s.Equal(event.EventType, latest.EventType)
 	s.Equal(event.WorkerId, latest.WorkerId)
 	s.Equal(event.TenantId, latest.TenantId)
 	s.Equal(event.TaskId, latest.TaskId)
-	s.True(event.Timestamp.Sub(latest.Timestamp) < time.Second)
+	s.True(time.UnixMilli(event.Timestamp).Sub(time.UnixMilli(latest.Timestamp)) < time.Second)
 }
 
 func (s *EventManagerSuite) TestInsertEventWithMilestone() {
 	// Test TaskDispatched milestone
-	event := NewEventFromTask(enum.TaskDispatched, &entity.Task{TenantId: "tenant-1", Uid: "task-1"})
+	event := NewEventFromTask(enum.TaskDispatched, &entity.Task{TenantId: "tenant-1", Uid: "task-test-insert-event-with-milestone"})
 	err := s.eventMgr.Insert(event)
 	s.Require().NoError(err)
 
-	latest, err := s.eventMgr.Latest("tenant-1", "task-1")
+	latest, err := s.eventMgr.Latest("tenant-1", "task-test-insert-event-with-milestone")
 	s.Require().NoError(err)
 	s.Equal(MilestoneDispatched, latest.Milestone)
 
 	// Test TaskStarted milestone
-	event = NewEventFromTask(enum.TaskStarted, &entity.Task{TenantId: "tenant-1", Uid: "task-1"})
+	event = NewEventFromTask(enum.TaskStarted, &entity.Task{TenantId: "tenant-1", Uid: "task-test-insert-event-with-milestone"})
 	err = s.eventMgr.Insert(event)
 	s.Require().NoError(err)
 
-	latest, err = s.eventMgr.Latest("tenant-1", "task-1")
+	latest, err = s.eventMgr.Latest("tenant-1", "task-test-insert-event-with-milestone")
 	s.Require().NoError(err)
 	s.Equal(MilestoneStarted, latest.Milestone)
 
 	// Test ReportTaskStatus milestone
-	event = NewEventFromTask(enum.ReportTaskStatus, &entity.Task{TenantId: "tenant-1", Uid: "task-1"})
+	event = NewEventFromTask(enum.ReportTaskStatus, &entity.Task{TenantId: "tenant-1", Uid: "task-test-insert-event-with-milestone"})
 	err = s.eventMgr.Insert(event)
 	s.Require().NoError(err)
 
-	latest, err = s.eventMgr.Latest("tenant-1", "task-1")
+	latest, err = s.eventMgr.Latest("tenant-1", "task-test-insert-event-with-milestone")
 	s.Require().NoError(err)
 	s.Equal(MilestoneLatest, latest.Milestone)
 }
@@ -172,20 +166,20 @@ func (s *EventManagerSuite) TestIterateEvents() {
 	event1 := &TaskEvent{
 		EventType: string(enum.TaskDispatched),
 		TenantId:  "tenant-1",
-		TaskId:    "task-1",
-		Timestamp: now.Add(-3 * time.Second),
+		TaskId:    "task-test-iterate-events",
+		Timestamp: now.Add(-3 * time.Second).UnixMilli(),
 	}
 	event2 := &TaskEvent{
 		EventType: string(enum.TaskStarted),
 		TenantId:  "tenant-1",
-		TaskId:    "task-1",
-		Timestamp: now.Add(-2 * time.Second),
+		TaskId:    "task-test-iterate-events",
+		Timestamp: now.Add(-2 * time.Second).UnixMilli(),
 	}
 	event3 := &TaskEvent{
 		EventType: string(enum.ReportTaskStatus),
 		TenantId:  "tenant-1",
-		TaskId:    "task-1",
-		Timestamp: now.Add(-1 * time.Second),
+		TaskId:    "task-test-iterate-events",
+		Timestamp: now.Add(-1 * time.Second).UnixMilli(),
 	}
 
 	_ = s.eventMgr.Insert(event1)
@@ -194,8 +188,8 @@ func (s *EventManagerSuite) TestIterateEvents() {
 
 	// Iterate events and collect timestamps
 	var timestamps []time.Time
-	err := s.eventMgr.Iterate("tenant-1", "task-1", func(e *TaskEvent) bool {
-		timestamps = append(timestamps, e.Timestamp)
+	err := s.eventMgr.Iterate("tenant-1", "task-test-iterate-events", func(e *TaskEvent) bool {
+		timestamps = append(timestamps, time.UnixMilli(e.Timestamp))
 		return true
 	})
 	s.Require().NoError(err)
@@ -205,7 +199,7 @@ func (s *EventManagerSuite) TestIterateEvents() {
 
 	// Test early termination
 	var count int
-	err = s.eventMgr.Iterate("tenant-1", "task-1", func(e *TaskEvent) bool {
+	err = s.eventMgr.Iterate("tenant-1", "task-test-iterate-events", func(e *TaskEvent) bool {
 		count++
 		return count < 2
 	})
@@ -215,16 +209,16 @@ func (s *EventManagerSuite) TestIterateEvents() {
 
 func (s *EventManagerSuite) TestTasks() {
 	// Insert events for multiple tasks
-	_ = s.eventMgr.Insert(&TaskEvent{TenantId: "tenant-1", TaskId: "task-1"})
-	_ = s.eventMgr.Insert(&TaskEvent{TenantId: "tenant-1", TaskId: "task-2"})
-	_ = s.eventMgr.Insert(&TaskEvent{TenantId: "tenant-2", TaskId: "task-1"})
+	_ = s.eventMgr.Insert(&TaskEvent{TenantId: "tenant-1", TaskId: "task-test-tasks-1"})
+	_ = s.eventMgr.Insert(&TaskEvent{TenantId: "tenant-1", TaskId: "task-test-tasks-2"})
+	_ = s.eventMgr.Insert(&TaskEvent{TenantId: "tenant-2", TaskId: "task-test-tasks-1"})
 
 	// Get tasks for tenant-1
 	tasks, err := s.eventMgr.Tasks("tenant-1")
 	s.Require().NoError(err)
 	s.Len(tasks, 2)
-	s.Contains(tasks, "task-1")
-	s.Contains(tasks, "task-2")
+	s.Contains(tasks, "task-test-tasks-1")
+	s.Contains(tasks, "task-test-tasks-2")
 
 	// Get tasks for non-existent tenant
 	tasks, err = s.eventMgr.Tasks("non-existent")
@@ -234,9 +228,9 @@ func (s *EventManagerSuite) TestTasks() {
 
 func (s *EventManagerSuite) TestCountRunningTasks() {
 	// Insert events for multiple tasks
-	_ = s.eventMgr.Insert(&TaskEvent{TenantId: "tenant-1", TaskId: "task-1"})
-	_ = s.eventMgr.Insert(&TaskEvent{TenantId: "tenant-1", TaskId: "task-2"})
-	_ = s.eventMgr.Insert(&TaskEvent{TenantId: "tenant-2", TaskId: "task-1"})
+	_ = s.eventMgr.Insert(&TaskEvent{TenantId: "tenant-1", TaskId: "task-test-count-running-tasks-1"})
+	_ = s.eventMgr.Insert(&TaskEvent{TenantId: "tenant-1", TaskId: "task-test-count-running-tasks-2"})
+	_ = s.eventMgr.Insert(&TaskEvent{TenantId: "tenant-2", TaskId: "task-test-count-running-tasks-1"})
 
 	// Count running tasks for tenant-1
 	count, err := s.eventMgr.CountRunningTasks("tenant-1")
@@ -252,9 +246,9 @@ func (s *EventManagerSuite) TestCountRunningTasks() {
 func (s *EventManagerSuite) TestWorkerLoads() {
 	// Insert events for different workers
 	now := time.Now()
-	_ = s.eventMgr.Insert(&TaskEvent{WorkerId: "worker-1", Timestamp: now})
-	_ = s.eventMgr.Insert(&TaskEvent{WorkerId: "worker-1", Timestamp: now.Add(-30 * time.Minute)})
-	_ = s.eventMgr.Insert(&TaskEvent{WorkerId: "worker-2", Timestamp: now.Add(-10 * time.Minute)})
+	_ = s.eventMgr.Insert(&TaskEvent{WorkerId: "worker-1", Timestamp: now.UnixMilli()})
+	_ = s.eventMgr.Insert(&TaskEvent{WorkerId: "worker-1", Timestamp: now.Add(-30 * time.Minute).UnixMilli()})
+	_ = s.eventMgr.Insert(&TaskEvent{WorkerId: "worker-2", Timestamp: now.Add(-10 * time.Minute).UnixMilli()})
 
 	// Get worker loads
 	loads, err := s.eventMgr.WorkerLoads()
@@ -268,21 +262,23 @@ func (s *EventManagerSuite) TestLatestEvent() {
 	// Insert multiple events with different timestamps
 	now := time.Now()
 	oldEvent := &TaskEvent{
+		EventType: string(enum.ReportTaskStatus),
 		TenantId:  "tenant-1",
-		TaskId:    "task-1",
-		Timestamp: now.Add(-5 * time.Minute),
+		TaskId:    "task-test-latest-event",
+		Timestamp: now.Add(-5 * time.Minute).UnixMilli(),
 	}
 	newEvent := &TaskEvent{
+		EventType: string(enum.ReportTaskStatus),
 		TenantId:  "tenant-1",
-		TaskId:    "task-1",
-		Timestamp: now,
+		TaskId:    "task-test-latest-event",
+		Timestamp: now.UnixMilli(),
 	}
 
 	_ = s.eventMgr.Insert(oldEvent)
 	_ = s.eventMgr.Insert(newEvent)
 
 	// Get latest event
-	latest, err := s.eventMgr.Latest("tenant-1", "task-1")
+	latest, err := s.eventMgr.Latest("tenant-1", "task-test-latest-event")
 	s.Require().NoError(err)
 	s.Equal(newEvent.Timestamp, latest.Timestamp)
 	s.Equal(newEvent.EventType, latest.EventType)
@@ -296,22 +292,22 @@ func (s *EventManagerSuite) TestLatestEvent() {
 
 func (s *EventManagerSuite) TestDeleteEvents() {
 	// Insert events
-	_ = s.eventMgr.Insert(&TaskEvent{TenantId: "tenant-1", TaskId: "task-1"})
-	_ = s.eventMgr.Insert(&TaskEvent{TenantId: "tenant-1", TaskId: "task-1"})
-	_ = s.eventMgr.Insert(&TaskEvent{TenantId: "tenant-1", TaskId: "task-2"})
+	_ = s.eventMgr.Insert(&TaskEvent{TenantId: "tenant-1", TaskId: "task-test-delete-events-1"})
+	_ = s.eventMgr.Insert(&TaskEvent{TenantId: "tenant-1", TaskId: "task-test-delete-events-1"})
+	_ = s.eventMgr.Insert(&TaskEvent{TenantId: "tenant-1", TaskId: "task-test-delete-events-2"})
 
 	// Delete events for task-1
-	err := s.eventMgr.Delete("tenant-1", "task-1")
+	err := s.eventMgr.Delete("tenant-1", "task-test-delete-events-1")
 	s.Require().NoError(err)
 
 	// Verify events are deleted
-	latest, err := s.eventMgr.Latest("tenant-1", "task-1")
+	latest, err := s.eventMgr.Latest("tenant-1", "task-test-delete-events-1")
 	s.Require().Error(err)
 	s.Nil(latest)
 	s.True(strings.Contains(err.Error(), "event not found"))
 
 	// Verify task-2 events are still present
-	latest, err = s.eventMgr.Latest("tenant-1", "task-2")
+	latest, err = s.eventMgr.Latest("tenant-1", "task-test-delete-events-2")
 	s.Require().NoError(err)
 	s.NotNil(latest)
 }
@@ -331,7 +327,7 @@ func (s *EventManagerSuite) TestHotBackup() {
 	_ = s.eventMgr.Insert(&TaskEvent{TenantId: "tenant-1", TaskId: "task-1"})
 
 	// Perform hot backup
-	err := s.eventMgr.hotBackup(destPath)
+	err := s.eventMgr.backup(destPath)
 	s.Require().NoError(err)
 
 	// Verify the backup file exists
@@ -356,15 +352,15 @@ func (s *EventManagerSuite) TestMaybeCompactEvents() {
 
 	oldEvent := &TaskEvent{
 		TenantId:  "tenant-1",
-		TaskId:    "task-1",
+		TaskId:    "task-test-compact-events",
 		EventType: string(enum.ReportTaskStatus),
-		Timestamp: oldTime,
+		Timestamp: oldTime.UnixMilli(),
 	}
 	newEvent := &TaskEvent{
 		TenantId:  "tenant-1",
-		TaskId:    "task-1",
+		TaskId:    "task-test-compact-events",
 		EventType: string(enum.ReportTaskStatus),
-		Timestamp: newTime,
+		Timestamp: newTime.UnixMilli(),
 	}
 
 	session := s.eventMgr.engine.NewSession()
@@ -387,7 +383,7 @@ func (s *EventManagerSuite) TestMaybeCompactEvents() {
 	// Verify old event was deleted
 	var count int64
 	count, err = s.eventMgr.engine.Where("tenant_id = ? AND task_id = ? AND timestamp < ?",
-		"tenant-1", "task-1", newTime).Count(&TaskEvent{})
+		"tenant-1", "task-test-compact-events", newTime.UnixMilli()).Count(&TaskEvent{})
 	s.Require().NoError(err)
 	s.Equal(int64(0), count)
 }

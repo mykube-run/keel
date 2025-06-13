@@ -290,7 +290,7 @@ func (s *Scheduler) taskHistory(tenantId, taskId string) (*types.TaskRun, int, b
 		case string(enum.RetryTask):
 			retried++
 		}
-		start = e.Timestamp
+		start = time.UnixMilli(e.Timestamp)
 		return true
 	})
 	if err != nil {
@@ -310,7 +310,7 @@ func (s *Scheduler) taskHistory(tenantId, taskId string) (*types.TaskRun, int, b
 		Status: enum.TaskRunStatusFailed,
 		Error:  latest.EventType,
 		Start:  start,
-		End:    latest.Timestamp,
+		End:    time.UnixMilli(latest.Timestamp),
 	}
 	return last, retried, migrating, nil
 }
@@ -552,11 +552,15 @@ func (s *Scheduler) activateStagingTenants() {
 
 // isTaskTimeout checks whether the task is timeout
 func (s *Scheduler) isTaskTimeout(ev *TaskEvent) bool {
-	now := time.Now()
-	if now.Before(ev.Timestamp) /* The event timestamp is in the future */ {
+	var (
+		now = time.Now()
+		ts  = time.UnixMilli(ev.Timestamp)
+	)
+
+	if now.Before(ts) /* The event timestamp is in the future */ {
 		return false
 	}
-	sec := int64(now.Sub(ev.Timestamp).Seconds())
+	sec := int64(now.Sub(ts).Seconds())
 
 	switch ev.EventType {
 	case string(enum.TaskDispatched):

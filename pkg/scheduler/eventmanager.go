@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -37,20 +36,13 @@ const (
 
 // TaskEvent is the task event stored in local database
 type TaskEvent struct {
-	Id        int64     `json:"id" xorm:"pk autoincr 'id'"`
-	EventType string    `json:"eventType" xorm:"varchar(100) null 'event_type'"`
-	Milestone string    `json:"milestone" xorm:"varchar(100) null 'milestone'"`
-	WorkerId  string    `json:"workerId" xorm:"varchar(256) index(idx_worker_id) 'worker_id'"`
-	TenantId  string    `json:"tenantId" xorm:"varchar(256) index(idx_tenant_task) 'tenant_id'"`
-	TaskId    string    `json:"taskId" xorm:"varchar(256) index(idx_tenant_task) 'task_id'"`
-	Timestamp time.Time `json:"timestamp" xorm:"timestamp null 'timestamp'"`
-
-	// Progress and error
-	Progress int    `json:"progress" xorm:"int default(0) 'progress'"`
-	Error    string `json:"error" xorm:"text null 'error'"`
-
-	// Resource Usage
-	ResourceUsage types.ResourceUsage `json:"resourceUsage" xorm:"json null 'resource_usage'"`
+	Id        int64  `json:"id" xorm:"pk autoincr 'id'"`
+	EventType string `json:"eventType" xorm:"varchar(100) null 'event_type'"`
+	Milestone string `json:"milestone" xorm:"varchar(100) null 'milestone'"`
+	WorkerId  string `json:"workerId" xorm:"varchar(256) index(idx_worker_id) 'worker_id'"`
+	TenantId  string `json:"tenantId" xorm:"varchar(256) index(idx_tenant_task) 'tenant_id'"`
+	TaskId    string `json:"taskId" xorm:"varchar(256) index(idx_tenant_task) 'task_id'"`
+	Timestamp int64  `json:"timestamp" xorm:"bigint null 'timestamp'"`
 }
 
 func (TaskEvent) TableName() string {
@@ -64,17 +56,7 @@ func NewEventFromMessage(m *types.TaskMessage) *TaskEvent {
 		WorkerId:  m.WorkerId,
 		TenantId:  m.Task.TenantId,
 		TaskId:    m.Task.Uid,
-		Timestamp: m.Timestamp,
-	}
-	if m.Value != nil {
-		var s types.TaskStatus
-		if err := json.Unmarshal(m.Value, &s); err == nil {
-			e.Progress = s.Progress
-			if s.Error != nil {
-				e.Error = s.Error.Error()
-			}
-			e.ResourceUsage = s.ResourceUsage
-		}
+		Timestamp: m.Timestamp.UnixMilli(),
 	}
 	return e
 }
@@ -86,7 +68,7 @@ func NewEventFromTask(typ enum.TaskMessageType, t *entity.Task) *TaskEvent {
 		WorkerId:  "",
 		TenantId:  t.TenantId,
 		TaskId:    t.Uid,
-		Timestamp: time.Now(),
+		Timestamp: time.Now().UnixMilli(),
 	}
 }
 
@@ -226,7 +208,7 @@ func (m *EventManager) WorkerLoads() (types.WorkerLoads, error) {
 	)
 
 	var stmt = "SELECT worker_id, COUNT(DISTINCT task_id) AS tasks FROM " + TaskEvent{}.TableName() +
-		" GROUP BY worker_id WHERE timestamp <= ?"
+		" WHERE timestamp <= ? GROUP BY worker_id"
 	if err := m.engine.SQL(stmt, time.Now().Add(-1*time.Hour)).Find(&tmp); err != nil {
 		return nil, fmt.Errorf("error querying worker tasks: %w", err)
 	}
@@ -282,10 +264,12 @@ func (m *EventManager) Backup() (string, error) {
 	}
 	tempPath := tempFile.Name()
 	_ = tempFile.Close()
-	defer os.Remove(tempPath)
+	defer func() {
+		_ = os.Remove(tempPath)
+	}()
 
 	// 2. Execute hot backup
-	if err := m.hotBackup(tempPath); err != nil {
+	if err := m.backup(tempPath); err != nil {
 		return "", fmt.Errorf("error performing hot backup: %w", err)
 	}
 
@@ -294,7 +278,9 @@ func (m *EventManager) Backup() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error opening backup file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	stat, err := file.Stat()
 	if err != nil {
@@ -311,62 +297,30 @@ func (m *EventManager) Backup() (string, error) {
 	return key, nil
 }
 
-// hotBackup performs an online backup of the SQLite database without closing database connection
-func (m *EventManager) hotBackup(destPath string) error {
+// backup performs an online backup of the SQLite database without closing database connection
+func (m *EventManager) backup(destPath string) error {
 	// 1. Open new database connection
-	destDB, err := sql.Open("sqlite3", destPath)
+	db, err := xorm.NewEngine("sqlite3", destPath)
 	if err != nil {
 		return fmt.Errorf("error opening destination database: %w", err)
 	}
-	defer destDB.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
-	// 2. Start transaction
-	tx, err := destDB.Begin()
-	if err != nil {
-		return fmt.Errorf("error starting backup transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	// 3. Start backup
-	_, err = tx.Exec(`ATTACH DATABASE ? AS src`, DefaultDBPath)
-	if err != nil {
-		return fmt.Errorf("error attaching source database: %w", err)
+	// 2. Start backup
+	if err = db.Sync2(new(TaskEvent)); err != nil {
+		return fmt.Errorf("error syncing database structure while backing up database: %w", err)
 	}
 
-	// 4. Backup in WAL mode
-	_, err = tx.Exec(`
-			BEGIN IMMEDIATE;
-			SELECT sqlcipher_export('main', 'src.main');
-			COMMIT;
-		`)
-	if err != nil {
-		// Fallback to SQLCipher backup
-		_, err = tx.Exec(`
-				BEGIN IMMEDIATE;
-				SELECT sqlitetoolbox_export('main', 'src.main');
-				COMMIT;
-			`)
-		if err != nil {
-			// Fallback to standard SQLite backup
-			_, err = tx.Exec(`
-					BEGIN IMMEDIATE;
-					SELECT * FROM src.sqlite_master;
-					COMMIT;
-				`)
-			if err != nil {
-				return fmt.Errorf("error performing backup: %w", err)
-			}
-		}
+	var events []TaskEvent
+	if err = m.engine.Find(&events); err != nil {
+		return fmt.Errorf("error querying events while backing up database: %w", err)
 	}
-
-	// 5. Detach database
-	_, err = tx.Exec(`DETACH DATABASE src`)
-	if err != nil {
-		return fmt.Errorf("error detaching source database: %w", err)
+	if _, err = db.Insert(events); err != nil {
+		return fmt.Errorf("error inserting events while backing up database: %w", err)
 	}
-
-	// 6. Commit transaction
-	return tx.Commit()
+	return nil
 }
 
 // Close closes the event manager
