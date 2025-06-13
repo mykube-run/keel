@@ -2,10 +2,12 @@ package base_redis
 
 import (
 	"context"
+	"fmt"
 	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
 	"github.com/mykube-run/keel/pkg/types"
 	"github.com/redis/go-redis/v9"
+	"os"
 	"testing"
 	"time"
 )
@@ -43,17 +45,21 @@ return delete_test_data(KEYS[1], ARGV[1])
 	_ = deleteScript.Eval(context.Background(), db.s, []string{tenantId}, taskId).Err()
 }
 
-func TestNewSimple(t *testing.T) {
+func TestMain(m *testing.M) {
 	var err error
 	db, err = New(dsn)
 	if err != nil {
-		t.Fatalf("error creating simple redis: %v", err)
+		fmt.Printf("error creating simple redis: %v\n", err)
+		os.Exit(1)
 	}
+
+	deleteTestData()
+	code := m.Run()
+	_ = db.Close()
+	os.Exit(code)
 }
 
 func TestRedis_CreateTask(t *testing.T) {
-	deleteTestData()
-
 	task := entity.Task{
 		Uid:              taskId,
 		TenantId:         tenantId,

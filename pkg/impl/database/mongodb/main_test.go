@@ -2,10 +2,13 @@ package mongodb
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
 	"github.com/mykube-run/keel/pkg/types"
 	"go.mongodb.org/mongo-driver/bson"
+	"os"
 	"testing"
 	"time"
 )
@@ -27,17 +30,21 @@ func deleteTestData() {
 	_, _ = db.quota.DeleteOne(ctx, bson.M{"tenantId": tenantId})
 }
 
-func Test_New(t *testing.T) {
+func TestMain(m *testing.M) {
 	var err error
 	db, err = New(dsn)
 	if err != nil {
-		t.Fatalf("should be able to connect to database, got erorr: %v", err)
+		fmt.Printf("should be able to connect to database, got error: %v\n", err)
+		os.Exit(1)
 	}
+
+	deleteTestData()
+	code := m.Run()
+	_ = db.Close()
+	os.Exit(code)
 }
 
 func TestMongoDB_CreateTenant(t *testing.T) {
-	deleteTestData()
-
 	tenant := entity.Tenant{
 		Uid:       tenantId,
 		Zone:      zone,
@@ -57,7 +64,7 @@ func TestMongoDB_CreateTenant(t *testing.T) {
 	}
 
 	err = db.CreateTenant(context.TODO(), tenant)
-	if err != enum.ErrTenantAlreadyExists {
+	if !errors.Is(err, enum.ErrTenantAlreadyExists) {
 		t.Fatalf("expecting ErrTenantAlreadyExists, but got error: %v", err)
 	}
 }
@@ -146,8 +153,6 @@ func TestMongoDB_ActivateTenants(t *testing.T) {
 }
 
 func TestMongoDB_CreateTask(t *testing.T) {
-	// deleteTestData()
-
 	task := entity.Task{
 		Uid:              taskId,
 		TenantId:         tenantId,
@@ -234,8 +239,9 @@ func TestMongoDB_GetTaskStatus(t *testing.T) {
 func TestMongoDB_UpdateTaskStatus(t *testing.T) {
 	{
 		opt := types.UpdateTaskStatusOption{
-			Uids:   []string{taskId},
-			Status: enum.TaskStatusCanceled,
+			TenantId: tenantId,
+			Uids:     []string{taskId},
+			Status:   enum.TaskStatusCanceled,
 		}
 		err := db.UpdateTaskStatus(context.TODO(), opt)
 		if err != nil {
@@ -244,7 +250,8 @@ func TestMongoDB_UpdateTaskStatus(t *testing.T) {
 	}
 	{
 		opt := types.GetTaskStatusOption{
-			Uid: taskId,
+			TenantId: tenantId,
+			Uid:      taskId,
 		}
 		status, err := db.GetTaskStatus(context.TODO(), opt)
 		if err != nil {

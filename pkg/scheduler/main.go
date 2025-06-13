@@ -193,7 +193,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 	switch m.Type {
 	case enum.RetryTask:
 		s.lg.Log(types.LevelWarn, "tenantId", ev.TenantId, "taskId", ev.TaskId, "workerId", ev.WorkerId,
-			"detail", ev.Value, "message", "task needs retry")
+			"detail", m.Value, "message", "task needs retry")
 		s.hooks.OnTaskNeedsRetry(he)
 
 		_, ok := s.qs[ev.TenantId]
@@ -210,7 +210,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 		}})
 	case enum.TaskFailed:
 		s.lg.Log(types.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "workerId", ev.WorkerId,
-			"detail", ev.Value, "message", "task run failed")
+			"detail", m.Value, "message", "task run failed")
 
 		if err := s.updateTaskStatus(ev); err != nil {
 			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", ev.TenantId, "taskId", ev.TaskId,
@@ -226,7 +226,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 		return
 	case enum.StartMigration:
 		s.lg.Log(types.LevelWarn, "tenantId", ev.TenantId, "taskId", ev.TaskId, "workerId", ev.WorkerId,
-			"detail", ev.Value, "message", "task transition start")
+			"detail", m.Value, "message", "task transition start")
 
 		// mark task transition and wait worker to finish transition
 		if err := s.updateTaskStatus(ev); err != nil {
@@ -241,7 +241,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 		}})
 	case enum.FinishMigration:
 		s.lg.Log(types.LevelWarn, "tenantId", ev.TenantId, "taskId", ev.TaskId, "workerId", ev.WorkerId,
-			"detail", ev.Value, "message", "task transition finished")
+			"detail", m.Value, "message", "task transition finished")
 
 		// mark task running
 		if err := s.updateTaskStatus(ev); err != nil {
