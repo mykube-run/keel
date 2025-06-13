@@ -225,7 +225,7 @@ func (m *EventManager) WorkerLoads() (types.WorkerLoads, error) {
 		r   = make(types.WorkerLoads)
 	)
 
-	var stmt = "SELECT worker_id, COUNT(DISTINCT task_id) AS tasks FROM" + TaskEvent{}.TableName() +
+	var stmt = "SELECT worker_id, COUNT(DISTINCT task_id) AS tasks FROM " + TaskEvent{}.TableName() +
 		" GROUP BY worker_id WHERE timestamp <= ?"
 	if err := m.engine.SQL(stmt, time.Now().Add(-1*time.Hour)).Find(&tmp); err != nil {
 		return nil, fmt.Errorf("error querying worker tasks: %w", err)
