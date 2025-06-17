@@ -56,15 +56,15 @@ func (s *OrdinaryTaskHandler) StartMigratedTask(chan struct{}) (bool, error) {
 	return false, nil
 }
 
-func (s *OrdinaryTaskHandler) TransitionFinish() (*types.TaskContext, *types.TaskStatus, error) {
-	status := &types.TaskStatus{
-		State:     enum.TaskStatusMigrating,
-		Progress:  s.progress(),
-		Error:     nil,
-		Timestamp: time.Now(),
-	}
-	return s.ctx, status, nil
-}
+//func (s *OrdinaryTaskHandler) TransitionFinish() (*types.TaskContext, *types.TaskStatus, error) {
+//	status := &types.TaskStatus{
+//		State:     enum.TaskStatusMigrating,
+//		Progress:  s.progress(),
+//		Error:     nil,
+//		Timestamp: time.Now(),
+//	}
+//	return s.ctx, status, nil
+//}
 
 func (s *OrdinaryTaskHandler) MigrateError() (*types.TaskContext, *types.TaskStatus, error) {
 	status := &types.TaskStatus{
