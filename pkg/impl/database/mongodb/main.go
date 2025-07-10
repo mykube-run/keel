@@ -234,7 +234,7 @@ func (m *MongoDB) createIndices() {
 		}
 	}
 
-	// usertask indices
+	// task indices
 	// uid_1
 	{
 		keys := primitive.D{}
@@ -262,10 +262,10 @@ func (m *MongoDB) createIndices() {
 		}
 	}
 	// tenantId
-	// tenantId_1
+	// tenantId_1_status_1
 	{
 		keys := primitive.D{}
-		keys = append(keys, primitive.E{Key: "tenantId", Value: 1})
+		keys = append(keys, primitive.E{Key: "tenantId", Value: 1}, primitive.E{Key: "status", Value: 1})
 		idx := mongo.IndexModel{
 			Keys:    keys,
 			Options: new(options.IndexOptions),

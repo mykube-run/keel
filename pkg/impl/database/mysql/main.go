@@ -207,14 +207,14 @@ func (m *MySQL) getTenant(ctx context.Context, opt types.GetTenantOption) (*enti
 }
 
 func noRowsAsNil(err error) error {
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	} else {
 		return err
 	}
 }
 
-// inPlaceHolders returns n question-mark (?) place holders seperated by ', '
+// inPlaceHolders returns n question-mark (?) placeholders separated by ', '
 func inPlaceHolders(n int) string {
 	if n == 0 {
 		return ""
