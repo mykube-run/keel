@@ -256,9 +256,15 @@ func (w *Worker) notify(m *types.TaskMessage) {
 		return
 	}
 
-	if err = w.tran.Send(w.info.Id, m.SchedulerId, byt); err != nil {
+	// Use tenant id as key to avoid message queuing
+	key := m.Task.TenantId
+	if key == "" {
+		key = m.SchedulerId
+	}
+
+	if err = w.tran.Send(w.info.Id, key, byt); err != nil {
 		w.lg.Log(types.LevelError, "error", err.Error(),
-			"workerId", w.info.Id, "schedulerId", m.SchedulerId,
+			"workerId", w.info.Id, "schedulerId", m.SchedulerId, "tenantId", m.Task.TenantId,
 			"message", "failed to send message")
 	}
 }
