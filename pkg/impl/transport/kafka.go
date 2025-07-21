@@ -149,13 +149,14 @@ func (t *KafkaTransport) consume() {
 			return
 		}
 		if msg, err = t.c.ReadMessage(time.Second); err != nil {
-			if !isTimeout(err) {
-				t.lg.Err(err).Msg("error reading message from brokers")
-			} else {
+			if isTimeout(err) {
 				timeoutCount += 1
 				if timeoutCount%100 == 0 {
-					t.lg.Error().Int("count", timeoutCount).Msg("kafka transport consumer timed out too many times")
+					t.lg.Err(err).Int("count", timeoutCount).
+						Msg("kafka transport consumer timed out too many times")
 				}
+			} else {
+				t.lg.Err(err).Msg("error reading message from brokers")
 			}
 			continue
 		}
