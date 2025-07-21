@@ -133,9 +133,10 @@ func (t *KafkaTransport) CloseReceive() error {
 
 func (t *KafkaTransport) consume() {
 	var (
-		err error
-		res []byte
-		msg *kafka.Message
+		err          error
+		res          []byte
+		msg          *kafka.Message
+		timeoutCount int
 	)
 
 	defer func() {
@@ -151,6 +152,11 @@ func (t *KafkaTransport) consume() {
 		if msg, err = t.c.ReadMessage(time.Second); err != nil {
 			if !isTimeout(err) {
 				t.lg.Err(err).Msg("error reading message from brokers")
+			} else {
+				timeoutCount += 1
+				if timeoutCount%100 == 0 {
+					t.lg.Error().Int("count", timeoutCount).Msg("kafka transport consumer timed out too many times")
+				}
 			}
 			continue
 		}
