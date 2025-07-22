@@ -256,12 +256,8 @@ func (w *Worker) notify(m *types.TaskMessage) {
 		return
 	}
 
-	// Use tenant id as key to avoid message queuing
-	key := m.Task.TenantId
-	if key == "" {
-		key = m.SchedulerId
-	}
-
+	// Use '<SchedulerId>:<TenantId>' as key to avoid message partition issue
+	key := fmt.Sprintf("%s:%s", m.SchedulerId, m.Task.TenantId)
 	if err = w.tran.Send(w.info.Id, key, byt); err != nil {
 		w.lg.Log(types.LevelError, "error", err.Error(),
 			"workerId", w.info.Id, "schedulerId", m.SchedulerId, "tenantId", m.Task.TenantId,
