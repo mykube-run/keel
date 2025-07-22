@@ -118,6 +118,7 @@ func (s *Scheduler) Start() {
 }
 
 // SchedulerId returns scheduler's id in the form of <zone>-<name>
+// NOTE: scheduler id is used to identify scheduler in the cluster, SHOULD NOT contain any ':'
 func (s *Scheduler) SchedulerId() string {
 	return strings.ToLower(fmt.Sprintf("%v-%v", s.opt.Zone, s.opt.Name))
 }
