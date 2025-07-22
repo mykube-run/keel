@@ -163,14 +163,15 @@ func (s *Scheduler) schedule() {
 
 // onReceiveMessage the transport message handler that is called when a message is received
 func (s *Scheduler) onReceiveMessage(from, to string, msg []byte) ([]byte, error) {
-	if to != s.SchedulerId() {
-		return nil, nil
-	}
-
 	var m types.TaskMessage
 	if err := json.Unmarshal(msg, &m); err != nil {
 		s.lg.Log(types.LevelError, "error", err.Error(), "raw", msg, "message", "failed to unmarshal task message")
 		return nil, err
+	}
+
+	if to != s.SchedulerId() /* <=v0.2.8, <=v0.3.0 */ &&
+		m.SchedulerId != s.SchedulerId() /* >v0.2.9, >v0.3.0 */ {
+		return nil, nil
 	}
 
 	s.handleTaskMessage(&m)
