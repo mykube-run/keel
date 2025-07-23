@@ -25,7 +25,7 @@ func RetryTaskHandlerFactory(ctx *types.TaskContext, info *types.WorkerInfo) (ty
 }
 
 func (s *RetryTaskHandler) HeartBeat() (*types.TaskContext, *types.TaskStatus, error) {
-	return nil, nil, nil
+	return s.ctx, nil, nil
 }
 
 func (s *RetryTaskHandler) Start() (bool, error) {
@@ -68,15 +68,15 @@ func (s *RetryTaskHandler) PrepareMigration() (*types.TaskContext, *types.TaskSt
 	return s.ctx, status, nil
 }
 
-func (s *RetryTaskHandler) TransitionFinish() (*types.TaskContext, *types.TaskStatus, error) {
-	status := &types.TaskStatus{
-		State:     enum.TaskStatusNeedsRetry,
-		Progress:  s.progress(),
-		Error:     nil,
-		Timestamp: time.Now(),
-	}
-	return s.ctx, status, nil
-}
+//func (s *RetryTaskHandler) TransitionFinish() (*types.TaskContext, *types.TaskStatus, error) {
+//	status := &types.TaskStatus{
+//		State:     enum.TaskStatusNeedsRetry,
+//		Progress:  s.progress(),
+//		Error:     nil,
+//		Timestamp: time.Now(),
+//	}
+//	return s.ctx, status, nil
+//}
 
 func (s *RetryTaskHandler) MigrateError() (*types.TaskContext, *types.TaskStatus, error) {
 	status := &types.TaskStatus{
@@ -97,6 +97,6 @@ func (s *RetryTaskHandler) progress() int {
 	return p
 }
 
-func (s *RetryTaskHandler) NotifyTransitionFinish(signalChan chan struct{}) {
-	signalChan <- struct{}{}
-}
+//func (s *RetryTaskHandler) NotifyTransitionFinish(signalChan chan struct{}) {
+//	signalChan <- struct{}{}
+//}

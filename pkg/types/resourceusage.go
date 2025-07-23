@@ -2,36 +2,44 @@ package types
 
 import (
 	"github.com/mykube-run/keel/pkg/enum"
-	"time"
 )
 
-type TenantResourceUsages map[int64]*TenantResourceUsage
+//type TenantResourceUsages map[int64]*TenantResourceUsage
+//
+//type TenantResourceUsage struct {
+//	Active  map[string]*TaskResourceUsage
+//	History []*TaskResourceUsage
+//	Stale   []*TaskResourceUsage
+//}
+//
+//type TaskResourceUsage struct {
+//	TaskId   string
+//	TaskType string
+//	TenantId string
+//	Current  ResourceUsage
+//	History  []ResourceUsage
+//}
 
-type TenantResourceUsage struct {
-	Active  map[int64]*TaskResourceUsage
-	History []*TaskResourceUsage
-	Stale   []*TaskResourceUsage
+// WorkerLoads defines worker loads indexed by worker id
+type WorkerLoads map[string]WorkerLoad
+
+// WorkerLoad defines worker load
+type WorkerLoad struct {
+	Tasks int `json:"tasks"`
+	// ResourceUsage ResourceUsage `json:"resourceUsage"`
 }
 
-type TaskResourceUsage struct {
-	TaskId   int64
-	TaskType int
-	TenantId int64
-	Current  ResourceUsage
-	History  []ResourceUsage
-}
-
+// ResourceUsage defines task resource usage
 type ResourceUsage struct {
-	Time        time.Time
-	CPU         int64
-	Memory      int64
-	Storage     int64
-	GPU         int64
-	Concurrency int64
-	Custom      int64
+	CPU         int `json:"cpu"`
+	Memory      int `json:"memory"`
+	Storage     int `json:"storage"`
+	GPU         int `json:"gpu"`
+	Concurrency int `json:"concurrency"`
+	Custom      int `json:"custom"`
 }
 
-func (u *ResourceUsage) GetByType(typ string) int64 {
+func (u *ResourceUsage) GetByType(typ string) int {
 	if u == nil {
 		return 0
 	}

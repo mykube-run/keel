@@ -83,6 +83,6 @@ func (s *HangUpTaskHandler) progress() int {
 	return p
 }
 
-func (s *HangUpTaskHandler) NotifyTransitionFinish(signalChan chan struct{}) {
-	signalChan <- struct{}{}
-}
+//func (s *HangUpTaskHandler) NotifyTransitionFinish(signalChan chan struct{}) {
+//	signalChan <- struct{}{}
+//}

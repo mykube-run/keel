@@ -6,6 +6,7 @@ type TaskMessageType string
 const (
 	RetryTask        TaskMessageType = "RetryTask"
 	ReportTaskStatus TaskMessageType = "ReportTaskStatus"
+	TaskDispatched   TaskMessageType = "TaskDispatched"
 	TaskStarted      TaskMessageType = "TaskStarted"
 	TaskFinished     TaskMessageType = "TaskFinished"
 	TaskFailed       TaskMessageType = "TaskFailed"

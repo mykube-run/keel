@@ -6,6 +6,7 @@ import (
 	"github.com/mykube-run/keel/pkg/entity"
 	"github.com/mykube-run/keel/pkg/enum"
 	"github.com/mykube-run/keel/pkg/types"
+	"os"
 	"testing"
 	"time"
 )
@@ -25,12 +26,18 @@ func deleteTestData() {
 	_, _ = db.db.Exec(fmt.Sprintf(`DELETE FROM task WHERE uid = '%v'`, taskId))
 }
 
-func Test_New(t *testing.T) {
+func TestMain(m *testing.M) {
 	var err error
 	db, err = New(dsn)
 	if err != nil {
-		t.Fatalf("should be able to connect to database, got erorr: %v", err)
+		fmt.Printf("should be able to connect to database, got erorr: %v\n", err)
+		os.Exit(1)
 	}
+
+	deleteTestData()
+	code := m.Run()
+	_ = db.Close()
+	os.Exit(code)
 }
 
 func TestMySQL_CreateTenant(t *testing.T) {
@@ -232,8 +239,9 @@ func TestMySQL_GetTaskStatus(t *testing.T) {
 func TestMySQL_UpdateTaskStatus(t *testing.T) {
 	{
 		opt := types.UpdateTaskStatusOption{
-			Uids:   []string{taskId},
-			Status: enum.TaskStatusCanceled,
+			TenantId: tenantId,
+			Uids:     []string{taskId},
+			Status:   enum.TaskStatusCanceled,
 		}
 		err := db.UpdateTaskStatus(context.TODO(), opt)
 		if err != nil {
@@ -242,7 +250,8 @@ func TestMySQL_UpdateTaskStatus(t *testing.T) {
 	}
 	{
 		opt := types.GetTaskStatusOption{
-			Uid: taskId,
+			TenantId: tenantId,
+			Uid:      taskId,
 		}
 		status, err := db.GetTaskStatus(context.TODO(), opt)
 		if err != nil {

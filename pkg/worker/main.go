@@ -16,8 +16,6 @@ import (
 	"time"
 )
 
-// TODO: Trigger task transition on exit signal
-
 const asterisk = "*"
 
 type Options struct {

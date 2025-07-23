@@ -34,6 +34,10 @@ func (s *OrdinaryTaskHandler) HeartBeat() (*types.TaskContext, *types.TaskStatus
 		Progress:  s.progress(),
 		Error:     nil,
 		Timestamp: time.Now(),
+		ResourceUsage: types.ResourceUsage{
+			Concurrency: 1,
+			Custom:      1,
+		},
 	}
 	return s.ctx, status, nil
 }
@@ -52,15 +56,15 @@ func (s *OrdinaryTaskHandler) StartMigratedTask(chan struct{}) (bool, error) {
 	return false, nil
 }
 
-func (s *OrdinaryTaskHandler) TransitionFinish() (*types.TaskContext, *types.TaskStatus, error) {
-	status := &types.TaskStatus{
-		State:     enum.TaskStatusMigrating,
-		Progress:  s.progress(),
-		Error:     nil,
-		Timestamp: time.Now(),
-	}
-	return s.ctx, status, nil
-}
+//func (s *OrdinaryTaskHandler) TransitionFinish() (*types.TaskContext, *types.TaskStatus, error) {
+//	status := &types.TaskStatus{
+//		State:     enum.TaskStatusMigrating,
+//		Progress:  s.progress(),
+//		Error:     nil,
+//		Timestamp: time.Now(),
+//	}
+//	return s.ctx, status, nil
+//}
 
 func (s *OrdinaryTaskHandler) MigrateError() (*types.TaskContext, *types.TaskStatus, error) {
 	status := &types.TaskStatus{

@@ -194,7 +194,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 	switch m.Type {
 	case enum.RetryTask:
 		s.lg.Log(types.LevelWarn, "tenantId", ev.TenantId, "taskId", ev.TaskId, "workerId", ev.WorkerId,
-			"detail", ev.Value, "message", "task needs retry")
+			"detail", m.Value, "message", "task needs retry")
 		s.hooks.OnTaskNeedsRetry(he)
 
 		_, ok := s.qs[ev.TenantId]
@@ -211,7 +211,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 		}})
 	case enum.TaskFailed:
 		s.lg.Log(types.LevelError, "tenantId", ev.TenantId, "taskId", ev.TaskId, "workerId", ev.WorkerId,
-			"detail", ev.Value, "message", "task run failed")
+			"detail", m.Value, "message", "task run failed")
 
 		if err := s.updateTaskStatus(ev); err != nil {
 			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", ev.TenantId, "taskId", ev.TaskId,
@@ -227,7 +227,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 		return
 	case enum.StartMigration:
 		s.lg.Log(types.LevelWarn, "tenantId", ev.TenantId, "taskId", ev.TaskId, "workerId", ev.WorkerId,
-			"detail", ev.Value, "message", "task transition start")
+			"detail", m.Value, "message", "task transition start")
 
 		// mark task transition and wait worker to finish transition
 		if err := s.updateTaskStatus(ev); err != nil {
@@ -242,7 +242,7 @@ func (s *Scheduler) handleTaskMessage(m *types.TaskMessage) {
 		}})
 	case enum.FinishMigration:
 		s.lg.Log(types.LevelWarn, "tenantId", ev.TenantId, "taskId", ev.TaskId, "workerId", ev.WorkerId,
-			"detail", ev.Value, "message", "task transition finished")
+			"detail", m.Value, "message", "task transition finished")
 
 		// mark task running
 		if err := s.updateTaskStatus(ev); err != nil {
@@ -291,7 +291,7 @@ func (s *Scheduler) taskHistory(tenantId, taskId string) (*types.TaskRun, int, b
 		case string(enum.RetryTask):
 			retried++
 		}
-		start = e.Timestamp
+		start = time.UnixMilli(e.Timestamp)
 		return true
 	})
 	if err != nil {
@@ -311,7 +311,7 @@ func (s *Scheduler) taskHistory(tenantId, taskId string) (*types.TaskRun, int, b
 		Status: enum.TaskRunStatusFailed,
 		Error:  latest.EventType,
 		Start:  start,
-		End:    latest.Timestamp,
+		End:    time.UnixMilli(latest.Timestamp),
 	}
 	return last, retried, migrating, nil
 }
@@ -370,7 +370,7 @@ func (s *Scheduler) dispatch(tasks entity.Tasks) {
 		}
 
 		// 3. Record the dispatch event and update task status accordingly
-		ev := NewEventFromTask(TaskDispatched, task)
+		ev := NewEventFromTask(enum.TaskDispatched, task)
 		if err = s.em.Insert(ev); err != nil {
 			s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", task.TenantId, "taskId", task.Uid, "message", "failed to record task dispatch event")
 		}
@@ -420,7 +420,7 @@ func (s *Scheduler) updateActiveTenants() (entity.Tenants, error) {
 			// Update tenant
 			s.qs[v.Uid].Tenant = tenants[i]
 		}
-		s.em.CreateTenantBucket(v.Uid)
+		// s.em.CreateTenantBucket(v.Uid)
 	}
 	return tenants, nil
 }
@@ -428,18 +428,18 @@ func (s *Scheduler) updateActiveTenants() (entity.Tenants, error) {
 // updateTaskStatus updates task status triggered by TaskEvent
 func (s *Scheduler) updateTaskStatus(ev *TaskEvent) error {
 	var status enum.TaskStatus
-	switch ev.EventType {
-	case TaskDispatched:
+	switch enum.TaskMessageType(ev.EventType) {
+	case enum.TaskDispatched:
 		status = enum.TaskStatusDispatched
-	case string(enum.TaskStarted), string(enum.FinishMigration):
+	case enum.TaskStarted, enum.FinishMigration:
 		status = enum.TaskStatusRunning
-	case string(enum.RetryTask):
+	case enum.RetryTask:
 		status = enum.TaskStatusNeedsRetry
-	case string(enum.TaskFinished):
+	case enum.TaskFinished:
 		status = enum.TaskStatusSuccess
-	case string(enum.TaskFailed):
+	case enum.TaskFailed:
 		status = enum.TaskStatusFailed
-	case string(enum.StartMigration):
+	case enum.StartMigration:
 		status = enum.TaskStatusMigrating
 	default:
 		return nil
@@ -553,14 +553,18 @@ func (s *Scheduler) activateStagingTenants() {
 
 // isTaskTimeout checks whether the task is timeout
 func (s *Scheduler) isTaskTimeout(ev *TaskEvent) bool {
-	now := time.Now()
-	if now.Before(ev.Timestamp) /* The event timestamp is in the future */ {
+	var (
+		now = time.Now()
+		ts  = time.UnixMilli(ev.Timestamp)
+	)
+
+	if now.Before(ts) /* The event timestamp is in the future */ {
 		return false
 	}
-	sec := int64(now.Sub(ev.Timestamp).Seconds())
+	sec := int64(now.Sub(ts).Seconds())
 
 	switch ev.EventType {
-	case TaskDispatched:
+	case string(enum.TaskDispatched):
 		return sec > s.opt.TaskEventUpdateDeadline
 	case string(enum.TaskStarted):
 		return sec > s.opt.TaskEventUpdateDeadline
