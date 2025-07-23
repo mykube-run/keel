@@ -25,3 +25,10 @@ const (
 	TaskRunStatusSucceed TaskRunStatus = "Succeed"
 	TaskRunStatusFailed  TaskRunStatus = "Failed"
 )
+
+// ScheduleStrategy task schedule strategy
+type ScheduleStrategy string
+
+const (
+	ScheduleStrategyScheduleOnCreate ScheduleStrategy = "ScheduleOnCreate" // Schedule the task immediately after creation unless tenant resource quota exceeded
+)

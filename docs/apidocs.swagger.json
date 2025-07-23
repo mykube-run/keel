@@ -314,11 +314,6 @@
           "type": "boolean",
           "description": "Whether to check resource quota while creating a new task",
           "title": "Whether to check tenant's resource quota while creating a new task"
-        },
-        "scheduleOnCreate": {
-          "type": "boolean",
-          "description": "Whether to schedule the task immediately after creation, only available when check_resource_quota is true",
-          "title": "Whether to schedule the task immediately after creation, only available when check_resource_quota is true"
         }
       }
     },
@@ -364,7 +359,7 @@
         },
         "scheduleStrategy": {
           "type": "string",
-          "description": "Task schedule strategy, TODO",
+          "description": "Task schedule strategy, optional. Available options are: ScheduleOnCreate (schedule the task immediately after creation unless tenant resource quota exceeded)",
           "title": "Task schedule strategy",
           "maxLength": 10,
           "minLength": 1

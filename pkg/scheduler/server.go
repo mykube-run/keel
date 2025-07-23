@@ -136,31 +136,25 @@ func (s *Server) CreateTask(ctx context.Context, req *pb.CreateTaskRequest) (*pb
 			SchedulerId: s.sched.SchedulerId(),
 			Task:        types.NewTaskMetadataFromTaskEntity(&t),
 		}
+		resp = &pb.Response{}
 	)
 
 	// 1. Pre check resource quota
 	if req.Options.GetCheckResourceQuota() {
-		queue, ok := s.sched.qs[req.TenantId]
-		if ok {
-			limit := queue.Tenant.ResourceQuota.Concurrency
-			running, err := s.sched.em.CountRunningTasks(req.TenantId)
-			if err != nil {
-				s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", req.GetTenantId(), "message", "failed to count running tasks while creating new task")
-				return nil, err
-			}
-			if int64(running) > limit {
-				resp := &pb.Response{
-					Code: pb.Code_TenantQuotaExceeded,
-				}
-				return resp, nil
-			}
+		ok, err := s.checkResourceQuota(req.TenantId)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			resp.Code = pb.Code_TenantQuotaExceeded
+			return resp, nil
 		}
 	}
 
 	// 2. Create task entity in database
 	// NOTE: if the task is expected to be scheduled immediately, update the task status
 	// 		 to Scheduling to avoid being scheduled again
-	if req.Options.GetCheckResourceQuota() && req.Options.GetScheduleOnCreate() {
+	if s.shouldScheduleOnCreate(req) {
 		t.Status = enum.TaskStatusScheduling
 	}
 	if err := s.db.CreateTask(ctx, t); err != nil {
@@ -177,13 +171,12 @@ func (s *Server) CreateTask(ctx context.Context, req *pb.CreateTaskRequest) (*pb
 		"handler", req.GetHandler(), "message", "created new task")
 
 	// 4. Resource quota was already checked, dispatch the task immediately
-	if req.Options.GetCheckResourceQuota() && req.Options.GetScheduleOnCreate() {
+	if s.shouldScheduleOnCreate(req) {
+		// TODO: call corresponding scheduler
 		s.sched.dispatch(entity.Tasks{&t})
 	}
 
-	resp := &pb.Response{
-		Code: pb.Code_Ok,
-	}
+	resp.Code = pb.Code_Ok
 	return resp, nil
 }
 
@@ -336,6 +329,29 @@ func (s *Server) Start() {
 	}
 	s.lg.Log(types.LevelInfo, "message", fmt.Sprintf("serving gRPC-Gateway on http://%s", s.config.HttpAddress))
 	s.lg.Log(types.LevelFatal, "error", gwServer.ListenAndServe())
+}
+
+func (s *Server) checkResourceQuota(tenantId string) (bool, error) {
+	var queue, ok = s.sched.qs[tenantId]
+	if !ok {
+		return true, nil
+	}
+
+	var (
+		limit        = queue.Tenant.ResourceQuota.Concurrency
+		running, err = s.sched.em.CountRunningTasks(tenantId)
+	)
+	if err != nil {
+		s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", tenantId,
+			"message", "failed to count running tasks while checking resource quota")
+		return false, err
+	}
+
+	return int64(running) < limit, nil
+}
+
+func (s *Server) shouldScheduleOnCreate(req *pb.CreateTaskRequest) bool {
+	return req.GetScheduleStrategy() == string(enum.ScheduleStrategyScheduleOnCreate)
 }
 
 func newResourceQuota(tid string, q *pb.ResourceQuota) entity.ResourceQuota {
