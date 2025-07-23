@@ -17,5 +17,4 @@ type Listener interface {
 	OnTaskTransition(e ListenerEvent)
 	OnTaskTransitionError(e ListenerEvent)
 	OnTaskTransitionFinished(e ListenerEvent)
-	OnStaleTaskRetry(e ListenerEvent)
 }

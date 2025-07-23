@@ -118,27 +118,19 @@ func (s *Server) CreateTask(ctx context.Context, req *pb.CreateTaskRequest) (*pb
 	s.lg.Log(types.LevelInfo, "tenantId", req.GetTenantId(), "taskId", req.GetUid(),
 		"handler", req.GetHandler(), "message", "creating new task")
 
-	var (
-		now = time.Now()
-		t   = entity.Task{
-			TenantId:         req.GetTenantId(),
-			Uid:              req.GetUid(),
-			Handler:          req.GetHandler(),
-			Config:           req.GetConfig(),
-			ScheduleStrategy: req.GetScheduleStrategy(),
-			Priority:         req.GetPriority(),
-			Progress:         0,
-			CreatedAt:        now,
-			UpdatedAt:        now,
-			Status:           enum.TaskStatusPending,
-		}
-		le = types.ListenerEvent{
-			SchedulerId: s.sched.SchedulerId(),
-			Task:        types.NewTaskMetadataFromTaskEntity(&t),
-		}
-	)
-
-	// 1. Pre check resource quota
+	now := time.Now()
+	t := entity.Task{
+		TenantId:         req.GetTenantId(),
+		Uid:              req.GetUid(),
+		Handler:          req.GetHandler(),
+		Config:           req.GetConfig(),
+		ScheduleStrategy: req.GetScheduleStrategy(),
+		Priority:         req.GetPriority(),
+		Progress:         0,
+		CreatedAt:        now,
+		UpdatedAt:        now,
+		Status:           enum.TaskStatusPending,
+	}
 	if req.Options.GetCheckResourceQuota() {
 		queue, ok := s.sched.qs[req.TenantId]
 		if ok {
@@ -156,34 +148,20 @@ func (s *Server) CreateTask(ctx context.Context, req *pb.CreateTaskRequest) (*pb
 			}
 		}
 	}
-
-	// 2. Create task entity in database
-	// NOTE: if the task is expected to be scheduled immediately, update the task status
-	// 		 to Scheduling to avoid being scheduled again
-	if req.Options.GetCheckResourceQuota() && req.Options.GetScheduleOnCreate() {
-		t.Status = enum.TaskStatusScheduling
-	}
 	if err := s.db.CreateTask(ctx, t); err != nil {
 		s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", req.GetTenantId(), "taskId", req.GetUid(),
 			"message", "failed to create new task")
 		return nil, err
 
 	}
-
-	// 3. Record events
-	s.ls.OnTaskCreated(le)
 	s.sched.markActive(t.TenantId)
-	s.lg.Log(types.LevelDebug, "tenantId", req.GetTenantId(), "taskId", req.GetUid(),
-		"handler", req.GetHandler(), "message", "created new task")
-
-	// 4. Resource quota was already checked, dispatch the task immediately
-	if req.Options.GetCheckResourceQuota() && req.Options.GetScheduleOnCreate() {
-		s.sched.dispatch(entity.Tasks{&t})
-	}
-
 	resp := &pb.Response{
 		Code: pb.Code_Ok,
 	}
+	s.lg.Log(types.LevelDebug, "tenantId", req.GetTenantId(), "taskId", req.GetUid(),
+		"handler", req.GetHandler(), "message", "created new task")
+	le := types.ListenerEvent{SchedulerId: s.sched.SchedulerId(), Task: types.NewTaskMetadataFromTaskEntity(&t)}
+	s.ls.OnTaskCreated(le)
 	return resp, nil
 }
 
