@@ -88,7 +88,7 @@ func (c *TaskQueue) FetchTasks() {
 
 func (c *TaskQueue) populateTasks(ctx context.Context) error {
 	var status []enum.TaskStatus
-	if c.maxUid == "" {
+	if c.maxUid == "" /* Scheduler maybe restarted */ {
 		status = []enum.TaskStatus{enum.TaskStatusPending, enum.TaskStatusScheduling}
 	} else {
 		status = []enum.TaskStatus{enum.TaskStatusPending}

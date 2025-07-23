@@ -39,3 +39,6 @@ func (d *defaultListener) OnTaskTransitionError(e types.ListenerEvent) {
 
 func (d *defaultListener) OnTaskTransitionFinished(e types.ListenerEvent) {
 }
+
+func (d *defaultListener) OnStaleTaskRetry(e types.ListenerEvent) {
+}
