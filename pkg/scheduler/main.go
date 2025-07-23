@@ -22,14 +22,18 @@ import (
 )
 
 type Options struct {
-	Name                    string                 // Scheduler name, also used as partition name
-	Zone                    string                 // Zone name
-	ScheduleInterval        int64                  // Interval in seconds for checking active tenants & new tasks
-	StaleCheckDelay         int64                  // Time in seconds for checking stale tasks
-	TaskEventUpdateDeadline int64                  // Deadline in seconds for the scheduler to receive task update events
-	Snapshot                config.SnapshotConfig  // Scheduler state snapshot configurations
-	Transport               config.TransportConfig // Transport config
-	ServerConfig            config.ServerConfig    // http and grpc config
+	// TODO: move to scheduler config struct
+	Name                    string            // Scheduler name, also used as partition name
+	Zone                    string            // Zone name
+	ScheduleInterval        int64             // Interval in seconds for checking active tenants & new tasks
+	StaleCheckDelay         int64             // Time in seconds for checking stale tasks
+	TaskEventUpdateDeadline int64             // Deadline in seconds for the scheduler to receive task update events
+	Peers                   map[string]string // Peers addresses
+	// TODO: move to scheduler config struct
+
+	Snapshot     config.SnapshotConfig  // Scheduler state snapshot configurations
+	Transport    config.TransportConfig // Transport config
+	ServerConfig config.ServerConfig    // http and grpc config
 }
 
 type Scheduler struct {
@@ -462,7 +466,7 @@ func (s *Scheduler) checkStaleTasks() {
 	for {
 		select {
 		case <-tick.C:
-			for tenant, _ := range s.qs {
+			for tenant := range s.qs {
 				tasks, err = s.em.Tasks(tenant)
 				if err != nil {
 					s.lg.Log(types.LevelError, "error", err.Error(), "tenantId", tenant, "message", "error finding tasks")

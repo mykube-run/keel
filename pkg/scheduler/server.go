@@ -29,7 +29,13 @@ type Server struct {
 }
 
 func NewServer(db types.DB, sched *Scheduler, config config.ServerConfig, lg types.Logger, ls types.Listener) *Server {
-	return &Server{db: db, sched: sched, config: config, lg: lg, ls: ls}
+	return &Server{
+		db:     db,
+		sched:  sched,
+		config: config,
+		lg:     lg,
+		ls:     ls,
+	}
 }
 
 // Tenant API
