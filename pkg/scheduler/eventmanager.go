@@ -183,7 +183,7 @@ func (m *EventManager) Iterate(tenantId, taskId string, fn func(e *TaskEvent) bo
 
 		task := tenant.Bucket([]byte(taskId))
 		if task == nil {
-			m.lg.Log(types.LevelWarn, "taskId", taskId, "message", "task db is empty")
+			// m.lg.Log(types.LevelInfo, "taskId", taskId, "message", "task db is empty (can be ignored)")
 			return nil
 		}
 
