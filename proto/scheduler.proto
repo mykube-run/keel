@@ -227,6 +227,11 @@ message CreateTaskOptions {
   bool check_resource_quota = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "Whether to check resource quota while creating a new task"
   }];
+
+  // Whether to schedule the task immediately after creation, only available when check_resource_quota is true
+  bool schedule_on_create = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
+    description: "Whether to schedule the task immediately after creation, only available when check_resource_quota is true"
+  }];
 }
 
 message PauseTaskRequest {
