@@ -48,6 +48,7 @@ func DefaultFromEnv() Config {
 		},
 		Transport: TransportConfig{
 			Type: str("TRANSPORT_TYPE"),
+			Role: str("TRANSPORT_ROLE"),
 			Kafka: KafkaConfig{
 				Brokers: strs("TRANSPORT_KAFKA_BROKERS"),
 				Topics: KafkaTopics{
@@ -59,6 +60,29 @@ func DefaultFromEnv() Config {
 				EnableSASL:   boolean("TRANSPORT_KAFKA_ENABLE_SASL"),
 				SASLUsername: str("TRANSPORT_KAFKA_SASL_USERNAME"),
 				SASLPassword: str("TRANSPORT_KAFKA_SASL_PASSWORD"),
+			},
+			Grpc: GrpcConfig{
+				Mode:               str("TRANSPORT_GRPC_MODE"),
+				SchedulerEndpoints: strs("TRANSPORT_GRPC_SCHEDULER_ENDPOINTS"),
+				ListenAddress:      str("TRANSPORT_GRPC_LISTEN_ADDRESS"),
+				APIKey:             str("TRANSPORT_GRPC_API_KEY"),
+				DNSName:            str("TRANSPORT_GRPC_DNS_NAME"),
+				K8SNamespace:       str("TRANSPORT_GRPC_K8S_NAMESPACE"),
+				K8SService:         str("TRANSPORT_GRPC_K8S_SERVICE"),
+				TLSEnable:          boolean("TRANSPORT_GRPC_TLS_ENABLE"),
+				TLSCAFile:          str("TRANSPORT_GRPC_TLS_CA_FILE"),
+				TLSCertFile:        str("TRANSPORT_GRPC_TLS_CERT_FILE"),
+				TLSKeyFile:         str("TRANSPORT_GRPC_TLS_KEY_FILE"),
+				InsecureSkipVerify: boolean("TRANSPORT_GRPC_TLS_INSECURE_SKIP_VERIFY"),
+				SendRetryMax:             num("TRANSPORT_GRPC_SEND_RETRY_MAX"),
+				SendRetryInitialBackoffMs: num("TRANSPORT_GRPC_SEND_RETRY_INITIAL_BACKOFF_MS"),
+				SendRetryMaxBackoffMs:     num("TRANSPORT_GRPC_SEND_RETRY_MAX_BACKOFF_MS"),
+				SendRetryJitterPct:        num("TRANSPORT_GRPC_SEND_RETRY_JITTER_PCT"),
+				ReconnectOnSendError:      boolean("TRANSPORT_GRPC_RECONNECT_ON_SEND_ERROR"),
+				Auth: AuthConfig{
+					Type:    str("TRANSPORT_GRPC_AUTH_TYPE"),
+					APIKeys: strs("TRANSPORT_GRPC_AUTH_API_KEYS"),
+				},
 			},
 		},
 	}

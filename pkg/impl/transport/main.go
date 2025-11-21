@@ -8,11 +8,14 @@ import (
 )
 
 func New(conf *config.TransportConfig) (t types.Transport, err error) {
-	switch strings.ToLower(conf.Type) {
-	case "kafka":
-		t, err = NewKafkaTransport(conf)
-		return
-	default:
-		return nil, fmt.Errorf("unsupported transport type: %v", conf.Type)
-	}
+    switch strings.ToLower(conf.Type) {
+    case "kafka":
+        t, err = NewKafkaTransport(conf)
+        return
+    case "grpc":
+        t, err = NewGrpcTransport(conf)
+        return
+    default:
+        return nil, fmt.Errorf("unsupported transport type: %v", conf.Type)
+    }
 }

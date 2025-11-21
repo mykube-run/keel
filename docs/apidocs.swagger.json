@@ -11,6 +11,9 @@
   "tags": [
     {
       "name": "ScheduleService"
+    },
+    {
+      "name": "Transport"
     }
   ],
   "schemes": [
@@ -421,6 +424,25 @@
         "priority",
         "name"
       ]
+    },
+    "pb.Envelope": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "string",
+          "format": "byte"
+        },
+        "tsSec": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
     },
     "pb.PauseTaskRequest": {
       "type": "object",

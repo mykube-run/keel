@@ -1,0 +1,19 @@
+{
+  "name": "keel-sdk",
+  "version": "0.1.0",
+  "description": "Node.js SDK for Keel platform",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "npm run generate && tsc",
+    "generate": "node scripts/generate_protos.js"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.8.0",
+    "google-protobuf": "^3.21.2",
+    "protobufjs": "^7.2.4"
+  },
+  "devDependencies": {
+    "ts-protoc-gen": "^0.15.0",
+    "typescript": "^5.0.4"
+  }
+}

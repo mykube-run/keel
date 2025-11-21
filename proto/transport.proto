@@ -1,0 +1,14 @@
+syntax = "proto3";
+package pb;
+option go_package = "github.com/mykube-run/keel/pkg/pb";
+
+message Envelope {
+  string from = 1;
+  string to = 2;
+  bytes payload = 3;
+  int64 ts_sec = 4;
+}
+
+service Transport {
+  rpc Connect(stream Envelope) returns (stream Envelope);
+}

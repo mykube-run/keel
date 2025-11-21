@@ -1,4 +1,4 @@
-FROM bitnami/golang:1.18.9-debian-11-r9
+FROM bitnamilegacy/golang:1.18.9-debian-11-r9
 
 ENV GOPROXY="https://goproxy.cn"
 
