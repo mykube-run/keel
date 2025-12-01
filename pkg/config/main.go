@@ -88,6 +88,7 @@ type GrpcConfig struct {
 	DNSName                   string     // DNS name for discovery
 	K8SNamespace              string     // K8s namespace for service discovery
 	K8SService                string     // K8s service name for discovery
+	Port                      int        // Port for DNS/K8s discovery endpoints, default 443
 	TLSEnable                 bool       // Enable TLS
 	TLSCAFile                 string     // CA file path
 	TLSCertFile               string     // Client/server cert file

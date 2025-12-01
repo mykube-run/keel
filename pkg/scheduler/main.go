@@ -42,7 +42,7 @@ func (o *Options) validate() {
 }
 
 func (o *Options) SchedulerId() string {
-	return fmt.Sprintf("%s-%s", o.Name, o.Zone)
+	return fmt.Sprintf("%s-%s", o.Zone, o.Name)
 }
 
 type Scheduler struct {

@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mykube-run/keel/pkg/config"
@@ -27,7 +28,9 @@ type GrpcWorkerTransport struct {
 	omr            types.OnMessageReceived
 	closeSend      bool
 	closeReceiving bool
-	client         pb.Transport_ConnectClient
+	clientsMu      sync.RWMutex
+	clients        map[string]pb.Transport_ConnectClient
+	endpointById   map[string]string
 	handlers       []string
 	hbInterval     time.Duration
 	hbStarted      bool
@@ -41,53 +44,70 @@ func newGrpcWorkerTransport(cfg *config.TransportConfig) (*GrpcWorkerTransport, 
 		interval = time.Duration(cfg.Grpc.HeartbeatInterval) * time.Second
 	}
 	t := &GrpcWorkerTransport{
-		cfg:        cfg,
-		lg:         &lg,
-		handlers:   []string{},
-		hbInterval: interval,
+		cfg:          cfg,
+		lg:           &lg,
+		clients:      make(map[string]pb.Transport_ConnectClient),
+		endpointById: make(map[string]string),
+		handlers:     []string{},
+		hbInterval:   interval,
 	}
 	return t, nil
 }
 
 func (t *GrpcWorkerTransport) Start() error {
-	target, err := t.resolveSchedulerTarget()
+	targets, err := t.resolveSchedulerTargets()
 	if err != nil {
 		return err
 	}
-	dialOpts := []grpc.DialOption{grpc.WithBlock()}
-	if t.cfg.Grpc.TLSEnable {
-		tlsCfg, err := clientTLSConfig(t.cfg.Grpc)
+	for _, target := range targets {
+		dialOpts := []grpc.DialOption{grpc.WithBlock()}
+		if t.cfg.Grpc.TLSEnable {
+			tlsCfg, err := clientTLSConfig(t.cfg.Grpc)
+			if err != nil {
+				return err
+			}
+			dialOpts = append(dialOpts, grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg)))
+		} else {
+			dialOpts = append(dialOpts, grpc.WithInsecure())
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		conn, err := grpc.DialContext(ctx, target, dialOpts...)
+		cancel()
 		if err != nil {
 			return err
 		}
-		dialOpts = append(dialOpts, grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg)))
-	} else {
-		dialOpts = append(dialOpts, grpc.WithInsecure())
+		cli := pb.NewTransportClient(conn)
+		hdr := map[string]string{
+			apiKeyHeader:     t.cfg.Grpc.APIKey,
+			identifierHeader: t.cfg.Identifier,
+		}
+		if len(t.handlers) > 0 {
+			hdr[workerHandlersHeader] = strings.Join(t.handlers, ",")
+		}
+		md := metadata.New(hdr)
+		cctx := metadata.NewOutgoingContext(context.Background(), md)
+		stream, err := cli.Connect(cctx)
+		if err != nil {
+			return err
+		}
+		h, _ := stream.Header()
+		sid := ""
+		if h != nil {
+			if vs := h.Get(identifierHeader); len(vs) > 0 {
+				sid = strings.TrimSpace(vs[0])
+			}
+		}
+		if sid == "" {
+			sid = target
+		}
+		t.clientsMu.Lock()
+		t.clients[sid] = stream
+		t.endpointById[sid] = target
+		t.clientsMu.Unlock()
+		go t.consumeClient(sid, stream)
+		t.lg.Info().Str("target", target).Str("schedulerId", sid).Msg("grpc transport client connected")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	conn, err := grpc.DialContext(ctx, target, dialOpts...)
-	if err != nil {
-		return err
-	}
-	cli := pb.NewTransportClient(conn)
-	hdr := map[string]string{
-		apiKeyHeader:     t.cfg.Grpc.APIKey,
-		identifierHeader: t.cfg.Identifier,
-	}
-	if len(t.handlers) > 0 {
-		hdr[workerHandlersHeader] = strings.Join(t.handlers, ",")
-	}
-	md := metadata.New(hdr)
-	cctx := metadata.NewOutgoingContext(context.Background(), md)
-	stream, err := cli.Connect(cctx)
-	if err != nil {
-		return err
-	}
-	t.client = stream
-	go t.consumeClient()
 	t.ensureHeartbeat()
-	t.lg.Info().Str("target", target).Msg("grpc transport client connected")
 	return nil
 }
 
@@ -96,19 +116,32 @@ func (t *GrpcWorkerTransport) OnReceive(omr types.OnMessageReceived) {
 }
 
 func (t *GrpcWorkerTransport) Send(from, to string, msg []byte) error {
+	if to == heartbeatTopic {
+		t.clientsMu.RLock()
+		for sid, c := range t.clients {
+			env := &pb.Envelope{From: from, To: to, Payload: msg, TsSec: time.Now().Unix()}
+			if err := c.Send(env); err != nil && t.cfg.Grpc.ReconnectOnSendError {
+				_ = t.reconnectClientById(sid)
+				t.clientsMu.RUnlock()
+				t.clientsMu.RLock()
+			}
+		}
+		t.clientsMu.RUnlock()
+		return nil
+	}
+	parts := strings.SplitN(to, ":", 2)
+	sid := strings.TrimSpace(parts[0])
 	attempt := 0
 	max := t.retryMax()
 	for {
-		if t.client == nil {
-			if !t.cfg.Grpc.ReconnectOnSendError {
-				return fmt.Errorf("no scheduler stream")
-			}
-			if err := t.reconnectClient(); err != nil {
-				return err
-			}
+		t.clientsMu.RLock()
+		c := t.clients[sid]
+		t.clientsMu.RUnlock()
+		if c == nil {
+			return fmt.Errorf("no scheduler stream: %s", sid)
 		}
 		env := &pb.Envelope{From: from, To: to, Payload: msg, TsSec: time.Now().Unix()}
-		err := t.client.Send(env)
+		err := c.Send(env)
 		if err == nil {
 			t.lg.Trace().Str("from", from).Str("to", to).Str("sample", sampling(msg)).Msg("sent message to scheduler")
 			return nil
@@ -117,7 +150,7 @@ func (t *GrpcWorkerTransport) Send(from, to string, msg []byte) error {
 		if !t.cfg.Grpc.ReconnectOnSendError || attempt > max {
 			return err
 		}
-		_ = t.reconnectClient()
+		_ = t.reconnectClientById(sid)
 		t.backoff(attempt)
 	}
 }
@@ -132,14 +165,22 @@ func (t *GrpcWorkerTransport) CloseSend() error {
 	return nil
 }
 
-func (t *GrpcWorkerTransport) consumeClient() {
+func (t *GrpcWorkerTransport) consumeClient(sid string, c pb.Transport_ConnectClient) {
 	for {
 		if t.closeReceiving {
 			return
 		}
-		env, err := t.client.Recv()
+		env, err := c.Recv()
 		if err != nil {
-			t.lg.Err(err).Msg("client recv error")
+			t.lg.Err(err).Str("schedulerId", sid).Msg("client recv error")
+			if e := t.reconnectClientById(sid); e == nil {
+				t.clientsMu.RLock()
+				nc := t.clients[sid]
+				t.clientsMu.RUnlock()
+				if nc != nil {
+					go t.consumeClient(sid, nc)
+				}
+			}
 			return
 		}
 		if t.omr != nil {
@@ -151,31 +192,43 @@ func (t *GrpcWorkerTransport) consumeClient() {
 	}
 }
 
-func (t *GrpcWorkerTransport) resolveSchedulerTarget() (string, error) {
+func (t *GrpcWorkerTransport) resolveSchedulerTargets() ([]string, error) {
 	switch strings.ToLower(t.cfg.Grpc.Mode) {
 	case "static":
-		return t.cfg.Grpc.SchedulerEndpoints[rand.Intn(len(t.cfg.Grpc.SchedulerEndpoints))], nil
+		return append([]string{}, t.cfg.Grpc.SchedulerEndpoints...), nil
 	case "dns":
-		return resolveDNS(t.cfg.Grpc.DNSName)
+		port := t.cfg.Grpc.Port
+		if port <= 0 {
+			port = 443
+		}
+		return resolveDNSAll(t.cfg.Grpc.DNSName, port)
 	case "k8s":
 		host := fmt.Sprintf("%s.%s.svc.cluster.local", t.cfg.Grpc.K8SService, t.cfg.Grpc.K8SNamespace)
-		return resolveDNS(host)
+		port := t.cfg.Grpc.Port
+		if port <= 0 {
+			port = 443
+		}
+		return resolveDNSAll(host, port)
 	default:
-		return "", fmt.Errorf("unsupported grpc discovery mode: %s", t.cfg.Grpc.Mode)
+		return nil, fmt.Errorf("unsupported grpc discovery mode: %s", t.cfg.Grpc.Mode)
 	}
 }
 
-func resolveDNS(name string) (string, error) {
+func resolveDNSAll(name string, port int) ([]string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	addrs, err := net.DefaultResolver.LookupHost(ctx, name)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if len(addrs) == 0 {
-		return "", fmt.Errorf("no address resolved")
+		return nil, fmt.Errorf("no address resolved")
 	}
-	return fmt.Sprintf("%s:443", addrs[rand.Intn(len(addrs))]), nil
+	res := make([]string, 0, len(addrs))
+	for _, a := range addrs {
+		res = append(res, fmt.Sprintf("%s:%d", a, port))
+	}
+	return res, nil
 }
 
 func clientTLSConfig(gcfg config.GrpcConfig) (*tls.Config, error) {
@@ -238,10 +291,12 @@ func (t *GrpcWorkerTransport) backoff(attempt int) {
 	time.Sleep(d)
 }
 
-func (t *GrpcWorkerTransport) reconnectClient() error {
-	target, err := t.resolveSchedulerTarget()
-	if err != nil {
-		return err
+func (t *GrpcWorkerTransport) reconnectClientById(sid string) error {
+	t.clientsMu.RLock()
+	target := t.endpointById[sid]
+	t.clientsMu.RUnlock()
+	if strings.TrimSpace(target) == "" {
+		return fmt.Errorf("unknown scheduler: %s", sid)
 	}
 	dialOpts := []grpc.DialOption{grpc.WithBlock()}
 	if t.cfg.Grpc.TLSEnable {
@@ -254,8 +309,8 @@ func (t *GrpcWorkerTransport) reconnectClient() error {
 		dialOpts = append(dialOpts, grpc.WithInsecure())
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
 	conn, err := grpc.DialContext(ctx, target, dialOpts...)
+	cancel()
 	if err != nil {
 		return err
 	}
@@ -270,7 +325,9 @@ func (t *GrpcWorkerTransport) reconnectClient() error {
 	if err != nil {
 		return err
 	}
-	t.client = stream
+	t.clientsMu.Lock()
+	t.clients[sid] = stream
+	t.clientsMu.Unlock()
 	t.ensureHeartbeat()
 	return nil
 }
@@ -296,8 +353,6 @@ func (t *GrpcWorkerTransport) startHeartbeat() {
 
 func (t *GrpcWorkerTransport) setHandlers(handlers []string) {
 	t.handlers = handlers
-	if t.client != nil {
-		payload, _ := json.Marshal(map[string]interface{}{"handlers": t.handlers})
-		_ = t.Send(t.cfg.Identifier, heartbeatTopic, payload)
-	}
+	payload, _ := json.Marshal(map[string]interface{}{"handlers": t.handlers})
+	_ = t.Send(t.cfg.Identifier, heartbeatTopic, payload)
 }

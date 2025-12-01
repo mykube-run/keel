@@ -204,6 +204,7 @@ func (s *schedulerServer) Connect(stream pb.Transport_ConnectServer) error {
 		}
 	}
 	s.t.registerWorker(workerId, stream, handlers)
+	_ = stream.SendHeader(metadata.New(map[string]string{identifierHeader: s.t.cfg.Identifier}))
 	for {
 		if s.t.closeReceiving {
 			s.t.removeWorker(workerId)
