@@ -81,26 +81,31 @@ type KafkaTopics struct {
 }
 
 type GrpcConfig struct {
-	Mode                      string     // Address discovery mode: static|dns|k8s
-	SchedulerEndpoints        []string   // Worker-side scheduler endpoints
-	ListenAddress             string     // Transport server listen address
-	APIKey                    string     // API key for auth
-	DNSName                   string     // DNS name for discovery
-	K8SNamespace              string     // K8s namespace for service discovery
-	K8SService                string     // K8s service name for discovery
-	Port                      int        // Port for DNS/K8s discovery endpoints, default 443
-	TLSEnable                 bool       // Enable TLS
-	TLSCAFile                 string     // CA file path
-	TLSCertFile               string     // Client/server cert file
-	TLSKeyFile                string     // Client/server key file
-	InsecureSkipVerify        bool       // Skip TLS verification
-	SendRetryMax              int        // Max retry attempts
-	SendRetryInitialBackoffMs int        // Initial backoff in ms
-	SendRetryMaxBackoffMs     int        // Max backoff in ms
-	SendRetryJitterPct        int        // Jitter percentage
-	ReconnectOnSendError      bool       // Reconnect on send error
-	HeartbeatInterval         int        // Heartbeat interval in seconds
-	Auth                      AuthConfig // Auth provider config
+	// Common config (applies to both Scheduler and Worker)
+	APIKey                    string // Shared API key auth; Worker sends via header; Scheduler validates when Auth.Type is empty
+	TLSEnable                 bool   // Enable TLS for both client and server sides
+	TLSCAFile                 string // CA file; Worker: RootCAs for server verify; Scheduler: ClientCAs for mTLS client verification
+	TLSCertFile               string // Certificate file; Scheduler: server cert; Worker: client cert for mTLS
+	TLSKeyFile                string // Private key file; Scheduler: server key; Worker: client key for mTLS
+	InsecureSkipVerify        bool   // Skip TLS verification (development only)
+	SendRetryMax              int    // Max retry attempts for send (used by both Scheduler→Worker and Worker→Scheduler)
+	SendRetryInitialBackoffMs int    // Initial backoff in ms
+	SendRetryMaxBackoffMs     int    // Max backoff in ms
+	SendRetryJitterPct        int    // Jitter percentage
+
+	// Scheduler config
+	ListenAddress string     // gRPC server listen address for Scheduler (e.g. ":8443")
+	Auth          AuthConfig // Scheduler auth provider; when Type=="simple" uses APIKeys and ignores APIKey
+
+	// Worker config
+	Mode                 string   // Address discovery mode: static|dns|k8s (Worker only)
+	SchedulerEndpoints   []string // Used when Mode=="static"; array of scheduler endpoints (host:port)
+	DNSName              string   // Used when Mode=="dns"; resolves A records for scheduler cluster
+	K8SNamespace         string   // Used when Mode=="k8s"; scheduler service namespace
+	K8SService           string   // Used when Mode=="k8s"; scheduler service name
+	Port                 int      // Port for DNS/K8s discovery endpoints; default 443 if <=0
+	ReconnectOnSendError bool     // Worker: whether to reconnect stream on send error
+	HeartbeatInterval    int      // Worker: heartbeat interval in seconds to report handlers
 }
 
 type AuthConfig struct {
