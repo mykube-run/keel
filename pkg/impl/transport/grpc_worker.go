@@ -308,3 +308,11 @@ func (t *GrpcWorkerTransport) startHeartbeat() {
 		}
 	}
 }
+
+func (t *GrpcWorkerTransport) setHandlers(handlers []string) {
+	t.handlers = handlers
+	if t.client != nil {
+		payload, _ := json.Marshal(map[string]interface{}{"handlers": t.handlers})
+		_ = t.Send(t.workerId, heartbeatTopic, payload)
+	}
+}

@@ -3,17 +3,18 @@ package worker
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mykube-run/keel/pkg/config"
-	"github.com/mykube-run/keel/pkg/enum"
-	"github.com/mykube-run/keel/pkg/impl/transport"
-	"github.com/mykube-run/keel/pkg/types"
-	"github.com/panjf2000/ants/v2"
 	"os"
 	"os/signal"
 	"runtime"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/mykube-run/keel/pkg/config"
+	"github.com/mykube-run/keel/pkg/enum"
+	"github.com/mykube-run/keel/pkg/impl/transport"
+	"github.com/mykube-run/keel/pkg/types"
+	"github.com/panjf2000/ants/v2"
 )
 
 // TODO: Trigger task transition on exit signal
@@ -91,6 +92,8 @@ func (w *Worker) RegisterHandler(name string, f types.TaskHandlerFactory) {
 func (w *Worker) Start() {
 	w.lg.Log(types.LevelInfo, "handlers", w.handlers(),
 		"workerId", w.opt.Name, "poolSize", w.opt.PoolSize, "message", "starting worker")
+
+	transport.SetWorkerHandlers(w.tran, w.handlers())
 
 	if err := w.tran.Start(); err != nil {
 		w.lg.Log(types.LevelFatal, "error", err.Error(), "message", "failed to start transport")
