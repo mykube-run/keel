@@ -14,9 +14,7 @@ import (
 func main() {
 	zerolog.SetGlobalLevel(zerolog.TraceLevel)
 	cfg := config.DefaultFromEnv()
-	if cfg.Transport.Type == "kafka" {
-		cfg.Transport.Role = string(enum.TransportRoleWorker)
-	}
+	cfg.Transport.Role = string(enum.TransportRoleWorker)
 	opt := &worker.Options{
 		PoolSize:       cfg.Worker.PoolSize,
 		Name:           cfg.Worker.Name,
