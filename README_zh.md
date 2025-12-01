@@ -1,6 +1,6 @@
 # Keel
 
-Keel 是一个支持多租户的任务调度与执行框架。对外提供 gRPC 与 HTTP（grpc-gateway）接口，调度器与工作节点之间通过 Kafka 传输，底层存储可选择 MySQL 或 MongoDB（可搭配 Redis）。
+ Keel 是一个支持多租户的任务调度与执行框架。对外提供 gRPC 与 HTTP（grpc-gateway）接口，调度器与工作节点之间可通过 Kafka 或 gRPC 进行通信，底层存储可选择 MySQL 或 MongoDB（可搭配 Redis）。
 
 状态说明：本项目尚未经过大规模生产验证，使用前请谨慎评估。
 
@@ -30,11 +30,35 @@ English README: `README.md`。
 
 - 调度器：维护租户队列、并发与状态机，暴露 API；通过 Kafka 下发任务与接收回报。
 - 工作节点：注册并执行任务处理器，周期上报状态，支持重试与迁移。
-- 传输层：Kafka 作为任务与状态消息总线。
+ - 传输层：Kafka 或 gRPC 作为任务与状态消息通道。
 - 数据库层：任务/租户元数据存储（MySQL 或 MongoDB，可选 Redis 辅助）。
 - 对象存储：用于事件快照（Minio）。
 
-API 端口：HTTP 使用 `SCHEDULER_PORT`，gRPC 使用 `SCHEDULER_PORT + 1000`。
+ API 端口：HTTP 使用 `SCHEDULER_PORT`，gRPC 使用 `SCHEDULER_PORT + 1000`。
+
+## 调度器与工作节点通信
+
+- 传输选项
+  - `Kafka`：调度器将任务下发到 Kafka 主题；工作节点从任务主题消费并将状态回报到消息主题。
+  - `gRPC`：通过 `pb.Transport.Connect` 建立双向流。
+    - 调度器作为服务端，校验入站流（`x-api-key` 或 `Auth.Type=simple`）。
+    - 工作节点作为客户端，发现并维护到所有调度器的并行连接。
+
+- gRPC（Worker 侧）
+  - 发现模式：`static`（端点列表）、`dns`（A 记录）、`k8s`（服务 DNS）。`dns`/`k8s` 模式下端口由 `GrpcConfig.Port` 指定（默认 `443`）。
+  - 建连后，调度器在响应头返回自身标识 `x-identifier`；工作节点据此建立 `schedulerId → stream` 路由映射。
+  - 心跳：周期广播 `to="__heartbeat"` 到所有已连接调度器，汇报当前处理器（handlers）。
+  - 发送路由：状态/事件消息使用 `to="<SchedulerId>:<TaskId>"`，工作节点按 `SchedulerId` 选择对应调度器连接发送。
+
+- gRPC（Scheduler 侧）
+  - 接收工作节点流，记录 `workerId` 与处理器集合；维护 `handler → workers` 映射用于任务下发。
+  - 派发任务时根据 `task.handler` 选择支持该处理器的在线工作节点连接并发送。
+  - 在 `to="__heartbeat"` 的心跳消息中更新处理器映射与存活状态。
+
+- 安全
+  - TLS：通过 `GrpcConfig.TLSEnable` 开启。
+  - mTLS：调度器加载 `TLSCertFile/TLSKeyFile` 与 `TLSCAFile`（校验客户端证书）；工作节点可加载客户端证书/密钥。
+  - API Key：工作节点发送 `x-api-key`；调度器通过 `GrpcConfig.APIKey` 或当 `Auth.Type="simple"` 时使用 `Auth.APIKeys` 验证。
 
 ## 技术栈（Tech Stack）
 

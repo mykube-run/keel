@@ -1,6 +1,6 @@
 # Keel
 
-Keel is a task scheduling and execution framework with multi-tenant support. It provides a gRPC + HTTP gateway API, Kafka-based transport between scheduler and workers, and pluggable database backends (MySQL or MongoDB, optionally with Redis).
+ Keel is a task scheduling and execution framework with multi-tenant support. It provides a gRPC + HTTP gateway API, transport between scheduler and workers via Kafka or gRPC, and pluggable database backends (MySQL or MongoDB, optionally with Redis).
 
 Status: This project has not been validated in large-scale production. Evaluate carefully before adoption.
 
@@ -30,11 +30,35 @@ For Chinese, see `README_zh.md`.
 
 - Scheduler: Manages tenant queues, concurrency and state; exposes APIs; dispatches via Kafka.
 - Worker: Registers and executes handlers; reports status; supports retry and transition.
-- Transport: Kafka for task dispatch and status reporting.
+ - Transport: Kafka or gRPC for task dispatch and status reporting.
 - Database: Tenant/task metadata in MySQL or MongoDB (Redis optional).
 - Object Storage: Event snapshots via Minio.
 
-API ports: HTTP uses `SCHEDULER_PORT`; gRPC uses `SCHEDULER_PORT + 1000`.
+ API ports: HTTP uses `SCHEDULER_PORT`; gRPC uses `SCHEDULER_PORT + 1000`.
+
+## Scheduler ↔ Worker Communication
+
+- Transport options
+  - `Kafka`: Scheduler dispatches tasks to Kafka topics; Workers consume tasks and report status to message topics.
+  - `gRPC`: Bidirectional streaming via `pb.Transport.Connect`.
+    - Scheduler acts as server, authenticates incoming streams (`x-api-key` or `Auth.Type=simple`).
+    - Worker acts as client, maintains multiple concurrent streams to all discovered schedulers.
+
+- gRPC worker behavior
+  - Discovery modes: `static` (list of endpoints), `dns` (A records), `k8s` (service DNS). For `dns`/`k8s`, port is configurable via `GrpcConfig.Port` (default `443`).
+  - On connect, Scheduler returns its identifier (`x-identifier`) in response headers; Worker maps `schedulerId → stream` for routing.
+  - Heartbeat: Worker periodically broadcasts `to="__heartbeat"` with current handler set to all connected schedulers.
+  - Send routing: Worker sends status/events with `to="<SchedulerId>:<TaskId>"`, selecting the matching scheduler stream by `SchedulerId`.
+
+- gRPC scheduler behavior
+  - Receives worker streams, records `workerId` and handler set; maintains `handler → workers` mapping.
+  - Task dispatch selects a worker supporting `task.handler` and sends via the corresponding stream.
+  - Handles heartbeats on `to="__heartbeat"` to update handler mappings and liveness.
+
+- Security
+  - TLS: Enable via `GrpcConfig.TLSEnable`.
+  - mTLS: Scheduler loads `TLSCertFile/TLSKeyFile` and `TLSCAFile` (client cert verification); Worker optionally loads client cert/key.
+  - API key: Worker sends `x-api-key`; Scheduler validates via `GrpcConfig.APIKey` or `Auth.APIKeys` when `Auth.Type="simple"`.
 
 ## Tech Stack
 
