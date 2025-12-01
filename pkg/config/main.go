@@ -1,8 +1,9 @@
 package config
 
 import (
-	"github.com/rs/zerolog"
 	"time"
+
+	"github.com/rs/zerolog"
 )
 
 type Config struct {
@@ -32,7 +33,7 @@ type DatabaseConfig struct {
 }
 
 type SchedulerConfig struct {
-	Id                      string // Scheduler id, also used to identify partition
+	Name                    string // Scheduler name, also used to identify partition
 	Zone                    string // The zone to which schedule belongs to
 	Port                    int
 	Numbers                 int // Number of schedulers within the same zone
@@ -52,10 +53,11 @@ type WorkerConfig struct {
 }
 
 type TransportConfig struct {
-    Type  string      // Transport type, e.g. kafka
-    Role  string      // Transport role, available values are enum.TransportRole
-    Kafka KafkaConfig // Kafka config
-    Grpc  GrpcConfig  // GRPC transport config
+	Identifier string      // Scheduler id or worker name
+	Type       string      // Transport type, e.g. kafka
+	Role       string      // Transport role, available values are enum.TransportRole
+	Kafka      KafkaConfig // Kafka config
+	Grpc       GrpcConfig  // GRPC transport config
 }
 
 type ServerConfig struct {
@@ -74,34 +76,35 @@ type KafkaConfig struct {
 }
 
 type KafkaTopics struct {
-    Tasks    []string // Tasks topics
-    Messages []string // Messages topics
+	Tasks    []string // Tasks topics
+	Messages []string // Messages topics
 }
 
 type GrpcConfig struct {
-    Mode               string   // Address discovery mode: static|dns|k8s
-    SchedulerEndpoints []string // Worker-side scheduler endpoints
-    ListenAddress      string   // Transport server listen address
-    APIKey             string   // API key for auth
-    DNSName            string   // DNS name for discovery
-    K8SNamespace       string   // K8s namespace for service discovery
-    K8SService         string   // K8s service name for discovery
-    TLSEnable          bool     // Enable TLS
-    TLSCAFile          string   // CA file path
-    TLSCertFile        string   // Client/server cert file
-    TLSKeyFile         string   // Client/server key file
-    InsecureSkipVerify bool     // Skip TLS verification
-    SendRetryMax             int    // Max retry attempts
-    SendRetryInitialBackoffMs int    // Initial backoff in ms
-    SendRetryMaxBackoffMs     int    // Max backoff in ms
-    SendRetryJitterPct        int    // Jitter percentage
-    ReconnectOnSendError      bool   // Reconnect on send error
-    Auth                      AuthConfig // Auth provider config
+	Mode                      string     // Address discovery mode: static|dns|k8s
+	SchedulerEndpoints        []string   // Worker-side scheduler endpoints
+	ListenAddress             string     // Transport server listen address
+	APIKey                    string     // API key for auth
+	DNSName                   string     // DNS name for discovery
+	K8SNamespace              string     // K8s namespace for service discovery
+	K8SService                string     // K8s service name for discovery
+	TLSEnable                 bool       // Enable TLS
+	TLSCAFile                 string     // CA file path
+	TLSCertFile               string     // Client/server cert file
+	TLSKeyFile                string     // Client/server key file
+	InsecureSkipVerify        bool       // Skip TLS verification
+	SendRetryMax              int        // Max retry attempts
+	SendRetryInitialBackoffMs int        // Initial backoff in ms
+	SendRetryMaxBackoffMs     int        // Max backoff in ms
+	SendRetryJitterPct        int        // Jitter percentage
+	ReconnectOnSendError      bool       // Reconnect on send error
+	HeartbeatInterval         int        // Heartbeat interval in seconds
+	Auth                      AuthConfig // Auth provider config
 }
 
 type AuthConfig struct {
-    Type    string   // simple|jwt|hmac
-    APIKeys []string // allowed api keys for simple
+	Type    string   // simple|jwt|hmac
+	APIKeys []string // allowed api keys for simple
 }
 
 type SnapshotConfig struct {

@@ -28,7 +28,6 @@ type GrpcWorkerTransport struct {
 	closeSend      bool
 	closeReceiving bool
 	client         pb.Transport_ConnectClient
-	workerId       string
 	handlers       []string
 	hbInterval     time.Duration
 	hbStarted      bool
@@ -36,31 +35,17 @@ type GrpcWorkerTransport struct {
 
 func newGrpcWorkerTransport(cfg *config.TransportConfig) (*GrpcWorkerTransport, error) {
 	lg := zerolog.New(os.Stdout).With().Timestamp().Str("tran", "grpc").Str("role", "worker").Logger()
-	id := strings.TrimSpace(os.Getenv("KEEL_WORKER_ID"))
-	if id == "" {
-		hn, _ := os.Hostname()
-		id = strings.TrimSpace(hn)
-		if id == "" {
-			id = "unknown"
-		}
-	}
-	var handlers []string
-	if raw := strings.TrimSpace(os.Getenv("KEEL_WORKER_HANDLERS")); raw != "" {
-		parts := strings.Split(raw, ",")
-		for _, p := range parts {
-			v := strings.TrimSpace(p)
-			if v != "" {
-				handlers = append(handlers, v)
-			}
-		}
-	}
+
 	interval := 10 * time.Second
-	if v := strings.TrimSpace(os.Getenv("KEEL_WORKER_HEARTBEAT_SECONDS")); v != "" {
-		if n, err := time.ParseDuration(v + "s"); err == nil && n > 0 {
-			interval = n
-		}
+	if cfg.Grpc.HeartbeatInterval > 0 {
+		interval = time.Duration(cfg.Grpc.HeartbeatInterval) * time.Second
 	}
-	t := &GrpcWorkerTransport{cfg: cfg, lg: &lg, workerId: id, handlers: handlers, hbInterval: interval}
+	t := &GrpcWorkerTransport{
+		cfg:        cfg,
+		lg:         &lg,
+		handlers:   []string{},
+		hbInterval: interval,
+	}
 	return t, nil
 }
 
@@ -86,7 +71,10 @@ func (t *GrpcWorkerTransport) Start() error {
 		return err
 	}
 	cli := pb.NewTransportClient(conn)
-	hdr := map[string]string{apiKeyHeader: t.cfg.Grpc.APIKey, workerIdHeader: t.workerId}
+	hdr := map[string]string{
+		apiKeyHeader:     t.cfg.Grpc.APIKey,
+		identifierHeader: t.cfg.Identifier,
+	}
 	if len(t.handlers) > 0 {
 		hdr[workerHandlersHeader] = strings.Join(t.handlers, ",")
 	}
@@ -272,7 +260,7 @@ func (t *GrpcWorkerTransport) reconnectClient() error {
 		return err
 	}
 	cli := pb.NewTransportClient(conn)
-	hdr := map[string]string{apiKeyHeader: t.cfg.Grpc.APIKey, workerIdHeader: t.workerId}
+	hdr := map[string]string{apiKeyHeader: t.cfg.Grpc.APIKey, identifierHeader: t.cfg.Identifier}
 	if len(t.handlers) > 0 {
 		hdr[workerHandlersHeader] = strings.Join(t.handlers, ",")
 	}
@@ -297,15 +285,12 @@ func (t *GrpcWorkerTransport) ensureHeartbeat() {
 
 func (t *GrpcWorkerTransport) startHeartbeat() {
 	tick := time.NewTicker(t.hbInterval)
-	for {
-		select {
-		case <-tick.C:
-			if t.closeSend || t.closeReceiving {
-				return
-			}
-			payload, _ := json.Marshal(map[string]interface{}{"handlers": t.handlers})
-			_ = t.Send(t.workerId, heartbeatTopic, payload)
+	for range tick.C {
+		if t.closeSend || t.closeReceiving {
+			return
 		}
+		payload, _ := json.Marshal(map[string]interface{}{"handlers": t.handlers})
+		_ = t.Send(t.cfg.Identifier, heartbeatTopic, payload)
 	}
 }
 
@@ -313,6 +298,6 @@ func (t *GrpcWorkerTransport) setHandlers(handlers []string) {
 	t.handlers = handlers
 	if t.client != nil {
 		payload, _ := json.Marshal(map[string]interface{}{"handlers": t.handlers})
-		_ = t.Send(t.workerId, heartbeatTopic, payload)
+		_ = t.Send(t.cfg.Identifier, heartbeatTopic, payload)
 	}
 }

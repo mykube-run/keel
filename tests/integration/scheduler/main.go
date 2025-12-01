@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/mykube-run/keel/pkg/config"
 	"github.com/mykube-run/keel/pkg/enum"
 	"github.com/mykube-run/keel/pkg/impl/database"
@@ -16,7 +17,7 @@ func main() {
 	zerolog.SetGlobalLevel(zerolog.TraceLevel)
 	cfg := config.DefaultFromEnv()
 	opt := &scheduler.Options{
-		Name:                    cfg.Scheduler.Id,
+		Name:                    cfg.Scheduler.Name,
 		Zone:                    cfg.Scheduler.Zone,
 		ScheduleInterval:        int64(cfg.Scheduler.ScheduleInterval),
 		StaleCheckDelay:         int64(cfg.Scheduler.StaleCheckDelay),

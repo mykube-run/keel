@@ -10,7 +10,7 @@ import (
 )
 
 const apiKeyHeader = "x-api-key"
-const workerIdHeader = "x-worker-id"
+const identifierHeader = "x-identifier"
 const workerHandlersHeader = "x-worker-handlers"
 const heartbeatTopic = "__heartbeat"
 
@@ -25,6 +25,9 @@ func NewGrpcTransport(cfg *config.TransportConfig) (types.Transport, error) {
 }
 
 func validateGrpcConfig(cfg *config.TransportConfig) error {
+	if strings.TrimSpace(cfg.Identifier) == "" {
+		return fmt.Errorf("TransportConfig.Identifier was not specified")
+	}
 	if cfg.Role != string(enum.TransportRoleScheduler) && cfg.Role != string(enum.TransportRoleWorker) {
 		return fmt.Errorf("TransportConfig.Role was not specified")
 	}

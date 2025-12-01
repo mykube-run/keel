@@ -19,7 +19,7 @@ func DefaultFromEnv() Config {
 			DSN:  str("DATABASE_DSN"),
 		},
 		Scheduler: SchedulerConfig{
-			Id:                      envstr("SCHEDULER_ID"),
+			Name:                    firstenvstrs([]string{"SCHEDULER_NAME", "SCHEDULER_ID"}), // SCHEDULER_ID is deprecated
 			Zone:                    envstr("SCHEDULER_ZONE"),
 			Port:                    num("SCHEDULER_PORT"),
 			Numbers:                 num("SCHEDULER_NUMBERS"),
@@ -62,19 +62,19 @@ func DefaultFromEnv() Config {
 				SASLPassword: str("TRANSPORT_KAFKA_SASL_PASSWORD"),
 			},
 			Grpc: GrpcConfig{
-				Mode:               str("TRANSPORT_GRPC_MODE"),
-				SchedulerEndpoints: strs("TRANSPORT_GRPC_SCHEDULER_ENDPOINTS"),
-				ListenAddress:      str("TRANSPORT_GRPC_LISTEN_ADDRESS"),
-				APIKey:             str("TRANSPORT_GRPC_API_KEY"),
-				DNSName:            str("TRANSPORT_GRPC_DNS_NAME"),
-				K8SNamespace:       str("TRANSPORT_GRPC_K8S_NAMESPACE"),
-				K8SService:         str("TRANSPORT_GRPC_K8S_SERVICE"),
-				TLSEnable:          boolean("TRANSPORT_GRPC_TLS_ENABLE"),
-				TLSCAFile:          str("TRANSPORT_GRPC_TLS_CA_FILE"),
-				TLSCertFile:        str("TRANSPORT_GRPC_TLS_CERT_FILE"),
-				TLSKeyFile:         str("TRANSPORT_GRPC_TLS_KEY_FILE"),
-				InsecureSkipVerify: boolean("TRANSPORT_GRPC_TLS_INSECURE_SKIP_VERIFY"),
-				SendRetryMax:             num("TRANSPORT_GRPC_SEND_RETRY_MAX"),
+				Mode:                      str("TRANSPORT_GRPC_MODE"),
+				SchedulerEndpoints:        strs("TRANSPORT_GRPC_SCHEDULER_ENDPOINTS"),
+				ListenAddress:             str("TRANSPORT_GRPC_LISTEN_ADDRESS"),
+				APIKey:                    str("TRANSPORT_GRPC_API_KEY"),
+				DNSName:                   str("TRANSPORT_GRPC_DNS_NAME"),
+				K8SNamespace:              str("TRANSPORT_GRPC_K8S_NAMESPACE"),
+				K8SService:                str("TRANSPORT_GRPC_K8S_SERVICE"),
+				TLSEnable:                 boolean("TRANSPORT_GRPC_TLS_ENABLE"),
+				TLSCAFile:                 str("TRANSPORT_GRPC_TLS_CA_FILE"),
+				TLSCertFile:               str("TRANSPORT_GRPC_TLS_CERT_FILE"),
+				TLSKeyFile:                str("TRANSPORT_GRPC_TLS_KEY_FILE"),
+				InsecureSkipVerify:        boolean("TRANSPORT_GRPC_TLS_INSECURE_SKIP_VERIFY"),
+				SendRetryMax:              num("TRANSPORT_GRPC_SEND_RETRY_MAX"),
 				SendRetryInitialBackoffMs: num("TRANSPORT_GRPC_SEND_RETRY_INITIAL_BACKOFF_MS"),
 				SendRetryMaxBackoffMs:     num("TRANSPORT_GRPC_SEND_RETRY_MAX_BACKOFF_MS"),
 				SendRetryJitterPct:        num("TRANSPORT_GRPC_SEND_RETRY_JITTER_PCT"),
@@ -122,4 +122,14 @@ func num(key string) int {
 
 func envstr(key string) string {
 	return ReplaceEnvironment(str(key))
+}
+
+func firstenvstrs(keys []string) string {
+	for _, key := range keys {
+		val := envstr(key)
+		if val != "" {
+			return val
+		}
+	}
+	return ""
 }

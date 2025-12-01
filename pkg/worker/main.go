@@ -37,6 +37,9 @@ func (o *Options) validate() {
 	if len(o.HandlerWhiteList) == 0 {
 		o.HandlerWhiteList = append(o.HandlerWhiteList, asterisk)
 	}
+	if o.Transport.Identifier == "" {
+		o.Transport.Identifier = o.Name
+	}
 }
 
 type Worker struct {

@@ -95,11 +95,14 @@ func (t *GrpcSchedulerTransport) OnReceive(omr types.OnMessageReceived) {
 }
 
 func (t *GrpcSchedulerTransport) Send(from, to string, msg []byte) error {
-	attempt := 0
-	max := t.retryMax()
-	var handler string
-	var targetIds []string
-	var lastErr error
+	var (
+		attempt   = 0
+		max       = t.retryMax()
+		handler   string
+		targetIds []string
+		lastErr   error
+	)
+
 	for {
 		if handler == "" {
 			var task types.Task
@@ -119,8 +122,11 @@ func (t *GrpcSchedulerTransport) Send(from, to string, msg []byte) error {
 				return fmt.Errorf("no worker supports handler: %s", handler)
 			}
 		}
-		var pickId string
-		var sel pb.Transport_ConnectServer
+
+		var (
+			pickId string
+			sel    pb.Transport_ConnectServer
+		)
 		if len(targetIds) > 0 {
 			pickId = targetIds[rand.Intn(len(targetIds))]
 			sel = t.workerStreams[pickId]
@@ -178,12 +184,16 @@ func (s *schedulerServer) Connect(stream pb.Transport_ConnectServer) error {
 	if !ok {
 		return fmt.Errorf("missing metadata")
 	}
-	vals := md.Get(workerIdHeader)
+	vals := md.Get(identifierHeader)
 	if len(vals) == 0 || strings.TrimSpace(vals[0]) == "" {
 		return fmt.Errorf("missing worker id")
 	}
-	workerId := strings.TrimSpace(vals[0])
-	var handlers []string
+
+	var (
+		workerId = strings.TrimSpace(vals[0])
+		handlers []string
+	)
+
 	if hv := md.Get(workerHandlersHeader); len(hv) > 0 && strings.TrimSpace(hv[0]) != "" {
 		parts := strings.Split(hv[0], ",")
 		for _, p := range parts {

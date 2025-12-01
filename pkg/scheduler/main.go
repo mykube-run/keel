@@ -32,6 +32,19 @@ type Options struct {
 	ServerConfig            config.ServerConfig    // http and grpc config
 }
 
+func (o *Options) validate() {
+	if o.Transport.Identifier == "" {
+		o.Transport.Identifier = o.SchedulerId()
+	}
+	if o.Transport.Type == "kafka" {
+		o.Transport.Kafka.GroupId = o.SchedulerId() /* Update group id */
+	}
+}
+
+func (o *Options) SchedulerId() string {
+	return fmt.Sprintf("%s-%s", o.Name, o.Zone)
+}
+
 type Scheduler struct {
 	opt    *Options                    // Scheduler options
 	qs     map[string]*queue.TaskQueue // Task queues indexed by tenant id
@@ -49,6 +62,8 @@ type Scheduler struct {
 
 // New initializes a scheduler instance
 func New(opt *Options, db types.DB, lg types.Logger, ls types.Listener) (s *Scheduler, err error) {
+	opt.validate()
+
 	var stc = uint64(0)
 	if ls == nil {
 		ls = listener.Default
@@ -69,9 +84,6 @@ func New(opt *Options, db types.DB, lg types.Logger, ls types.Listener) (s *Sche
 		return nil, err
 	}
 
-	if opt.Transport.Type == "kafka" {
-		opt.Transport.Kafka.GroupId = s.SchedulerId() /* Update group id */
-	}
 	s.tran, err = transport.New(&opt.Transport)
 	if err != nil {
 		return nil, err
@@ -119,7 +131,7 @@ func (s *Scheduler) Start() {
 
 // SchedulerId returns scheduler's id in the form of <zone>-<name>
 func (s *Scheduler) SchedulerId() string {
-	return strings.ToLower(fmt.Sprintf("%v-%v", s.opt.Zone, s.opt.Name))
+	return s.opt.SchedulerId()
 }
 
 // schedule starts the schedule loop
